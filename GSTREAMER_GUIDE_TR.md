@@ -129,7 +129,7 @@ gst-launch-1.0.exe \
  ! x264enc tune=zerolatency bitrate=2000 speed-preset=ultrafast key-int-max=30 intra-refresh=true \
  ! rtph264pay config-interval=1 pt=96 \
  ! queue \
- ! udpsink host=10.173.102.229 port=5000
+ ! udpsink host=<PI_IP_ADRESI> port=5000
 ```
 
 #### Pi 3B+ Receiver Komutu
