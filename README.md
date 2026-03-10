@@ -25,7 +25,7 @@ Sistem, basit bir Gönderici-Alıcı (Sender-Receiver) mimarisi kullanır:
 UniCast, temel multimedya işleme süreçleri için GStreamer altyapısını kullanır.  
 Farklı işletim sistemleri (Windows, Linux, macOS, Raspberry Pi) için kurulum talimatlarına ve sistemi anında test edebileceğiniz örnek komutlara aşağıdaki rehberden ulaşabilirsiniz.
 
-**[GStreamer Kurulum ve Kullanım Rehberi]**
+**[GStreamer Kurulum ve Kullanım Rehberi](GSTREAMER_GUIDE_TR.md)**
 
 ---
 
@@ -63,7 +63,7 @@ The system uses a straightforward Sender-Receiver architecture:
 UniCast relies on GStreamer for its core multimedia pipeline.  
 For installation instructions across different operating systems (Windows, Linux, macOS, Raspberry Pi) and sample commands to run the system immediately, please check the guide below.
 
-**[GStreamer Installation and Usage Guide]**
+**[GStreamer Installation and Usage Guide](GSTREAMER_GUIDE_EN.md)**
 
 ---
 
