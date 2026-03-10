@@ -14,7 +14,7 @@ Sistem, basit bir Gönderici-Alıcı (Sender-Receiver) mimarisi kullanır:
 - **Gönderici (Windows):** Ekranı yakalar, H.264 formatında kodlar ve UDP paketleri olarak gönderir.  
 - **Alıcı (Raspberry Pi / PC):** UDP paketlerini alır, ağ dalgalanmalarını (jitter) düzenler, akışı çözer ve doğrudan ekrana yansıtır.
 
-*(Sistem mimarisi diyagramı buraya eklenecektir)*
+*[![Sistem Mimarisi Diagramı](https://github.com/user-attachments/assets/a8b13dbe-5bd1-43ce-a997-d73fd6b47110)]*
 
 ---
 
