@@ -14,7 +14,9 @@ Sistem, basit bir Gönderici-Alıcı (Sender-Receiver) mimarisi kullanır:
 - **Gönderici (Windows):** Ekranı yakalar, H.264 formatında kodlar ve UDP paketleri olarak gönderir.  
 - **Alıcı (Raspberry Pi / PC):** UDP paketlerini alır, ağ dalgalanmalarını (jitter) düzenler, akışı çözer ve doğrudan ekrana yansıtır.
 
-*[![Sistem Mimarisi Diagramı](https://github.com/user-attachments/assets/a8b13dbe-5bd1-43ce-a997-d73fd6b47110)]*
+
+
+*![Sistem Mimarisi Diagramı](https://github.com/user-attachments/assets/a8b13dbe-5bd1-43ce-a997-d73fd6b47110)*
 
 ---
 
@@ -50,7 +52,9 @@ The system uses a straightforward Sender-Receiver architecture:
 - **Sender (Windows):** Captures the screen, encodes it into H.264, and sends it as UDP packets.  
 - **Receiver (Raspberry Pi / PC):** Receives the UDP packets, handles network jitter, decodes the stream, and displays it directly on the screen.
 
-*(System architecture diagram will be placed here)*
+
+
+*![System Architecture Diagram](https://github.com/user-attachments/assets/a8b13dbe-5bd1-43ce-a997-d73fd6b47110)*
 
 ---
 
