@@ -20,7 +20,7 @@ Uygulama açıldığında öğretmeni karşılayan ilk ekrandır.
     *   *Tam Ekran* seçilirse alt seçenekler (Video, Slayt, Özel) belirir.
     *   *Pencere* seçilirse, işletim sistemindeki açık uygulamaların listesi (örn. PowerPoint, Chrome) bir açılır menü (dropdown) ile öğretmene sunulur.
 *   **Ses Ayarı:** Açık/Kapalı anahtarı (Switch) bulunur.
-*   **PIN Girişi ve Bağlan:** Ayarlar yapıldıktan sonra en altta veya yeni bir ekranda PIN kodu giriş alanı bulunur. Projeksiyonda beliren 4 haneli şifre girilir ve "Bağlan" butonuna basılarak yayın başlatılır.
+*   **PIN Girişi ve UDP Doğrulama:** Ayarlar yapıldıktan sonra en altta veya yeni bir ekranda PIN kodu giriş alanı bulunur. Projeksiyonda beliren 4 haneli şifre girilir ve "Bağlan" butonuna basılarak yayın başlatılır.
 
 ### Ekran 3: Yayın Ekranı (Minimal Kayan Çubuk)
 Yayın başladığında devasa bir arayüz yerine, ekranın bir köşesinde duran ve her zaman üstte kalan (always on top) minimal bir kontrol çubuğu (Floating Bar) kalır.
