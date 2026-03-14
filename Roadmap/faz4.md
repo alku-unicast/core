@@ -6,7 +6,7 @@ Bu aşama, projeksiyon cihazına bağlı olan Raspberry Pi üzerinde çalışaca
 
 Pi cihazı, yerel ağdaki kısıtlamaları aşmak için sürekli olarak Firebase ile iletişimde kalacaktır.
 *   **Varlık (Presence) Güncellemesi:** Pi cihazı, ağa bağlandığında IP adresini alır ve her 30 saniyede bir Firebase'deki `rooms/` koleksiyonuna kendi durumunu (`pi_ip`, `pi_status: idle`, `last_seen`) yazar.
-*   **Komut Dinleme:** Servis, Firebase'deki `command` alanını gerçek zamanlı (real-time) dinler [3]. Gönderici uygulamadan "Başlat" veya "Durdur" komutu geldiğinde ilgili donanım ve yazılım fonksiyonlarını tetikler.
+*   **UDP Doğrulama Dinleyicisi:** Pi üzerinde Python ile `0.0.0.0:5001` portu sürekli dinlenir. Göndericiden gelen mesaj lokaldeki `current_pin` ile eşleşirse (örn: "PIN:4821"), karşı tarafa doğrudan `b"OK"` byte verisi döndürülür ve hemen ardından `start_pipeline()` fonksiyonu tetiklenerek görüntü/ses portları dinlenmeye başlanır. Eşleşmezse `b"FAIL"` döner. (Port Mimarisi: 5000 Video, 5001 Auth, 5002 Ses).
 
 ## 2. HDMI Yönetimi ve CEC Kontrolü
 
@@ -16,9 +16,9 @@ Projeksiyon cihazlarının "otomatik kaynak bulma" özelliğinin bozulmaması ve
 
 ## 3. Bekleme (Idle) Ekranı ve Güvenlik (PIN)
 
-Öğretmen bağlantı isteği gönderdiğinde, Pi HDMI'yi açar ve ekrana bir bekleme (idle) arayüzü yansıtır.
-*   **PIN Üretimi:** Python servisi, her bağlantı isteğinde rastgele 4 haneli bir PIN (örn. 4821) üretir ve bu PIN'i Firebase'e yazar.
-*   **Arayüz (Pygame):** Bekleme ekranı, kaynak tüketimi çok düşük olan `pygame` (veya `tkinter`) kütüphanesi kullanılarak tam ekran siyah bir pencere üzerinde sadece PIN kodunu ve IP adresini gösterecek şekilde tasarlanır. PIN kodu sınıftaki projeksiyona yansır, böylece sadece sınıfta olan öğretmen bu şifreyi görebilir.
+Pi üzerinde X11 masaüstü ortamını (GUI) hiç açmamak ve maksimum performans elde etmek için `Pillow (PIL)` kütüphanesi ile görüntü üretilip, `fbi (Frame Buffer Image viewer)` ile doğrudan framebuffer'a basılacaktır.
+*   **Zamanlayıcılı (Saatlik) PIN Değişimi:** PIN kodunun güvenliği için kod, Pi arka planında çalışan bir timer (zamanlayıcı) vasıtasıyla her 1 saatte bir (eğer o an `streaming` işlemi yoksa) rastgele yenilenir. PIN sadece cihaz lokalinde tutulur, dışarı aktarılmaz.
+*  ** PNG Üretimi ve Yansıtma:** PIN her değiştiğinde veya bağlantı koptuğunda Python `Pillow` kütüphanesi kullanılarak; ortasında Sınıf Adı, yeni PIN ve Pi IP'si yazan siyah bir `/tmp/idle.png` oluşturulur. Ardından `subprocess.Popen` üzerinden `fbi -T 1 -noverbose -a /tmp/idle.png` komutuyla doğrudan projeksiyona yansıtılır.
 
 ## 4. GStreamer Alıcı (Receiver) Pipeline'ı
 
@@ -37,8 +37,8 @@ Servisin Pi fişe takıldığı an (headless) çalışabilmesi ve çökme duruml
 
 ## 6. Faz 4 Aksiyon Listesi (To-Do)
 
-- [ ] Raspberry Pi üzerinde donanım kontrolleri için `vcgencmd` ve `cec-client` paketlerinin kurulması.
-- [ ] Firebase SDK'sının kurularak varlık güncelleme (`update_presence`) ve komut dinleme işlemlerinin Python ile yazılması.
-- [ ] Rastgele 4 haneli PIN üretecek ve tam ekran gösterecek `pygame` tabanlı arayüzün kodlanması.
+- [ ] Raspberry Pi üzerinde donanım kontrolleri için `fbi`, `vcgencmd` ve `cec-client` paketlerinin kurulması.
+- [ ] `Pillow (PIL)` kütüphanesi kullanılarak her saat başı (time.sleep(3600)) yeni PIN üretecek, PNG oluşturacak ve `fbi` komutunu tetikleyecek arka plan thread'inin `(pin_rotator)` yazılması.
+- [ ] Python `socket` kütüphanesi ile 5001 portundan "Handshake" yapacak ve `OK/FAIL` durumuna göre yayını başlatacak yetkilendirme (auth) dinleyicisinin kodlanması.
 - [ ] Görüntü ve Ses GStreamer komutlarını (`udpsrc`, `avdec_h264`, `opusdec`) `subprocess.Popen` ile yönetecek akışın oluşturulması.
 - [ ] Tüm bu scripti sistem başlangıcında çalıştıracak `systemd` servis dosyasının (`.service`) oluşturulması ve ağ hazır olana kadar bekleyecek "retry" mekanizmasının koda eklenmesi.
