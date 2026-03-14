@@ -118,7 +118,6 @@ Kat yapısındaki farklılıkları (örneğin `003, 004, 005` odalarının birle
       "floor": 0,
       "pi_ip": "192.168.1.45",
       "pi_status": "idle",
-      "pin": "4821",
       "last_seen": 1710000000
     },
     "101": {
@@ -126,7 +125,6 @@ Kat yapısındaki farklılıkları (örneğin `003, 004, 005` odalarının birle
       "floor": 1,
       "pi_ip": "192.168.1.46",
       "pi_status": "offline",
-      "pin": null,
       "last_seen": 0
     },
     "401": {
@@ -134,7 +132,6 @@ Kat yapısındaki farklılıkları (örneğin `003, 004, 005` odalarının birle
       "floor": 4,
       "pi_ip": "192.168.1.50",
       "pi_status": "streaming",
-      "pin": null,
       "last_seen": 1710000050
     }
   }
