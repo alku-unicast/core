@@ -1,0 +1,13 @@
+node_modules/
+__pycache__/
+.env
+dist/
+build/
+target/
+.github/
+*.csv
+*.html
+*.log
+CLAUDE.md
+progress.md
+.claudeignore

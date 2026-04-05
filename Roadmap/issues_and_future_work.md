@@ -37,6 +37,32 @@ Ne sürücü kurulumu ne de admin izni gerekiyor.
 
 ---
 
-### Çözüm B: Eski Yöntem
-- Pi sürekli idle ekranı açık tutuyor, IP ve PIN gösteriyor.  
-- Hocalar kumanda ile aç/kapa ve kaynak değiştirme işlemlerini manuel yapıyor.  
+## 3. Akıllı Ses Aygıtı Keşfi ve Yönetimi
+
+**Sorun:**  
+Farklı bilgisayarlarda çok sayıda ses giriş/çıkış aygıtı (mikrofonlar, sanal ses kartları, HDMI monitörler) bulunmaktadır. GStreamer'ın varsayılan "loopback" (sistem sesini yakalama) ayarı her zaman doğru aygıtı bulamayabilir veya karmaşık `device.id` bilgileri gerektirebilir.
+
+**Çözüm (Faz 2 - Arayüz Entegrasyonu):**  
+Uygulama, öğretmenlerin bu teknik detaylarla uğraşmaması için sistem bağımsız bir "Akıllı Aygıt Keşfi" motoruna sahip olacaktır.
+
+**Sorun:**  
+Hem gönderici hem de alıcı cihazda ses yayını yapıldığı için arada da gecikme olduğu için hoş olmayan bir karışıklık ortaya çıkıyor.
+
+**Çözüm (Faz 2 - Arayüz Entegrasyonu):**  
+- Programatik Mutelama (Mute Native): Uygulama yayına başladığında, Windows API'lerini kullanarak laptopun hoparlör çıkışını (Master Volume) %0'a çekecek veya "mute" komutu gönderecek. Ancak GStreamer "loopback" (döngüsel yakalama) işlemini Windows'un ses mikserinden (Mixer) yaptığı için, sistem sesi %0 olsa bile dijital veriyi yakalamaya devam edebiliriz.
+- Sanal Ses Kartı (Virtual Audio Driver): Daha profesyonel uygulamalarda (Örn: OBS) sisteme "UniCast Virtual Audio" adında hayali bir hoparlör kurulur. Windows sesi oraya gönderir; hoca laptoptan hiçbir şey duymaz ama biz o sanal cihazdan sesi tertemiz yakalayıp Pi'ye göndeririz.
+- Bu seçeneklerden birisini seçebiiliriz veya daha iyi bir seçenek bulabiliriz.
+
+### İşletim Sistemi Stratejileri:
+*   **Windows:** 
+    *   `wasapi2src` sürücüsü üzerinden `device.api=wasapi2` ve `loopback=true` olan aygıtlar taranacaktır.
+    *   `device.default=true` olan aygıt otomatik olarak seçilecek, ancak arayüzde bir "Ses Kaynağı" menüsü sunulacaktır.
+*   **macOS:**
+    *   `osxaudiosrc` kullanılacaktır. 
+    *   Ses yakalama için sistemde Loopback (BlackHole vb.) veya macOS'in yeni `avfvideosrc` tabanlı yerel ses yakalama kancaları (hook) kontrol edilecektir.
+*   **Linux:**
+    *   `pulsesrc` veya `pipewiresrc` üzerinden "monitor of output" (çıkışın monitörü) aygıtı otomatik tespit edilecektir.
+
+### Kullanıcı Deneyimi (UX):
+*   **Otomatik Mod:** Uygulama açıldığında o an sesin çıktığı hoparlörün "loopback" kanalına otomatik bağlanır.
+*   **Manuel Seçim:** Hocalar, "Ayarlar" menüsünden basit isimlerle (Örn: "Realtek High Definition Audio") ses kaynağını değiştirebilecektir. Arka planda bu seçimler GStreamer'ın anladığı `device.id` (GUID) yapılarına dönüştürülecektir. 
