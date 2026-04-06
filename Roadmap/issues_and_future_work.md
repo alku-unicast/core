@@ -66,3 +66,33 @@ Hem gönderici hem de alıcı cihazda ses yayını yapıldığı için arada da 
 ### Kullanıcı Deneyimi (UX):
 *   **Otomatik Mod:** Uygulama açıldığında o an sesin çıktığı hoparlörün "loopback" kanalına otomatik bağlanır.
 *   **Manuel Seçim:** Hocalar, "Ayarlar" menüsünden basit isimlerle (Örn: "Realtek High Definition Audio") ses kaynağını değiştirebilecektir. Arka planda bu seçimler GStreamer'ın anladığı `device.id` (GUID) yapılarına dönüştürülecektir. 
+
+---
+
+## 4. macOS Ses Yakalama Sorunu (Future Work)
+
+**Sorun:**
+macOS, uygulamaların sistem sesini yakalamasına izin vermez. Windows'taki `wasapi2src loopback=true` gibi yerleşik bir mekanizma yoktur. Bu nedenle **macOS'ta ses yayını MVP'de devre dışı bırakılacaktır.**
+
+**Gelecek Çözüm Seçenekleri:**
+
+| Çözüm | Nasıl | Avantajlar | Dezavantajlar |
+|-------|-------|------------|---------------|
+| **A) BlackHole** (sanal ses sürücüsü) | BlackHole 2ch kurulur, ses buraya yönlendirilir | Temiz yakalama, gecikme yok | Kurulum gerektirir (portable prensibine aykırı), admin izni |
+| **B) ScreenCaptureKit** (macOS 13+) | macOS 13 Ventura'daki `SCStreamConfiguration` ile ses yakalama | Native, sürücü gereksiz | Yalnızca macOS 13+, GStreamer entegrasyonu yok — özel plugin veya subprocess gerekir |
+
+**Karar:** MVP'de macOS'ta ses kapalı. İhtiyaç doğarsa önce Seçenek A (BlackHole), uzun vadede Seçenek B.
+
+---
+
+## 5. Pi Agent Evolution (Faz 4 — Notlar)
+
+Mevcut `agent.py` bir benchmarking prototipdir. Üretime geçiş için şu eklentiler gerekecek (detaylar `faz4.md`'de):
+
+- **Firebase Presence:** Her 30 saniyede varlık güncellemesi (`pi_ip`, `pi_status`, `last_seen`)
+- **PIN Üretimi ve Görüntüleme:** Saatlik PIN rotasyonu (`time.monotonic()` ile), framebuffer'a Pillow+fbi ile yansıtma
+- **Heartbeat Listener:** Sender'dan 3 saniyede bir gelen ALIVE paketlerini dinleme, 10 saniye gelmezse disconnect
+- **HDMI-CEC:** `cec-client` ile projeksiyon kontrolü (opsiyonel, donanıma bağlı)
+- **BUSY Yanıtı:** Yayın devam ederken yeni bağlantı isteklerini reddetme (`b"BUSY"`)
+- **Session Token:** Çökme sonrası PIN'siz reconnect desteği (5 dakika penceresi)
+
