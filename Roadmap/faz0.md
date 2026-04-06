@@ -94,21 +94,31 @@ fn start_stream(encoder: String, target_ip: String) -> Result<String, String> {
 
 ---
 
+---
+
 # 2. Cihaz Keşfi ve Ağ Mimarisi (Firebase)
 
 Cihazların (Pi ve Windows) **Eduroam ağı üzerinde birbirini otomatik bulabilmesi** için iletişim katmanı **Firebase Realtime Database** üzerine kurulacaktır.
 
-* Maksimum **20–30 Raspberry Pi** cihazı olacağı için
-* **Realtime Database**, bu proje için en uygun ve ücretsiz **Spark planı** ile yeterli bir çözümdür.
+Maksimum **20–30 Raspberry Pi** cihazı olacağı için, **Realtime Database** bu proje için en uygun ve **ücretsiz Spark planı ile yeterli** bir çözümdür.
 
 ---
 
 ## Veritabanı Yapısı (JSON Taslağı)
 
-Kat yapısındaki farklılıkları (örneğin `003, 004, 005` odalarının birleşik olması gibi) esnek şekilde yönetebilmek için sınıflar manuel olarak girilecektir.
+Kat yapısındaki farklılıkları (örneğin `003`, `004`, `005` odalarının birleşik olması gibi) esnek şekilde yönetebilmek için sınıflar **manuel olarak girilecektir**.
 
-* Pi cihazları **30 saniyede bir presence güncellemesi** yapar
-* Windows uygulaması **rooms koleksiyonunu dinler**
+Cihazların güvenlik şifreleri (PIN), siber güvenlik prensipleri gereği **asla bu veritabanında tutulmayacaktır**.
+
+Pi cihazları **30 saniyede bir presence (varlık) güncellemesi** yapar.
+
+### Zombi Cihaz Kontrolü (`onDisconnect`)
+
+Pi cihazlarının aniden elektrik kesintisine uğraması durumunda veritabanında günlerce `"idle"` olarak kalmalarını önlemek için Firebase'in `onDisconnect()` metodu kullanılır.
+
+Bağlantı koptuğu anda Firebase sunucusu ilgili cihazın `pi_status` değerini otomatik olarak `"offline"` yapar.
+
+Windows uygulaması `rooms` koleksiyonunu dinler.
 
 ```json
 {
@@ -148,16 +158,27 @@ Kat yapısındaki farklılıkları (örneğin `003, 004, 005` odalarının birle
 
 ## Firebase Güvenlik Kuralları
 
-Veritabanının dışarıdan manipüle edilmesini engellemek için güvenlik kuralları belirlenmelidir.
+Veritabanının dışarıdan manipüle edilmesini ve ağdaki IP adreslerinin herkes tarafından okunabilmesi ("Public Read" zafiyeti) riskini engellemek için güvenlik kuralları katılaştırılmıştır.
 
-* **Okuma (read)** işlemi anonim olabilir
-* **Yazma (write)** işlemi yalnızca kimliği doğrulanmış cihazlara izin verir
+### Okuma (read)
+
+Windows uygulaması arka planda **Anonim Kimlik Doğrulama (Anonymous Auth)** ile giriş yapar.
+
+```json
+".read": "auth != null"
+```
+
+Bu sayede yalnızca uygulama içinden gelen yetkili oturumların veri okumasına izin verilir.
+
+### Yazma (write)
+
+Yazma işlemleri yalnızca kimliği belirli cihazlara izin verecek şekilde sınırlandırılır:
 
 ```json
 {
   "rules": {
     "rooms": {
-      ".read": true,
+      ".read": "auth != null",
       "$room_id": {
         ".write": "auth != null"
       }
@@ -170,10 +191,9 @@ Veritabanının dışarıdan manipüle edilmesini engellemek için güvenlik kur
 
 ## Kimlik Doğrulama (Auth) Stratejisi
 
-İlerleyen aşamalarda her bir Pi cihazı için **ayrı Firebase hesabı** açılması planlanmaktadır.
-Güvenlik için böyle bir yöntem seçilmişyir
+İlerleyen aşamalarda her bir Pi cihazı için ayrı bir Firebase hesabı açılması planlanmaktadır.
 
-Örnek:
+**Örnek:**
 
 ```
 pi-101@unicast.local
@@ -181,13 +201,13 @@ pi-101@unicast.local
 
 Bu yaklaşım sayesinde:
 
-* Bir cihaz arızalandığında yalnızca **o hesabın erişimi kapatılabilir**
-* Sistem yönetimi daha kolay olur
-* Gerçek bir email hesabı olmasına gerek yoktur sadece güvenlik yeterlidir
+* Arızalanan bir cihazın erişimi ayrı ayrı kapatılabilir
+* Sistem yönetimi kolaylaşır
+* Gerçek bir e-posta hesabına ihtiyaç yoktur
 
-Örnek Json
+### Gelişmiş Yazma Kuralı
 
-```
+```json
 {
   "rules": {
     "rooms": {
@@ -197,9 +217,45 @@ Bu yaklaşım sayesinde:
     }
   }
 }
-
 ```
+
 ---
+
+## Güvenlik PIN Kodu ve Doğrulama Mimarisi (UDP)
+
+Bağlantı esnasında projeksiyona yansıtılan 4 haneli PIN kodunun doğrulanması işlemi, güvenlik nedeniyle Firebase üzerinden değil, doğrudan **yerel ağ (UDP/TCP)** üzerinden yapılacaktır.
+
+### Güvenlik Akışı ve Gerekçeler
+
+#### Şifrenin İzolasyonu
+
+* PIN kodu hiçbir zaman internete (Firebase'e) çıkmaz
+* Pi üzerinde yerel olarak üretilir
+* Sadece projeksiyona yansıtılır
+
+#### Meydan Okuma – Yanıt (Challenge-Response / HMAC)
+
+* PIN düz metin olarak gönderilmez
+* Pi'den gelen rastgele bir `nonce` ile birleştirilir
+* Hash edilerek doğrudan Pi'nin yerel IP adresine gönderilir
+* Alternatif olarak asimetrik şifreleme kullanılabilir
+
+#### Kaba Kuvvet (Brute-Force) Koruması
+
+* Doğrulama Pi cihazı üzerinde yapılır
+* Rate limiting uygulanabilir
+* 3 hatalı denemeden sonra IP geçici olarak engellenir
+
+#### Eduroam Avantajı
+
+Yerel ağda istemci izolasyonu olmadığı doğrulandığı için bu yapı:
+
+* Peer-to-peer iletişimi mümkün kılar
+* Minimum gecikme sağlar
+* Maksimum performans ile çalışır
+
+---
+
 
 # 3. Faz 0 Aksiyon Listesi (To‑Do)
 

@@ -11,3 +11,4 @@ target/
 CLAUDE.md
 progress.md
 .claudeignore
+src/analytics/inject_dashboards.py
