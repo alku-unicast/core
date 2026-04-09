@@ -31,7 +31,7 @@ fn get_audio_devices_windows() -> Result<Vec<AudioDevice>, String> {
         DEVICE_STATE_ACTIVE,
     };
     use windows::Win32::System::Com::{CoCreateInstance, CoInitialize, CLSCTX_ALL};
-    use windows::core::PWSTR;
+
 
     unsafe {
         let _ = CoInitialize(None);
@@ -64,7 +64,7 @@ fn get_audio_devices_windows() -> Result<Vec<AudioDevice>, String> {
 
             // Get friendly name via property store
             let props = device
-                .OpenPropertyStore(windows::Win32::System::Com::StructuredStorage::STGM_READ)
+                .OpenPropertyStore(windows::Win32::System::Com::STGM_READ)
                 .map_err(|e| e.to_string())?;
 
             let name_key = windows::Win32::UI::Shell::PropertiesSystem::PROPERTYKEY {
@@ -78,10 +78,8 @@ fn get_audio_devices_windows() -> Result<Vec<AudioDevice>, String> {
                 .GetValue(&name_key)
                 .ok()
                 .and_then(|v| {
-                    let bstr = v.Anonymous.Anonymous.Anonymous.pwszVal;
-                    if bstr.is_null() { None } else {
-                        Some(PWSTR(bstr.0).to_string().unwrap_or_default())
-                    }
+                    let s = v.to_string();
+                    if s.is_empty() { None } else { Some(s) }
                 })
                 .unwrap_or_else(|| format!("Device {i}"));
 
@@ -135,8 +133,8 @@ pub async fn mute_system_audio(mute: bool) -> Result<bool, String> {
 fn mute_system_audio_windows(mute: bool) -> Result<bool, String> {
     use windows::Win32::Media::Audio::{
         eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator,
-        IAudioEndpointVolume,
     };
+    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::System::Com::{CoCreateInstance, CoInitialize, CLSCTX_ALL};
     use windows::core::GUID;
 
@@ -152,7 +150,7 @@ fn mute_system_audio_windows(mute: bool) -> Result<bool, String> {
             .Activate(CLSCTX_ALL, None)
             .map_err(|e| e.to_string())?;
         endpoint
-            .SetMute(mute.into(), &GUID::zeroed())
+            .SetMute(mute, &GUID::zeroed())
             .map_err(|e| e.to_string())?;
         Ok(true)
     }

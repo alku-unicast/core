@@ -51,7 +51,17 @@ export function startRoomListener(): () => void {
       const raw = snapshot.val() as Record<string, RawRoom> | null;
 
       if (!raw) {
-        setRooms({});
+        const rooms: Record<string, Room> = {
+          "oda-mock": {
+            id: "oda-mock",
+            label: "Lokal Test Odası",
+            floor: "0",
+            ip: "127.0.0.1",
+            status: "idle",
+            lastSeen: Date.now(),
+          }
+        };
+        setRooms(rooms);
         setLoading(false);
         return;
       }
@@ -60,6 +70,18 @@ export function startRoomListener(): () => void {
       for (const [id, data] of Object.entries(raw)) {
         rooms[id] = parseRoom(id, data);
       }
+
+      // --- MOCK MODE INJECTION ---
+      // Hardcoded local room for testing without physical Raspberry Pi
+      rooms["oda-mock"] = {
+        id: "oda-mock",
+        label: "Lokal Test Odası",
+        floor: "0",
+        ip: "127.0.0.1",
+        status: "idle",
+        lastSeen: Date.now(),
+      };
+      // ---------------------------
 
       setRooms(rooms);
       setLoading(false);

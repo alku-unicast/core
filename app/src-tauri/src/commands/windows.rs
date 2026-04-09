@@ -36,7 +36,7 @@ fn enum_windows_win32() -> Result<Vec<WindowInfo>, String> {
         OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
         PROCESS_QUERY_LIMITED_INFORMATION,
     };
-    use std::collections::HashMap;
+
     use std::sync::Mutex;
 
     let results: Arc<Mutex<Vec<WindowInfo>>> = Arc::new(Mutex::new(Vec::new()));

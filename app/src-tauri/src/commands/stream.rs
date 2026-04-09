@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::process::Child;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use crate::gstreamer::{path_setup::get_gst_launch, pipeline::build_pipeline};
 
 // Global GStreamer process handle
@@ -54,7 +54,7 @@ pub async fn start_stream(
 
     log::info!("[stream] Starting: {pipeline}");
 
-    let mut child = std::process::Command::new(&gst_launch)
+    let child = std::process::Command::new(&gst_launch)
         .arg(&pipeline)
         .spawn()
         .map_err(|e| format!("Failed to launch GStreamer: {e}"))?;
@@ -126,7 +126,7 @@ pub fn stop_stream_internal() -> bool {
 
 #[tauri::command]
 pub async fn switch_stream_mode(
-    app: AppHandle,
+    _app: AppHandle,
     mode: String,
     window_id: Option<u64>,
 ) -> Result<bool, String> {

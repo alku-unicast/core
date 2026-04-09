@@ -4,12 +4,16 @@
 pub fn exclude_from_capture(hwnd: isize) -> bool {
     use windows::Win32::Foundation::HWND;
     use windows::Win32::UI::WindowsAndMessaging::SetWindowDisplayAffinity;
+    use windows::Win32::UI::WindowsAndMessaging::WINDOW_DISPLAY_AFFINITY;
     const WDA_EXCLUDEFROMCAPTURE: u32 = 0x00000011;
 
     unsafe {
-        SetWindowDisplayAffinity(HWND(hwnd as *mut _), WDA_EXCLUDEFROMCAPTURE)
-            .map(|_| true)
-            .unwrap_or(false)
+        SetWindowDisplayAffinity(
+            HWND(hwnd as isize),
+            WINDOW_DISPLAY_AFFINITY(WDA_EXCLUDEFROMCAPTURE),
+        )
+        .map(|_| true)
+        .unwrap_or(false)
     }
 }
 

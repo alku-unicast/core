@@ -87,7 +87,7 @@ fn build_fullscreen_src(config: &StreamConfig, width: u32, height: u32, fps: u32
     }
 }
 
-fn build_audio_part(config: &StreamConfig, ip: &str, delay_ms: u32) -> String {
+fn build_audio_part(config: &StreamConfig, ip: &str, _delay_ms: u32) -> String {
     let device_clause = config
         .audio_device_id
         .as_deref()

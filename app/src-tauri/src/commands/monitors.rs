@@ -77,7 +77,7 @@ fn enum_monitors_win32() -> Result<Vec<MonitorInfo>, String> {
     }
 
     unsafe {
-        EnumDisplayMonitors(
+        let _ = EnumDisplayMonitors(
             HDC::default(),
             None,
             Some(monitor_proc),

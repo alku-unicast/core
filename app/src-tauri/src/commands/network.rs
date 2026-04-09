@@ -1,7 +1,7 @@
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use serde::Serialize;
 
 // Current target IP for RTT pings — updated by connection store
@@ -12,6 +12,7 @@ fn target_ip_store() -> &'static Arc<Mutex<Option<String>>> {
     TARGET_IP.get_or_init(|| Arc::new(Mutex::new(None)))
 }
 
+#[allow(dead_code)]
 pub fn set_rtt_target(ip: Option<String>) {
     let mut guard = target_ip_store().lock().unwrap();
     *guard = ip;
