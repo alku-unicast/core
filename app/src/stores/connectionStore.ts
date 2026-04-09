@@ -95,6 +95,30 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       const result = await invoke<{ success: boolean; pid: number }>("start_stream", { config });
       if (result.success) {
         set({ streamPid: result.pid, streamElapsed: 0 });
+
+        // ── Streaming bar: show window + send current stream mode ─────────
+        try {
+          const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+          const bar = await WebviewWindow.getByLabel("streaming-bar");
+          if (bar) {
+            await bar.show();
+            await bar.setFocus();
+            // Give bar a moment to mount before sending mode info
+            setTimeout(() => {
+              bar.emit("stream-mode-info", { mode: config.streamMode });
+            }, 500);
+          }
+        } catch (e) {
+          console.warn("[connectionStore] Could not show streaming bar:", e);
+        }
+
+        // ── Minimize main window to tray ─────────────────────────────────
+        try {
+          const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+          await getCurrentWebviewWindow().hide();
+        } catch (e) {
+          console.warn("[connectionStore] Could not hide main window:", e);
+        }
       }
       return result.success;
     } catch (e) {

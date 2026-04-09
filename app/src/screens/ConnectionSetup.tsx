@@ -76,12 +76,21 @@ export function ConnectionSetup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── stream-stopped Tauri event: go back to home ─────────────────────────── */
+  /* ── stream-stopped Tauri event: re-show main window + go home ───────────── */
   useEffect(() => {
     let unlisten: (() => void) | null = null;
 
     import("@tauri-apps/api/event").then(({ listen }) => {
-      listen("stream-stopped", () => {
+      listen("stream-stopped", async () => {
+        // Re-show main window (it was hidden when stream started)
+        try {
+          const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+          const win = getCurrentWebviewWindow();
+          await win.show();
+          await win.setFocus();
+        } catch (e) {
+          console.warn("[ConnectionSetup] Could not re-show main window:", e);
+        }
         reset();
         navigate("/", { replace: true });
       }).then((fn) => { unlisten = fn; });

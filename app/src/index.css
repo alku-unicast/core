@@ -124,7 +124,9 @@ input, textarea, [contenteditable], code, pre {
   cursor: move;
 }
 [data-tauri-drag-region] button,
-[data-tauri-drag-region] a {
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] input,
+[data-tauri-drag-region] select {
   -webkit-app-region: no-drag;
 }
 

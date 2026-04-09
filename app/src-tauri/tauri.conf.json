@@ -33,7 +33,7 @@
         "decorations": false,
         "transparent": true,
         "visible": false,
-        "url": "/streaming-bar"
+        "url": "/#/streaming-bar"
       }
     ],
     "security": {
