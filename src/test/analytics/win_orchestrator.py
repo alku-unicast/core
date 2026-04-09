@@ -83,26 +83,29 @@ class LatencyCollector:
 def build_gst_silent(pi_ip, video_port):
     return (
         f'gst-launch-1.0.exe -e '
-        f'd3d11screencapturesrc ! videoconvert '
+        f'd3d11screencapturesrc ! queue max-size-buffers=2 ! videoconvert '
         f'! video/x-raw,format=I420,framerate=30/1 '
-        f'! x264enc tune=zerolatency bitrate=4000 speed-preset=superfast key-int-max=30 '
+        # threads=4 eklendi, CPU videoyu daha hızlı işlesin
+        f'! x264enc tune=zerolatency bitrate=4000 speed-preset=superfast key-int-max=30 threads=4 '
         f'! rtph264pay config-interval=1 pt=96 '
-        f'! udpsink host={pi_ip} port={video_port}'
+        # udpsink öncesi queue ve senkronizasyon iptalleri
+        f'! queue ! udpsink host={pi_ip} port={video_port} sync=false async=false buffer-size=212992'
     )
 
 def build_gst_audio(pi_ip, video_port, audio_port):
     return (
         f'gst-launch-1.0.exe -e '
-        f'd3d11screencapturesrc ! videoconvert '
+        # --- VIDEO DALI ---
+        f'd3d11screencapturesrc ! queue max-size-buffers=2 ! videoconvert '
         f'! video/x-raw,format=I420,framerate=30/1 '
-        f'! x264enc tune=zerolatency bitrate=4000 speed-preset=superfast key-int-max=30 '
+        f'! x264enc tune=zerolatency bitrate=4000 speed-preset=superfast key-int-max=30 threads=4 '
         f'! rtph264pay config-interval=1 pt=96 '
-        f'! udpsink host={pi_ip} port={video_port} '
-        f'wasapisrc loopback=true '
-        f'! audioconvert '
+        f'! queue ! udpsink host={pi_ip} port={video_port} sync=false async=false buffer-size=212992 '
+        # --- SES DALI ---
+        f'wasapisrc loopback=true ! queue ! audioconvert '
         f'! opusenc bitrate=128000 '
         f'! rtpopuspay pt=96 '
-        f'! udpsink host={pi_ip} port={audio_port}'
+        f'! queue ! udpsink host={pi_ip} port={audio_port} sync=false async=false buffer-size=212992'
     )
 
 # --- Process Yonetimi ---
