@@ -1,57 +1,36 @@
-"""
-win_orchestrator.py
-===================
-Windows PC tarafı otomasyon betiği.
-- Pi'ye önce 30 tur sessiz yayın gönderir + eş zamanlı RTT ölçer
-- Sonra 30 tur sesli yayın gönderir + RTT ölçer
-
-Kullanım:
-    python win_orchestrator.py
-
-Gereksinimler:
-    - gst-launch-1.0 PATH'te olmalı (GStreamer Windows kurulumu)
-    - pip install pandas
-"""
-
 import subprocess
 import threading
 import socket
 import time
-import sys
 import os
 import csv
-import pandas as pd
 from datetime import datetime
 
-# ── Ayarlar ───────────────────────────────────────────────────────────────────
-PI_IP         = "10.50.21.183"
-VIDEO_PORT    = 5000
-AUDIO_PORT    = 5002
-ECHO_PORT     = 5005          # RTT echo servisi portu (agent.py karşılıyor)
+# ── Ayarlar ──────────────────────────────────────────────────────────────────
+PI_IP       = "10.50.21.183"
+VIDEO_PORT  = 5000
+AUDIO_PORT  = 5002
+ECHO_PORT   = 5005
 
-ITERATIONS    = 30            # Her mod için tur sayısı
-DURATION_S    = 300           # Her turun süresi (saniye) – 5 dakika
-REST_S        = 30            # Turlar arası dinlenme
-LATENCY_CSV   = "latency_log.csv"
+ITERATIONS  = 30
+DURATION_S  = 300
+REST_S      = 30
+LATENCY_CSV = "latency_log.csv"
 
-# GStreamer: video kaynağını ayarla
-# Eğer webcam veya dosya kullanıyorsan burayı değiştir
-# Örnek: dosya → "filesrc location=test.mp4 ! decodebin"
-# Örnek: test pattern → "videotestsrc"
-VIDEO_SOURCE  = "videotestsrc"   # varsayılan: test pattern
-AUDIO_SOURCE  = "audiotestsrc"   # varsayılan: test tone
-# ──────────────────────────────────────────────────────────────────────────────
+# gst-launch-1.0.exe tam yolu (PATH'te varsa sadece "gst-launch-1.0.exe" yeter)
+GST         = "gst-launch-1.0.exe"
+# ─────────────────────────────────────────────────────────────────────────────
 
 
-def log(msg: str):
+def log(msg):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}", flush=True)
 
 
-# ── RTT Ölçümü ────────────────────────────────────────────────────────────────
+# ── RTT Olcumu ───────────────────────────────────────────────────────────────
 
 class LatencyCollector:
-    def __init__(self, pi_ip: str, echo_port: int, csv_path: str, mode: str, iteration: int):
+    def __init__(self, pi_ip, echo_port, csv_path, mode, iteration):
         self.pi_ip     = pi_ip
         self.echo_port = echo_port
         self.csv_path  = csv_path
@@ -61,17 +40,16 @@ class LatencyCollector:
         self.sock      = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.settimeout(1.0)
 
-    def measure_once(self) -> float | None:
+    def measure_once(self):
         t0 = time.perf_counter()
         try:
             self.sock.sendto(f"PING:{t0}".encode(), (self.pi_ip, self.echo_port))
             self.sock.recvfrom(1024)
-            rtt = (time.perf_counter() - t0) * 1000
-            return rtt
+            return (time.perf_counter() - t0) * 1000
         except socket.timeout:
             return None
 
-    def _append_csv(self, rtt_ms: float):
+    def _append_csv(self, rtt_ms):
         row = {
             "Timestamp": datetime.now().strftime("%H:%M:%S"),
             "Mode":      self.mode,
@@ -98,34 +76,35 @@ class LatencyCollector:
         self.running = False
 
 
-# ── GStreamer Komutları ────────────────────────────────────────────────────────
+# ── GStreamer Komutlari ───────────────────────────────────────────────────────
 
-def build_gst_silent(pi_ip: str) -> list[str]:
-    """Video-only (sessiz) yayın komutu."""
+def build_gst_silent(pi_ip):
     return [
-        "gst-launch-1.0", "-e",
-        VIDEO_SOURCE,
-        "!", "video/x-raw,framerate=30/1,width=1920,height=1080",
+        GST, "-e",
+        "videotestsrc", "pattern=ball",
         "!", "videoconvert",
-        "!", "x264enc", "tune=zerolatency", "bitrate=4000", "speed-preset=ultrafast",
+        "!", "video/x-raw,format=I420,framerate=30/1",
+        "!", "x264enc", "tune=zerolatency", "bitrate=3000",
+                         "speed-preset=superfast", "key-int-max=30",
         "!", "rtph264pay", "config-interval=1", "pt=96",
         "!", f"udpsink host={pi_ip} port={VIDEO_PORT}"
     ]
 
 
-def build_gst_audio(pi_ip: str) -> list[str]:
-    """Video + Audio yayın komutu."""
+def build_gst_audio(pi_ip):
+    # Video + Audio ayri pipeline'lar tek komutta
     return [
-        "gst-launch-1.0", "-e",
-        # Video branch
-        VIDEO_SOURCE,
-        "!", "video/x-raw,framerate=30/1,width=1920,height=1080",
+        GST, "-e",
+        # Video
+        "videotestsrc", "pattern=ball",
         "!", "videoconvert",
-        "!", "x264enc", "tune=zerolatency", "bitrate=4000", "speed-preset=ultrafast",
+        "!", "video/x-raw,format=I420,framerate=30/1",
+        "!", "x264enc", "tune=zerolatency", "bitrate=3000",
+                         "speed-preset=superfast", "key-int-max=30",
         "!", "rtph264pay", "config-interval=1", "pt=96",
         "!", f"udpsink host={pi_ip} port={VIDEO_PORT}",
-        # Audio branch
-        AUDIO_SOURCE,
+        # Audio
+        "audiotestsrc",
         "!", "audioconvert",
         "!", "opusenc",
         "!", "rtpopuspay", "pt=96",
@@ -133,17 +112,13 @@ def build_gst_audio(pi_ip: str) -> list[str]:
     ]
 
 
-# ── Tur Mantığı ───────────────────────────────────────────────────────────────
+# ── Tur Mantigi ──────────────────────────────────────────────────────────────
 
-def run_iteration(mode: str, iteration: int):
-    log(f"▶  [{mode.upper()}] Tur {iteration}/{ITERATIONS} başlıyor...")
+def run_iteration(mode, iteration):
+    log(f">> [{mode.upper()}] Tur {iteration}/{ITERATIONS} basliyor...")
 
-    if mode == "silent":
-        gst_cmd = build_gst_silent(PI_IP)
-    else:
-        gst_cmd = build_gst_audio(PI_IP)
+    gst_cmd = build_gst_silent(PI_IP) if mode == "silent" else build_gst_audio(PI_IP)
 
-    # RTT toplayıcıyı ayrı thread'de başlat
     collector = LatencyCollector(
         pi_ip=PI_IP, echo_port=ECHO_PORT,
         csv_path=LATENCY_CSV, mode=mode, iteration=iteration
@@ -151,17 +126,10 @@ def run_iteration(mode: str, iteration: int):
     rtt_thread = threading.Thread(target=collector.run, daemon=True)
     rtt_thread.start()
 
-    # GStreamer yayını başlat
-    gst_proc = subprocess.Popen(
-        gst_cmd,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT
-    )
+    gst_proc = subprocess.Popen(gst_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # DURATION_S kadar bekle
     time.sleep(DURATION_S)
 
-    # Temizle
     collector.stop()
     gst_proc.terminate()
     try:
@@ -169,43 +137,42 @@ def run_iteration(mode: str, iteration: int):
     except subprocess.TimeoutExpired:
         gst_proc.kill()
 
-    log(f"✓  [{mode.upper()}] Tur {iteration} tamamlandı.")
+    log(f"OK [{mode.upper()}] Tur {iteration} tamamlandi.")
 
 
-def run_phase(mode: str):
-    log(f"═══ FAZ BAŞLIYOR: {mode.upper()} ({ITERATIONS} tur × {DURATION_S}s) ═══")
+def run_phase(mode):
+    log(f"=== FAZ: {mode.upper()} ({ITERATIONS} tur x {DURATION_S}s) ===")
     for i in range(1, ITERATIONS + 1):
         run_iteration(mode, i)
         if i < ITERATIONS:
-            log(f"   {REST_S}s dinleniyor...")
+            log(f"   {REST_S}s bekleniyor...")
             time.sleep(REST_S)
-    log(f"═══ FAZ BİTTİ: {mode.upper()} ═══\n")
+    log(f"=== FAZ BITTI: {mode.upper()} ===")
 
 
 def main():
-    log("UniCast Windows Orchestrator başlatıldı.")
-    log(f"Hedef Pi: {PI_IP}  |  {ITERATIONS} tur × {DURATION_S}s (sessiz + sesli)")
-    log(f"Tahmini toplam süre: ~{int((ITERATIONS * 2 * (DURATION_S + REST_S)) / 60)} dakika\n")
+    log("UniCast Windows Orchestrator baslatildi.")
+    log(f"Hedef Pi: {PI_IP} | {ITERATIONS} tur x {DURATION_S}s (sessiz + sesli)")
+    log(f"Tahmini toplam sure: ~{int((ITERATIONS * 2 * (DURATION_S + REST_S)) / 60)} dakika")
 
-    # Eski latency CSV'yi temizle
     if os.path.exists(LATENCY_CSV):
         backup = LATENCY_CSV.replace(".csv", f"_backup_{int(time.time())}.csv")
         os.rename(LATENCY_CSV, backup)
-        log(f"Eski latency CSV yedeklendi: {backup}")
+        log(f"Eski CSV yedeklendi: {backup}")
 
-    start_total = time.time()
+    start = time.time()
 
     run_phase("silent")
 
-    log("SESLİ faza geçmeden önce 60s ek bekleme...")
+    log("Sesli faza gecmeden once 60s bekleme...")
     time.sleep(60)
 
     run_phase("audio")
 
-    elapsed = int(time.time() - start_total)
-    log(f"Tüm testler tamamlandı! Toplam süre: {elapsed // 60}dk {elapsed % 60}s")
-    log(f"Latency dosyası: {os.path.abspath(LATENCY_CSV)}")
-    log("Pi'den benchmark_log.csv'yi al, aynı klasöre koy, report_generator.py'yi çalıştır.")
+    elapsed = int(time.time() - start)
+    log(f"Tamamlandi! Sure: {elapsed // 60}dk {elapsed % 60}s")
+    log(f"Latency dosyasi: {os.path.abspath(LATENCY_CSV)}")
+    log("Pi'den benchmark_log.csv'yi al, ayni klasore koy, report_generator.py'yi calistir.")
 
 
 if __name__ == "__main__":
