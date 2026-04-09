@@ -1,33 +1,32 @@
 import subprocess
+import signal
 import threading
 import socket
 import time
 import os
 import csv
+import json
 from datetime import datetime
 
-# ── Ayarlar ──────────────────────────────────────────────────────────────────
-PI_IP       = "10.50.21.183"
-VIDEO_PORT  = 5000
-AUDIO_PORT  = 5002
-ECHO_PORT   = 5005
+# --- Yapilandirma Yukleme ---
+CONFIG_FILE = "benchmark_config.json"
+STATE_FILE  = "benchmark_state.json"
 
-ITERATIONS  = 3
-DURATION_S  = 180
-REST_S      = 30
-LATENCY_CSV = "latency_log.csv"
+def load_json(path):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return None
 
-# gst-launch-1.0.exe tam yolu (PATH'te varsa sadece "gst-launch-1.0.exe" yeter)
-GST         = "gst-launch-1.0.exe"
-# ─────────────────────────────────────────────────────────────────────────────
-
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
 
 def log(msg):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}", flush=True)
 
-
-# ── RTT Olcumu ───────────────────────────────────────────────────────────────
+# --- RTT Olcumu ---
 
 class LatencyCollector:
     def __init__(self, pi_ip, echo_port, csv_path, mode, iteration):
@@ -49,7 +48,7 @@ class LatencyCollector:
         except socket.timeout:
             return None
         except ConnectionResetError:
-            # Windows'ta port acik degilse bu hatayi firlatir, gormezden geliyoruz (timeout gibi davran)
+            # Windows'ta port acik degilse bu hatayi firlatir
             return None
 
     def _append_csv(self, rtt_ms):
@@ -79,99 +78,134 @@ class LatencyCollector:
         self.running = False
 
 
-# ── GStreamer Komutlari ───────────────────────────────────────────────────────
+# --- GStreamer Komutlari ---
 
-def build_gst_silent(pi_ip):
+def build_gst_silent(pi_ip, video_port):
     return (
-        f'{GST} -e '
+        f'gst-launch-1.0.exe -e '
         f'd3d11screencapturesrc ! videoconvert '
         f'! video/x-raw,format=I420,framerate=30/1 '
         f'! x264enc tune=zerolatency bitrate=4000 speed-preset=superfast key-int-max=30 '
         f'! rtph264pay config-interval=1 pt=96 '
-        f'! udpsink host={pi_ip} port={VIDEO_PORT}'
+        f'! udpsink host={pi_ip} port={video_port}'
     )
 
-
-def build_gst_audio(pi_ip):
+def build_gst_audio(pi_ip, video_port, audio_port):
     return (
-        f'{GST} -e '
+        f'gst-launch-1.0.exe -e '
         f'd3d11screencapturesrc ! videoconvert '
         f'! video/x-raw,format=I420,framerate=30/1 '
         f'! x264enc tune=zerolatency bitrate=4000 speed-preset=superfast key-int-max=30 '
         f'! rtph264pay config-interval=1 pt=96 '
-        f'! udpsink host={pi_ip} port={VIDEO_PORT} '
+        f'! udpsink host={pi_ip} port={video_port} '
         f'wasapisrc loopback=true '
         f'! audioconvert '
         f'! opusenc bitrate=128000 '
         f'! rtpopuspay pt=96 '
-        f'! udpsink host={pi_ip} port={AUDIO_PORT}'
+        f'! udpsink host={pi_ip} port={audio_port}'
     )
 
+# --- Process Yonetimi ---
 
-# ── Tur Mantigi ──────────────────────────────────────────────────────────────
+def _force_kill_gst(proc):
+    """GStreamer process'ini Windows'ta kesin olarak oldurur."""
+    try:
+        proc.kill()
+        proc.wait(timeout=3)
+    except Exception:
+        pass
+    # Fallback: taskkill ile process agacini tamamen oldur
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+            capture_output=True, timeout=5
+        )
+    except Exception:
+        pass
 
-def run_iteration(mode, iteration):
-    log(f">> [{mode.upper()}] Tur {iteration}/{ITERATIONS} basliyor...")
+# --- Ana Mantik ---
 
-    gst_cmd = build_gst_silent(PI_IP) if mode == "silent" else build_gst_audio(PI_IP)
+def main():
+    config = load_json(CONFIG_FILE)
+    state  = load_json(STATE_FILE)
 
+    if not config or not state:
+        log("HATA: Config veya State dosyasi bulunamadi!")
+        return
+
+    if state.get("is_finished"):
+        log("Test zaten tamamlanmis. Sifirlamak icin benchmark_state.json'i silin veya guncelleyin.")
+        return
+
+    phase_index = state["current_phase_index"]
+    iteration   = state["current_iteration"]
+    mode        = config["phases"][phase_index]
+    
+    log(f">>> [ONE-SHOT] {mode.upper()} Fazi | Tur {iteration}/{config['iterations']}")
+    
+    # Latency CSV baslat (Sadece 1. tur ise ve dosya yoksa)
+    latency_csv = "latency_log.csv"
+    if phase_index == 0 and iteration == 1 and os.path.exists(latency_csv):
+        backup = f"latency_log_backup_{int(time.time())}.csv"
+        os.rename(latency_csv, backup)
+        log(f"Eski log yedeklendi: {backup}")
+
+    # GStreamer Hazirla
+    if mode == "silent":
+        cmd = build_gst_silent(config["pi_ip"], config["video_port"])
+    else:
+        cmd = build_gst_audio(config["pi_ip"], config["video_port"], config["audio_port"])
+
+    # Latency Olcumunu Baslat
     collector = LatencyCollector(
-        pi_ip=PI_IP, echo_port=ECHO_PORT,
-        csv_path=LATENCY_CSV, mode=mode, iteration=iteration
+        pi_ip=config["pi_ip"], 
+        echo_port=config["echo_port"],
+        csv_path=latency_csv, 
+        mode=mode, 
+        iteration=iteration
     )
     rtt_thread = threading.Thread(target=collector.run, daemon=True)
     rtt_thread.start()
 
-    gst_cmd_str = gst_cmd
-    log(f"GST komutu: {gst_cmd_str[:80]}...")
-    gst_proc = subprocess.Popen(gst_cmd_str, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # GStreamer Calistir
+    log(f"GST Baslatiliyor ({config['duration_s']}s)...")
+    # shell=True yerine dogrudan calistir: terminate()/kill() gercek process'e gitsin
+    gst_proc = subprocess.Popen(
+        cmd.split(),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+    )
 
-    time.sleep(DURATION_S)
-
-    collector.stop()
-    gst_proc.terminate()
     try:
-        gst_proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        gst_proc.kill()
+        time.sleep(config["duration_s"])
+    except KeyboardInterrupt:
+        log("Kullanici tarafindan durduruldu.")
+        state["is_finished"] = True
+        save_json(STATE_FILE, state)
+        _force_kill_gst(gst_proc)
+        return
 
-    log(f"OK [{mode.upper()}] Tur {iteration} tamamlandi.")
+    # Kapatma
+    collector.stop()
+    _force_kill_gst(gst_proc)
 
+    log(f"OK >> {mode.upper()} Tur {iteration} tamamlandi.")
 
-def run_phase(mode):
-    log(f"=== FAZ: {mode.upper()} ({ITERATIONS} tur x {DURATION_S}s) ===")
-    for i in range(1, ITERATIONS + 1):
-        run_iteration(mode, i)
-        if i < ITERATIONS:
-            log(f"   {REST_S}s bekleniyor...")
-            time.sleep(REST_S)
-    log(f"=== FAZ BITTI: {mode.upper()} ===")
+    # Durumu Guncelle
+    iteration += 1
+    if iteration > config["iterations"]:
+        iteration = 1
+        phase_index += 1
+    
+    if phase_index >= len(config["phases"]):
+        state["is_finished"] = True
+        log("TEBRIKLER: Tum testler tamamlandi!")
+    else:
+        state["current_phase_index"] = phase_index
+        state["current_iteration"]   = iteration
 
-
-def main():
-    log("UniCast Windows Orchestrator baslatildi.")
-    log(f"Hedef Pi: {PI_IP} | {ITERATIONS} tur x {DURATION_S}s (sessiz + sesli)")
-    log(f"Tahmini toplam sure: ~{int((ITERATIONS * 2 * (DURATION_S + REST_S)) / 60)} dakika")
-
-    if os.path.exists(LATENCY_CSV):
-        backup = LATENCY_CSV.replace(".csv", f"_backup_{int(time.time())}.csv")
-        os.rename(LATENCY_CSV, backup)
-        log(f"Eski CSV yedeklendi: {backup}")
-
-    start = time.time()
-
-    run_phase("silent")
-
-    log("Sesli faza gecmeden once 60s bekleme...")
-    time.sleep(60)
-
-    run_phase("audio")
-
-    elapsed = int(time.time() - start)
-    log(f"Tamamlandi! Sure: {elapsed // 60}dk {elapsed % 60}s")
-    log(f"Latency dosyasi: {os.path.abspath(LATENCY_CSV)}")
-    log("Pi'den benchmark_log.csv'yi al, ayni klasore koy, report_generator.py'yi calistir.")
-
+    save_json(STATE_FILE, state)
 
 if __name__ == "__main__":
     main()

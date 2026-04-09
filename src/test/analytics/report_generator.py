@@ -34,9 +34,21 @@ class ReportGenerator:
         df_lat   = pd.read_csv(self.latency_csv)   if os.path.exists(self.latency_csv)   else None
 
         if df_bench is not None:
-            # ns → ms dönüşümü
+            # ns -> ms donusumu
             df_bench["Video_Jitter(ms)"] = df_bench["Video_Jitter(ns)"] / 1_000_000.0
             df_bench["Audio_Jitter(ms)"] = df_bench.get("Audio_Jitter(ns)", pd.Series(0)) / 1_000_000.0
+
+            # Warm-up ve restart kirli verisini filtrele:
+            # - FPS = 0 olan satirlar (pipeline henuz baslamadi)
+            # - Video Jitter > 1 saniye (1e9 ns) = outlier
+            raw_count = len(df_bench)
+            df_bench = df_bench[
+                (df_bench["FPS"] > 0) &
+                (df_bench["Video_Jitter(ns)"] < 1_000_000_000)
+            ].copy()
+            filtered = raw_count - len(df_bench)
+            if filtered > 0:
+                print(f"Filtre: {filtered} warm-up/outlier satiri atildi ({raw_count} -> {len(df_bench)})")
 
         return df_bench, df_lat
 
@@ -75,7 +87,7 @@ class ReportGenerator:
                 "audio_std":   round(g2.std(), 3),
                 "t_stat":      round(t_stat, 4),
                 "p_value":     round(p_val, 6),
-                "significant": "✅ Evet (p<0.05)" if p_val < 0.05 else "❌ Hayır (p≥0.05)"
+                "significant": "Evet (p<0.05)" if p_val < 0.05 else "Hayir (p>=0.05)"
             }
         return results
 

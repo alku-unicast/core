@@ -99,6 +99,17 @@ class ReceiverAgent:
         if self.mode == "audio":
             ajbuf = self.pipeline.get_by_name("ajbuf")
 
+        # Warm-up: pipeline stabilize olana kadar bekle
+        # Audio modda pipeline daha gec basliyor (video+audio sync)
+        WARMUP_S = 20 if self.mode == "audio" else 5
+        warmup_start = time.time()
+        print(f"Warm-up: {WARMUP_S}s bekleniyor (pipeline stabilizasyonu)...", flush=True)
+        while self.running and (time.time() - warmup_start) < WARMUP_S:
+            time.sleep(0.5)
+        # Warm-up sonrasi benchmarker zamanlayicilari sifirla
+        self.benchmarker.reset()
+        print("Warm-up tamamlandi, veri toplama basliyor.", flush=True)
+
         last_heartbeat = time.time()
         while self.running:
             v_stats = vjbuf.get_property("stats")

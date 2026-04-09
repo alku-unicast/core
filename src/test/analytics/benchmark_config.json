@@ -1,0 +1,10 @@
+{
+  "iterations": 3,
+  "duration_s": 180,
+  "rest_s": 20,
+  "phases": ["silent", "audio"],
+  "pi_ip": "10.50.21.183",
+  "video_port": 5000,
+  "audio_port": 5002,
+  "echo_port": 5005
+}

@@ -37,6 +37,17 @@ class Benchmarker:
         """Called by orchestrator before each test run."""
         self.mode = mode
         self.iteration = iteration
+        self.reset()
+
+    def reset(self):
+        """Resets all accumulated state for a clean iteration start."""
+        self.data = []
+        self.frame_count = 0
+        self.start_time = time.time()
+        self.last_fps_check = time.time()
+        self.fps_buffer = []
+        self.bytes_received = 0
+        self.last_throughput_check = time.time()
 
     def get_temp(self):
         try:

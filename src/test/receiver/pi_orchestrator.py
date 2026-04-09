@@ -1,54 +1,99 @@
 # -*- coding: utf-8 -*-
-"""
-pi_orchestrator.py - Raspberry Pi otomasyon betigi.
-30 tur sessiz + 30 tur sesli test, her tur 5dk.
-Kullanim: python3 pi_orchestrator.py
-"""
-
 import subprocess
 import time
 import sys
 import os
 import io
 import fcntl
+import json
+from datetime import datetime
 
 # Terminali UTF-8'e zorla
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-from datetime import datetime
+# --- Yapilandirma Yukleme ---
+CONFIG_FILE = "benchmark_config.json"
+STATE_FILE  = "benchmark_state.json"
 
-# ── Ayarlar ──────────────────────────────────────────────────────────────────
-ITERATIONS    = 3
-DURATION_S    = 180         # 3 dakika
-REST_S        = 30          # Turlar arasi bekleme
-BENCHMARK_CSV = "benchmark_log.csv"
-AGENT_SCRIPT  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent.py")
-PYTHON        = sys.executable
-# ─────────────────────────────────────────────────────────────────────────────
+def load_json(path):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return None
 
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
 
 def log(msg: str):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}", flush=True)
 
+# --- Ana Mantik ---
 
-def run_iteration(mode: str, iteration: int):
-    log(f">> [{mode.upper()}] Tur {iteration}/{ITERATIONS} basliyor...")
+def main():
+    config = load_json(CONFIG_FILE)
+    state  = load_json(STATE_FILE)
 
-    # Portlari temizle (onceki turlardan kalan varsa)
+    if not config or not state:
+        log("HATA: Config veya State dosyasi bulunamadi!")
+        return
+
+    if state.get("is_finished"):
+        log("Test zaten tamamlanmis. Sifirlamak icin benchmark_state.json'i silin veya guncelleyin.")
+        return
+
+    phase_index = state["current_phase_index"]
+    iteration   = state["current_iteration"]
+    mode        = config["phases"][phase_index]
+    
+    log(f">>> [ONE-SHOT] {mode.upper()} Fazi | Tur {iteration}/{config['iterations']}")
+
+    # Eski GStreamer process'lerini oldur
     try:
-        subprocess.run(["sudo", "fuser", "-k", "5000/udp", "5002/udp", "5005/udp"], capture_output=True)
+        subprocess.run(["pkill", "-9", "-f", "gst-launch"], capture_output=True)
     except:
         pass
 
+    # Portlari temizle
+    try:
+        ports = [str(config["video_port"]), str(config["audio_port"]), str(config["echo_port"])]
+        subprocess.run(["sudo", "fuser", "-k"] + [p + "/udp" for p in ports], capture_output=True)
+    except:
+        pass
+
+    # UDP buffer'larin bosalmasi icin bekle
+    time.sleep(3)
+    log("Port temizligi tamamlandi.")
+
+    # Kernel Optimizasyonu (Sadece 1. tur ise)
+    if phase_index == 0 and iteration == 1:
+        try:
+            subprocess.run(["sudo", "sysctl", "-w", "net.core.rmem_max=26214400"], capture_output=True)
+        except:
+            pass
+        
+        # Eski log dosyasini yedekle
+        csv_path = "benchmark_log.csv"
+        if os.path.exists(csv_path):
+            backup = csv_path.replace(".csv", f"_backup_{int(time.time())}.csv")
+            os.rename(csv_path, backup)
+            log(f"Eski log yedeklendi: {backup}")
+
+    # Agent Komutu hazirlama
+    agent_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent.py")
     cmd = [
-        PYTHON, AGENT_SCRIPT,
+        sys.executable, agent_script,
         "--mode",          mode,
-        "--benchmark-csv", BENCHMARK_CSV,
+        "--benchmark-csv", "benchmark_log.csv",
         "--iteration",     str(iteration),
+        "--video-port",    str(config["video_port"]),
+        "--audio-port",    str(config["audio_port"]),
+        "--echo-port",     str(config["echo_port"])
     ]
 
+    log(f"Agent Baslatiliyor ({config['duration_s']}s)...")
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -58,26 +103,33 @@ def run_iteration(mode: str, iteration: int):
         errors="replace"
     )
 
-    # stdout'u non-blocking (bloklanmayan) moda al
+    # stdout'u non-blocking moda al
     fd = proc.stdout.fileno()
     fl = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
-    deadline = time.time() + DURATION_S
-    while time.time() < deadline:
-        try:
-            line = proc.stdout.readline()
-            if line:
-                print(f"  [agent] {line.rstrip()}", flush=True)
-        except IOError:
-            # Okunacak veri yok, devam et
-            pass
+    deadline = time.time() + config["duration_s"]
+    try:
+        while time.time() < deadline:
+            try:
+                line = proc.stdout.readline()
+                if line:
+                    print(f"  [agent] {line.rstrip()}", flush=True)
+            except IOError:
+                pass
+            
+            if proc.poll() is not None:
+                log("  ! agent beklenmedik sekilde kapandi.")
+                break
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        log("Kullanici tarafindan durduruldu.")
+        state["is_finished"] = True
+        save_json(STATE_FILE, state)
+        proc.kill()
+        return
 
-        if proc.poll() is not None:
-            log("  ! agent beklenmedik sekilde kapandi.")
-            break
-        time.sleep(0.1)
-
+    # Kapatma
     if proc.poll() is None:
         proc.terminate()
         try:
@@ -85,48 +137,22 @@ def run_iteration(mode: str, iteration: int):
         except subprocess.TimeoutExpired:
             proc.kill()
 
-    log(f"OK [{mode.upper()}] Tur {iteration} tamamlandi.")
+    log(f"OK >> {mode.upper()} Tur {iteration} tamamlandi.")
 
+    # Durumu Guncelle
+    iteration += 1
+    if iteration > config["iterations"]:
+        iteration = 1
+        phase_index += 1
+    
+    if phase_index >= len(config["phases"]):
+        state["is_finished"] = True
+        log("TEBRIKLER: Tum testler tamamlandi!")
+    else:
+        state["current_phase_index"] = phase_index
+        state["current_iteration"]   = iteration
 
-def run_phase(mode: str):
-    log(f"=== FAZ BASLIYOR: {mode.upper()} ({ITERATIONS} tur x {DURATION_S}s) ===")
-    for i in range(1, ITERATIONS + 1):
-        run_iteration(mode, i)
-        if i < ITERATIONS:
-            log(f"   {REST_S}s dinleniyor...")
-            time.sleep(REST_S)
-    log(f"=== FAZ BITTI: {mode.upper()} ===")
-
-
-def main():
-    log("UniCast Pi Orchestrator baslatildi.")
-    log(f"Plan: {ITERATIONS} tur sessiz -> {ITERATIONS} tur sesli | Her tur {DURATION_S}s")
-    log(f"Tahmini toplam sure: ~{int((ITERATIONS * 2 * (DURATION_S + REST_S)) / 60)} dakika")
-
-    if os.path.exists(BENCHMARK_CSV):
-        backup = BENCHMARK_CSV.replace(".csv", f"_backup_{int(time.time())}.csv")
-        os.rename(BENCHMARK_CSV, backup)
-        log(f"Eski CSV yedeklendi: {backup}")
-
-    # Pi Kernel UDP Buffer'ini arttir (Yuksek bitrate paket kaybi icin)
-    try:
-        subprocess.run(["sudo", "sysctl", "-w", "net.core.rmem_max=26214400"], capture_output=True)
-    except:
-        pass
-
-    start_total = time.time()
-
-    run_phase("silent")
-
-    log("Sesli faza gecmeden once 60s bekleme (soguma)...")
-    time.sleep(60)
-
-    run_phase("audio")
-
-    elapsed = int(time.time() - start_total)
-    log(f"Tum testler tamamlandi! Sure: {elapsed // 60}dk {elapsed % 60}s")
-    log(f"Veri dosyasi: {os.path.abspath(BENCHMARK_CSV)}")
-
+    save_json(STATE_FILE, state)
 
 if __name__ == "__main__":
     main()
