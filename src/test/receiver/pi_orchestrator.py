@@ -10,6 +10,7 @@ import time
 import sys
 import os
 import io
+import fcntl
 
 # Terminali UTF-8'e zorla
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -35,6 +36,12 @@ def log(msg: str):
 def run_iteration(mode: str, iteration: int):
     log(f">> [{mode.upper()}] Tur {iteration}/{ITERATIONS} basliyor...")
 
+    # Portlari temizle (onceki turlardan kalan varsa)
+    try:
+        subprocess.run(["sudo", "fuser", "-k", "5000/udp", "5002/udp", "5005/udp"], capture_output=True)
+    except:
+        pass
+
     cmd = [
         PYTHON, AGENT_SCRIPT,
         "--mode",          mode,
@@ -51,15 +58,25 @@ def run_iteration(mode: str, iteration: int):
         errors="replace"
     )
 
+    # stdout'u non-blocking (bloklanmayan) moda al
+    fd = proc.stdout.fileno()
+    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
     deadline = time.time() + DURATION_S
     while time.time() < deadline:
-        line = proc.stdout.readline()
-        if line:
-            print(f"  [agent] {line.rstrip()}", flush=True)
+        try:
+            line = proc.stdout.readline()
+            if line:
+                print(f"  [agent] {line.rstrip()}", flush=True)
+        except IOError:
+            # Okunacak veri yok, devam et
+            pass
+
         if proc.poll() is not None:
             log("  ! agent beklenmedik sekilde kapandi.")
             break
-        time.sleep(0.05)
+        time.sleep(0.1)
 
     if proc.poll() is None:
         proc.terminate()
@@ -90,6 +107,12 @@ def main():
         backup = BENCHMARK_CSV.replace(".csv", f"_backup_{int(time.time())}.csv")
         os.rename(BENCHMARK_CSV, backup)
         log(f"Eski CSV yedeklendi: {backup}")
+
+    # Pi Kernel UDP Buffer'ini arttir (Yuksek bitrate paket kaybi icin)
+    try:
+        subprocess.run(["sudo", "sysctl", "-w", "net.core.rmem_max=26214400"], capture_output=True)
+    except:
+        pass
 
     start_total = time.time()
 

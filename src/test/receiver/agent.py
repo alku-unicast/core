@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import gi
 import time
 import threading
@@ -53,15 +54,15 @@ class ReceiverAgent:
             print("Initializing Audio+Video Pipeline...")
             pipeline_str = (
                 # --- Video Branch ---
-                f"udpsrc port={self.video_port} name=video_src "
+                f"udpsrc port={self.video_port} name=video_src buffer-size=2000000 "
                 'caps="application/x-rtp, media=video, encoding-name=H264, payload=96" '
-                "! rtpjitterbuffer name=vjbuf latency=200 mode=slave do-lost=true "
+                "! rtpjitterbuffer name=vjbuf latency=500 mode=slave do-lost=true drop-on-latency=true max-dropout-time=500 "
                 "! rtph264depay ! h264parse ! avdec_h264 "
                 "! videoconvert ! videoscale ! video/x-raw,width=1920,height=1080 "
                 "! videoconvert ! fpsdisplaysink name=video_sink sync=true text-overlay=true "
 
                 # --- Audio Branch ---
-                f"udpsrc port={self.audio_port} name=audio_src "
+                f"udpsrc port={self.audio_port} name=audio_src buffer-size=500000 "
                 'caps="application/x-rtp, media=audio, encoding-name=OPUS, payload=96" '
                 "! rtpjitterbuffer name=ajbuf latency=200 mode=slave do-lost=true "
                 "! rtpopusdepay ! opusdec ! audioconvert ! volume volume=1.5 "
@@ -70,9 +71,9 @@ class ReceiverAgent:
         else:
             print("Initializing Video-Only (Silent) Pipeline...")
             pipeline_str = (
-                f"udpsrc port={self.video_port} name=video_src "
+                f"udpsrc port={self.video_port} name=video_src buffer-size=2000000 "
                 'caps="application/x-rtp, media=video, encoding-name=H264, payload=96" '
-                "! rtpjitterbuffer name=vjbuf latency=200 mode=slave do-lost=true "
+                "! rtpjitterbuffer name=vjbuf latency=500 mode=slave do-lost=true drop-on-latency=true max-dropout-time=500 "
                 "! rtph264depay ! h264parse ! avdec_h264 "
                 "! videoconvert ! videoscale ! video/x-raw,width=1920,height=1080 "
                 "! videoconvert ! fpsdisplaysink name=video_sink sync=true text-overlay=true"
@@ -98,6 +99,7 @@ class ReceiverAgent:
         if self.mode == "audio":
             ajbuf = self.pipeline.get_by_name("ajbuf")
 
+        last_heartbeat = time.time()
         while self.running:
             v_stats = vjbuf.get_property("stats")
             v_success_j, v_jitter = v_stats.get_uint64("avg-jitter")
@@ -113,12 +115,18 @@ class ReceiverAgent:
                 a_jitter = a_jitter if a_success_j else 0
                 a_loss   = a_loss   if a_success_l else 0
 
-            self.benchmarker.collect_stats(
+            stats = self.benchmarker.collect_stats(
                 v_jitter=v_jitter,
                 v_loss=v_loss,
                 a_jitter=a_jitter,
                 a_loss=a_loss
             )
+
+            # Her 5 saniyede bir canlilik bildirimi ve FPS yazdir
+            if time.time() - last_heartbeat >= 5.0:
+                print(f"[Heartbeat] FPS: {stats['FPS']} | CPU: {stats['CPU_Usage(%)']}% | Temp: {stats['Temp(C)']}C", flush=True)
+                last_heartbeat = time.time()
+
             time.sleep(1.0)
 
     def _run_echo_service(self):
@@ -183,11 +191,11 @@ if __name__ == "__main__":
                         help="Iteration number passed by orchestrator (0 = standalone)")
     args = parser.parse_args()
 
-    # 1. Önce Benchmarker'ı başlat (metadata ile birlikte)
+    # 1. Once Benchmarker'i baslat (metadata ile birlikte)
     bm = Benchmarker(log_path=args.benchmark_csv)
     bm.set_test_metadata(mode=args.mode, iteration=args.iteration)
 
-    # 2. Sonra Agent'ı başlat ve ona benchmarker'ı ver
+    # 2. Sonra Agent'i baslat ve ona benchmarker'i ver
     agent = ReceiverAgent(
         benchmarker=bm,
         mode=args.mode,

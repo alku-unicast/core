@@ -48,6 +48,9 @@ class LatencyCollector:
             return (time.perf_counter() - t0) * 1000
         except socket.timeout:
             return None
+        except ConnectionResetError:
+            # Windows'ta port acik degilse bu hatayi firlatir, gormezden geliyoruz (timeout gibi davran)
+            return None
 
     def _append_csv(self, rtt_ms):
         row = {
@@ -83,7 +86,7 @@ def build_gst_silent(pi_ip):
         f'{GST} -e '
         f'd3d11screencapturesrc ! videoconvert '
         f'! video/x-raw,format=I420,framerate=30/1 '
-        f'! x264enc tune=zerolatency bitrate=3000 speed-preset=superfast key-int-max=30 '
+        f'! x264enc tune=zerolatency bitrate=4000 speed-preset=superfast key-int-max=30 '
         f'! rtph264pay config-interval=1 pt=96 '
         f'! udpsink host={pi_ip} port={VIDEO_PORT}'
     )
@@ -94,12 +97,12 @@ def build_gst_audio(pi_ip):
         f'{GST} -e '
         f'd3d11screencapturesrc ! videoconvert '
         f'! video/x-raw,format=I420,framerate=30/1 '
-        f'! x264enc tune=zerolatency bitrate=3000 speed-preset=superfast key-int-max=30 '
+        f'! x264enc tune=zerolatency bitrate=4000 speed-preset=superfast key-int-max=30 '
         f'! rtph264pay config-interval=1 pt=96 '
         f'! udpsink host={pi_ip} port={VIDEO_PORT} '
         f'wasapisrc loopback=true '
         f'! audioconvert '
-        f'! opusenc '
+        f'! opusenc bitrate=128000 '
         f'! rtpopuspay pt=96 '
         f'! udpsink host={pi_ip} port={AUDIO_PORT}'
     )
