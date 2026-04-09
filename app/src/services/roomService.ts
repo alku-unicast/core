@@ -1,0 +1,83 @@
+import { ref, onValue, off, DatabaseReference } from "firebase/database";
+import { getFirebaseDB } from "./firebase";
+import { useRoomStore } from "../stores/roomStore";
+import { Room, RoomStatus } from "../types/room";
+
+// Raw shape coming from Firebase — may be partial/malformed
+interface RawRoom {
+  label?: string;
+  floor?: string;
+  ip?: string;
+  status?: string;
+  last_seen?: number;
+}
+
+function parseRoom(id: string, raw: RawRoom): Room {
+  const validStatuses: RoomStatus[] = ["idle", "streaming", "offline"];
+  const status = validStatuses.includes(raw.status as RoomStatus)
+    ? (raw.status as RoomStatus)
+    : "offline";
+
+  return {
+    id,
+    label: raw.label ?? id,
+    floor: raw.floor ?? "0",
+    ip: raw.ip ?? "",
+    status,
+    lastSeen: raw.last_seen ?? 0,
+  };
+}
+
+let roomsRef: DatabaseReference | null = null;
+let unsubscribed = false;
+
+/**
+ * Starts listening to /rooms in Firebase Realtime DB.
+ * Pipes updates directly into roomStore.
+ * Returns a cleanup function to stop listening.
+ */
+export function startRoomListener(): () => void {
+  const db = getFirebaseDB();
+  roomsRef = ref(db, "rooms");
+  unsubscribed = false;
+
+  const { setRooms, setLoading, setError } = useRoomStore.getState();
+
+  onValue(
+    roomsRef,
+    (snapshot) => {
+      if (unsubscribed) return;
+
+      const raw = snapshot.val() as Record<string, RawRoom> | null;
+
+      if (!raw) {
+        setRooms({});
+        setLoading(false);
+        return;
+      }
+
+      const rooms: Record<string, Room> = {};
+      for (const [id, data] of Object.entries(raw)) {
+        rooms[id] = parseRoom(id, data);
+      }
+
+      setRooms(rooms);
+      setLoading(false);
+      setError(null);
+    },
+    (error) => {
+      if (unsubscribed) return;
+      console.error("[roomService] Firebase listener error:", error);
+      useRoomStore.getState().setError("Firebase connection error");
+      useRoomStore.getState().setLoading(false);
+    }
+  );
+
+  return () => {
+    unsubscribed = true;
+    if (roomsRef) {
+      off(roomsRef);
+      roomsRef = null;
+    }
+  };
+}

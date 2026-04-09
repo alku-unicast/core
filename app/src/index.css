@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── ALKÜ Light Theme (Default) ──────────────────────────────────────────── */
+[data-theme="light"], :root {
+  --bg-primary:    hsl(210, 20%, 98%);
+  --bg-secondary:  hsl(210, 25%, 95%);
+  --bg-tertiary:   hsl(210, 20%, 90%);
+
+  --text-primary:   hsl(218, 63%, 15%);
+  --text-secondary: hsl(218, 30%, 40%);
+  --text-muted:     hsl(218, 15%, 55%);
+
+  --accent:               hsl(192, 100%, 40%);
+  --accent-hover:         hsl(192, 100%, 35%);
+  --accent-subtle:        hsl(192, 60%, 92%);
+
+  --accent-secondary:        hsl(218, 63%, 30%);
+  --accent-secondary-hover:  hsl(218, 63%, 25%);
+  --accent-secondary-subtle: hsl(218, 40%, 93%);
+
+  --accent-gold:        hsl(43, 60%, 57%);
+  --accent-gold-hover:  hsl(43, 60%, 50%);
+  --accent-gold-subtle: hsl(43, 50%, 93%);
+
+  --status-idle:      hsl(160, 65%, 42%);
+  --status-streaming: hsl(32, 90%, 52%);
+  --status-offline:   hsl(218, 10%, 65%);
+  --status-error:     hsl(0, 68%, 52%);
+
+  --border:       hsl(218, 20%, 88%);
+  --border-hover: hsl(192, 40%, 75%);
+}
+
+/* ── Dark Theme ──────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-primary:    hsl(220, 25%, 8%);
+  --bg-secondary:  hsl(220, 22%, 12%);
+  --bg-tertiary:   hsl(220, 20%, 16%);
+
+  --text-primary:   hsl(210, 20%, 95%);
+  --text-secondary: hsl(210, 15%, 60%);
+  --text-muted:     hsl(210, 10%, 40%);
+
+  --accent:               hsl(192, 90%, 50%);
+  --accent-hover:         hsl(192, 90%, 58%);
+  --accent-subtle:        hsl(192, 60%, 12%);
+
+  --accent-secondary:        hsl(218, 55%, 55%);
+  --accent-secondary-hover:  hsl(218, 55%, 63%);
+  --accent-secondary-subtle: hsl(218, 40%, 15%);
+
+  --accent-gold:        hsl(43, 65%, 60%);
+  --accent-gold-hover:  hsl(43, 65%, 68%);
+  --accent-gold-subtle: hsl(43, 50%, 12%);
+
+  --status-idle:      hsl(160, 60%, 48%);
+  --status-streaming: hsl(32, 90%, 58%);
+  --status-offline:   hsl(220, 10%, 35%);
+  --status-error:     hsl(0, 72%, 55%);
+
+  --border:       hsl(220, 18%, 18%);
+  --border-hover: hsl(192, 30%, 25%);
+}
+
+/* ── Streaming Bar Themes ────────────────────────────────────────────────── */
+[data-bar-theme="light"] {
+  --bar-bg:     hsl(210, 20%, 97%);
+  --bar-text:   hsl(218, 63%, 15%);
+  --bar-border: hsl(218, 20%, 85%);
+}
+
+[data-bar-theme="dark"] {
+  --bar-bg:     hsl(220, 25%, 10%);
+  --bar-text:   hsl(210, 20%, 95%);
+  --bar-border: hsl(220, 18%, 20%);
+}
+
+[data-bar-theme="translucent-dark"] {
+  --bar-bg:     hsla(220, 25%, 10%, 0.85);
+  --bar-text:   hsl(210, 20%, 95%);
+  --bar-border: hsla(192, 40%, 40%, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Global Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent text selection on drag (Tauri window dragging) */
+  user-select: none;
+}
+
+/* Allow text selection inside inputs and code */
+input, textarea, [contenteditable], code, pre {
+  user-select: text;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Tauri drag region */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+  cursor: move;
+}
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] a {
+  -webkit-app-region: no-drag;
+}
+
+/* Smooth theme transition */
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+/* But not transform/opacity transitions (interferes with animations) */
+svg, img, .no-transition {
+  transition: none !important;
+}
