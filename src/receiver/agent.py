@@ -1,158 +1,194 @@
-import gi
-import time
-import threading
-import sys
 import os
+import time
 import socket
-import subprocess
+import random
+import threading
+from PIL import Image, ImageDraw, ImageFont
+import gi
 
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 
-from benchmarker import Benchmarker
+class State:
+    IDLE = "IDLE"
+    STREAMING = "STREAMING"
+    RECONNECTING = "RECONNECT"
 
-class ReceiverAgent:
-    def __init__(self, video_port=5000, audio_port=5002, echo_port=5005):
+class UniCastReceiver:
+    def __init__(self):
         Gst.init(None)
-        self.video_port = video_port
-        self.audio_port = audio_port
-        self.echo_port = echo_port
-        self.benchmarker = Benchmarker()
-        self.running = False
+        self.main_loop = GLib.MainLoop()
         
-        # Maximize system volume on startup (Pi specific)
-        self._max_system_volume()
+        # Pipelines
+        self.idle_pipe = None
+        self.video_pipe = None
+        self.audio_pipe = None
+        self.current_state = State.IDLE
         
-        self.create_pipeline()
+        # Session Data
+        self.pin = self.generate_new_pin()
+        self.ip_address = self.get_ip_address()
+        self.last_heartbeat = 0
+        self.grace_period = 20 # saniye (Hocaya geri gelme şansı)
+        
+        self.COLORS = {
+            'bg_primary': '#F2F5F7',
+            'navy': '#1C407D',
+            'turquoise': '#00AECD',
+            'gold': '#D1AD53',
+            'text_muted': '#5D6B82'
+        }
+        
+        self.idle_image_path = "/tmp/idle.png"
+        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_sock.bind(('0.0.0.0', 5001))
+        
+        print(f"UniCast Smart Agent v2 Başlatıldı. PIN: {self.pin}")
+        self.setup_idle_screen()
+        
+        threading.Thread(target=self.udp_listener, daemon=True).start()
+        threading.Thread(target=self.session_monitor, daemon=True).start()
 
-    def _max_system_volume(self):
-        """Sets the Raspberry Pi system master volume to 100%."""
+    def generate_new_pin(self):
+        return str(random.randint(1000, 9999))
+
+    def get_ip_address(self):
         try:
-            # Try amixer first (ALSA)
-            subprocess.run(["amixer", "sset", "Master", "100%"], capture_output=True)
-            # Try pactl (PulseAudio)
-            subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "100%"], capture_output=True)
-        except Exception as e:
-            print(f"Volume adjustment non-critical warning: {e}")
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+        except: return "Ağ Bağlantısı Yok"
 
-    def on_frame_decoded(self, pad, info):
-        """Probe callback to count successfully rendered frames."""
-        self.benchmarker.on_frame_decoded()
-        return Gst.PadProbeReturn.OK
+    def get_cpu_temp(self):
+        try:
+            with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
+                return f"{int(f.read()) / 1000.0:.0f}"
+        except: return "??"
 
-    def create_pipeline(self):
-        """Combined Audio and Video pipeline for synchronized low-latency playback."""
-        # Dual-branch pipeline string
-        # Video: UDP 5000 -> JitterBuffer -> H.264 Depay -> Decode -> 1080p Scale -> FPS Display Sink
-        # Audio: UDP 5002 -> JitterBuffer -> Opus Depay -> Decode -> Volume Boost -> Audio Sink
-        pipeline_str = (
-            # --- Video Branch ---
-            f"udpsrc port={self.video_port} name=video_src "
-            'caps="application/x-rtp, media=video, encoding-name=H264, payload=96" '
-            "! rtpjitterbuffer name=vjbuf latency=200 mode=slave do-lost=true "
-            "! rtph264depay ! h264parse ! avdec_h264 "
-            "! videoconvert ! videoscale ! video/x-raw,width=1920,height=1080 "
-            "! videoconvert ! fpsdisplaysink name=video_sink sync=true text-overlay=true "
+    def create_ui_image(self):
+        img = Image.new('RGB', (1920, 1080), color=self.COLORS['bg_primary'])
+        draw = ImageDraw.Draw(img)
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        
+        try:
+            f_title = ImageFont.truetype(font_path, 80)
+            f_pin = ImageFont.truetype(font_path, 180)
+            f_label = ImageFont.truetype(font_path, 50)
+            f_info = ImageFont.truetype(font_path, 60)
+        except: f_title = f_pin = f_label = f_info = ImageFont.load_default()
+
+        # Tasarım
+        draw.rectangle([0, 0, 1920, 15], fill=self.COLORS['turquoise'])
+        draw.text((960, 200), "UniCast Mirroring", fill=self.COLORS['turquoise'], font=f_title, anchor='mm')
+        
+        if self.current_state in [State.IDLE, State.RECONNECTING]:
+            if self.current_state == State.RECONNECTING:
+                draw.text((960, 400), "BAĞLANTI KOPTU - BEKLENİYOR", fill=self.COLORS['gold'], font=f_label, anchor='mm')
+            else:
+                draw.text((960, 400), "GİRİŞ KODU", fill=self.COLORS['text_muted'], font=f_label, anchor='mm')
             
-            # --- Audio Branch ---
-            f"udpsrc port={self.audio_port} name=audio_src "
-            'caps="application/x-rtp, media=audio, encoding-name=OPUS, payload=96" '
-            "! rtpjitterbuffer name=ajbuf latency=200 mode=slave do-lost=true "
-            "! rtpopusdepay ! opusdec ! audioconvert ! volume volume=1.5 "
-            "! audioresample ! autoaudiosink name=audio_sink sync=true"
+            draw.text((960, 540), self.pin, fill=self.COLORS['navy'], font=f_pin, anchor='mm')
+
+        draw.text((640, 900), "IP ADRESİ", fill=self.COLORS['text_muted'], font=f_label, anchor='mm')
+        draw.text((640, 970), self.ip_address, fill=self.COLORS['navy'], font=f_info, anchor='mm')
+        draw.text((1280, 900), "SİSTEM", fill=self.COLORS['text_muted'], font=f_label, anchor='mm')
+        draw.text((1280, 970), f"AKTİF — {self.get_cpu_temp()}°C", fill=self.COLORS['gold'], font=f_info, anchor='mm')
+        draw.rectangle([0, 1065, 1920, 1080], fill=self.COLORS['navy'])
+        img.save(self.idle_image_path)
+
+    def setup_idle_screen(self):
+        self.create_ui_image()
+        if self.idle_pipe: self.idle_pipe.set_state(Gst.State.NULL)
+        pipeline_str = f"filesrc location={self.idle_image_path} ! pngdec ! imagefreeze ! videoconvert ! video/x-raw,width=1920,height=1080 ! kmssink sync=false"
+        self.idle_pipe = Gst.parse_launch(pipeline_str)
+        self.idle_pipe.set_state(Gst.State.PLAYING)
+
+    def start_streaming(self):
+        if self.current_state == State.STREAMING: return
+        print("Yayına Geçiliyor (Görüntü + Ses)...")
+        if self.idle_pipe: self.idle_pipe.set_state(Gst.State.NULL)
+        
+        # Video Pipeline (Port 5000)
+        v_pipeline = (
+            f"udpsrc port=5000 caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96\" ! "
+            f"rtpjitterbuffer latency=200 ! rtph264depay ! h264parse ! avdec_h264 ! "
+            f"videoconvert ! video/x-raw,width=1920,height=1080 ! kmssink sync=true"
         )
         
-        print("Initializing High-Performance AV Pipeline...")
-        self.pipeline = Gst.parse_launch(pipeline_str)
+        # Audio Pipeline (Port 5002)
+        a_pipeline = (
+            f"udpsrc port=5002 caps=\"application/x-rtp, media=audio, clock-rate=48000, encoding-name=OPUS, payload=96\" ! "
+            f"rtpopusdepay ! opusdec ! audioconvert ! alsasink sync=true"
+        )
         
-        # Attach probe to the video sink to count frames (FPS tracking)
-        video_sink = self.pipeline.get_by_name("video_sink")
-        # fpsdisplaysink is a bin, we probe its sink pad
-        sink_pad = video_sink.get_static_pad("sink")
-        sink_pad.add_probe(Gst.PadProbeType.BUFFER, self.on_frame_decoded)
+        self.video_pipe = Gst.parse_launch(v_pipeline)
+        self.audio_pipe = Gst.parse_launch(a_pipeline)
+        
+        self.video_pipe.set_state(Gst.State.PLAYING)
+        self.audio_pipe.set_state(Gst.State.PLAYING)
+        self.current_state = State.STREAMING
 
-    def _listen_stats(self):
-        """Background thread to extract RTP Jitter and Packet Loss statistics."""
-        vjbuf = self.pipeline.get_by_name("vjbuf")
-        ajbuf = self.pipeline.get_by_name("ajbuf")
+    def stop_streaming(self, immediate_new_pin=False):
+        """Yayını durdurur. immediate_new_pin=True ise beklemeden PIN yeniler."""
+        if self.video_pipe: self.video_pipe.set_state(Gst.State.NULL)
+        if self.audio_pipe: self.audio_pipe.set_state(Gst.State.NULL)
         
-        while self.running:
-            v_stats = vjbuf.get_property("stats")
-            a_stats = ajbuf.get_property("stats")
+        if immediate_new_pin:
+            self.pin = self.generate_new_pin()
+            print(f"PIN Hemen Yenilendi: {self.pin}")
+            self.current_state = State.IDLE
+        else:
+            # Grace period'a (bekleme süresine) gir
+            self.current_state = State.RECONNECTING
+            print("Yayın durdu, hoca bekleniyor (PIN aynı kaldı)...")
             
-            # Extract Video stats (get_uint64 returns [bool, value])
-            v_success_j, v_jitter = v_stats.get_uint64("avg-jitter")
-            v_success_l, v_loss = v_stats.get_uint64("num-lost")
-            
-            # Extract Audio stats
-            a_success_j, a_jitter = a_stats.get_uint64("avg-jitter")
-            a_success_l, a_loss = a_stats.get_uint64("num-lost")
-            
-            # Ensure we only log if access was successful (default to 0 otherwise)
-            v_jitter = v_jitter if v_success_j else 0
-            v_loss = v_loss if v_success_l else 0
-            a_jitter = a_jitter if a_success_j else 0
-            a_loss = a_loss if a_success_l else 0
-            
-            # Log to benchmarker
-            self.benchmarker.collect_stats(
-                v_jitter=v_jitter, 
-                v_loss=v_loss, 
-                a_jitter=a_jitter, 
-                a_loss=a_loss
-            )
-            time.sleep(1.0)
+        self.setup_idle_screen()
 
-    def _run_echo_service(self):
-        """UDP Echo service for PC-side RTT (Latency) measurement."""
-        echo_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            echo_socket.bind(("0.0.0.0", self.echo_port))
-            print(f"Latency Echo Service active on port {self.echo_port}")
-        except OSError:
-            print(f"ERROR: Port {self.echo_port} is busy. Use 'sudo fuser -k {self.echo_port}/udp' to clear it.")
-            self.running = False
-            return
-        
-        while self.running:
-            try:
-                data, addr = echo_socket.recvfrom(1024)
-                echo_socket.sendto(data, addr)
-            except:
-                break
-        echo_socket.close()
+    def udp_listener(self):
+        while True:
+            data, addr = self.udp_sock.recvfrom(1024)
+            msg = data.decode().strip()
+            
+            if msg.startswith("AUTH "):
+                received_pin = msg.split(" ")[1]
+                if received_pin == self.pin:
+                    self.udp_sock.sendto(b"SUCCESS", addr)
+                    self.last_heartbeat = time.time()
+                    self.start_streaming()
+                else: self.udp_sock.sendto(b"FAIL", addr)
+            
+            elif msg == "HEARTBEAT":
+                self.last_heartbeat = time.time()
+                if self.current_state == State.RECONNECTING:
+                    print("Bağlantı tazelendi, yayına devam!")
+                    self.start_streaming()
+            
+            elif msg == "STOP":
+                # STOP komutu gelince 15 saniye pay veriyoruz, hemen PIN değiştirmiyoruz
+                self.stop_streaming(immediate_new_pin=False)
+                self.last_heartbeat = time.time() # Grace period buradan başlıyor
 
-    def start(self):
-        self.running = True
-        self.pipeline.set_state(Gst.State.PLAYING)
-        
-        # Start background services
-        stats_thread = threading.Thread(target=self._listen_stats)
-        echo_thread = threading.Thread(target=self._run_echo_service)
-        stats_thread.daemon = True
-        echo_thread.daemon = True
-        stats_thread.start()
-        echo_thread.start()
-        
-        print("UniCast Agent is now multi-streaming. PRESS CTRL+C TO STOP.")
-        try:
-            loop = GLib.MainLoop()
-            loop.run()
-        except KeyboardInterrupt:
-            self.stop()
+    def session_monitor(self):
+        while True:
+            time.sleep(1)
+            now = time.time()
+            
+            if self.current_state == State.STREAMING:
+                if now - self.last_heartbeat > 5: # 5 saniye heartbeat yoksa kesildi say
+                    self.stop_streaming(immediate_new_pin=False)
+            
+            elif self.current_state == State.RECONNECTING:
+                # Grace period'u (20sn) doldurduysa artık PIN değiştir ve IDLE'a dön
+                if now - self.last_heartbeat > self.grace_period:
+                    print("Bekleme süresi bitti. Yeni PIN üretiliyor...")
+                    self.pin = self.generate_new_pin()
+                    self.current_state = State.IDLE
+                    self.setup_idle_screen()
 
-    def stop(self):
-        print("\nShutting down UniCast Agent...")
-        self.running = False
-        self.pipeline.set_state(Gst.State.NULL)
-        
-        # Display session summary
-        summary = self.benchmarker.get_summary()
-        print("\n--- FINAL SESSION SUMMARY ---")
-        for key, value in summary.items():
-            print(f"{key}: {value}")
-        sys.exit(0)
+    def run(self):
+        try: self.main_loop.run()
+        except KeyboardInterrupt: pass
 
 if __name__ == "__main__":
-    agent = ReceiverAgent()
-    agent.start()
+    receiver = UniCastReceiver()
+    receiver.run()
