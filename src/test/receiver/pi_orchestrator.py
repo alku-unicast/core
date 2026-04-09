@@ -18,8 +18,8 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='repla
 from datetime import datetime
 
 # ── Ayarlar ──────────────────────────────────────────────────────────────────
-ITERATIONS    = 30
-DURATION_S    = 300         # 5 dakika
+ITERATIONS    = 3
+DURATION_S    = 180         # 3 dakika
 REST_S        = 30          # Turlar arasi bekleme
 BENCHMARK_CSV = "benchmark_log.csv"
 AGENT_SCRIPT  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent.py")

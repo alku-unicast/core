@@ -12,8 +12,8 @@ VIDEO_PORT  = 5000
 AUDIO_PORT  = 5002
 ECHO_PORT   = 5005
 
-ITERATIONS  = 30
-DURATION_S  = 300
+ITERATIONS  = 3
+DURATION_S  = 180
 REST_S      = 30
 LATENCY_CSV = "latency_log.csv"
 
@@ -79,37 +79,30 @@ class LatencyCollector:
 # ── GStreamer Komutlari ───────────────────────────────────────────────────────
 
 def build_gst_silent(pi_ip):
-    return [
-        GST, "-e",
-        "videotestsrc", "pattern=ball",
-        "!", "videoconvert",
-        "!", "video/x-raw,format=I420,framerate=30/1",
-        "!", "x264enc", "tune=zerolatency", "bitrate=3000",
-                         "speed-preset=superfast", "key-int-max=30",
-        "!", "rtph264pay", "config-interval=1", "pt=96",
-        "!", f"udpsink host={pi_ip} port={VIDEO_PORT}"
-    ]
+    return (
+        f'{GST} -e '
+        f'd3d11screencapturesrc ! videoconvert '
+        f'! video/x-raw,format=I420,framerate=30/1 '
+        f'! x264enc tune=zerolatency bitrate=3000 speed-preset=superfast key-int-max=30 '
+        f'! rtph264pay config-interval=1 pt=96 '
+        f'! udpsink host={pi_ip} port={VIDEO_PORT}'
+    )
 
 
 def build_gst_audio(pi_ip):
-    # Video + Audio ayri pipeline'lar tek komutta
-    return [
-        GST, "-e",
-        # Video
-        "videotestsrc", "pattern=ball",
-        "!", "videoconvert",
-        "!", "video/x-raw,format=I420,framerate=30/1",
-        "!", "x264enc", "tune=zerolatency", "bitrate=3000",
-                         "speed-preset=superfast", "key-int-max=30",
-        "!", "rtph264pay", "config-interval=1", "pt=96",
-        "!", f"udpsink host={pi_ip} port={VIDEO_PORT}",
-        # Audio
-        "audiotestsrc",
-        "!", "audioconvert",
-        "!", "opusenc",
-        "!", "rtpopuspay", "pt=96",
-        "!", f"udpsink host={pi_ip} port={AUDIO_PORT}"
-    ]
+    return (
+        f'{GST} -e '
+        f'd3d11screencapturesrc ! videoconvert '
+        f'! video/x-raw,format=I420,framerate=30/1 '
+        f'! x264enc tune=zerolatency bitrate=3000 speed-preset=superfast key-int-max=30 '
+        f'! rtph264pay config-interval=1 pt=96 '
+        f'! udpsink host={pi_ip} port={VIDEO_PORT} '
+        f'wasapisrc loopback=true '
+        f'! audioconvert '
+        f'! opusenc '
+        f'! rtpopuspay pt=96 '
+        f'! udpsink host={pi_ip} port={AUDIO_PORT}'
+    )
 
 
 # ── Tur Mantigi ──────────────────────────────────────────────────────────────
@@ -126,7 +119,9 @@ def run_iteration(mode, iteration):
     rtt_thread = threading.Thread(target=collector.run, daemon=True)
     rtt_thread.start()
 
-    gst_proc = subprocess.Popen(gst_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    gst_cmd_str = gst_cmd
+    log(f"GST komutu: {gst_cmd_str[:80]}...")
+    gst_proc = subprocess.Popen(gst_cmd_str, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     time.sleep(DURATION_S)
 

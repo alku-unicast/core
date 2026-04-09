@@ -13,7 +13,7 @@ from gi.repository import Gst, GLib
 from benchmarker import Benchmarker
 
 class ReceiverAgent:
-    def __init__(self, mode="audio", video_port=5000, audio_port=5002, echo_port=5005):
+    def __init__(self, benchmarker, mode="audio", video_port=5000, audio_port=5002, echo_port=5005):
         """
         mode: "silent" = video only, "audio" = video + audio
         """
@@ -22,7 +22,7 @@ class ReceiverAgent:
         self.video_port = video_port
         self.audio_port = audio_port
         self.echo_port = echo_port
-        self.benchmarker = Benchmarker()
+        self.benchmarker = benchmarker
         self.running = False
 
         if self.mode == "audio":
@@ -183,13 +183,16 @@ if __name__ == "__main__":
                         help="Iteration number passed by orchestrator (0 = standalone)")
     args = parser.parse_args()
 
+    # 1. Önce Benchmarker'ı başlat (metadata ile birlikte)
+    bm = Benchmarker(log_path=args.benchmark_csv)
+    bm.set_test_metadata(mode=args.mode, iteration=args.iteration)
+
+    # 2. Sonra Agent'ı başlat ve ona benchmarker'ı ver
     agent = ReceiverAgent(
+        benchmarker=bm,
         mode=args.mode,
         video_port=args.video_port,
         audio_port=args.audio_port,
         echo_port=args.echo_port
     )
-    # Pass metadata to benchmarker so it gets written to CSV
-    agent.benchmarker = __import__('benchmarker').Benchmarker(log_path=args.benchmark_csv)
-    agent.benchmarker.set_test_metadata(mode=args.mode, iteration=args.iteration)
     agent.start()

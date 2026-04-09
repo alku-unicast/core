@@ -208,6 +208,14 @@ class ReportGenerator:
         # ── HTML Birleştir ────────────────────────────────────────────────────
         chart_html = fig.to_html(full_html=False, include_plotlyjs="cdn")
 
+        # Veri eksikliği durumunda (örneğin test yarım kaldıysa) NaN hatasını engelle
+        n_silent_raw = df_bench[df_bench["Mode"] == "silent"]["Iteration"].max() if "Mode" in df_bench.columns else np.nan
+        n_audio_raw  = df_bench[df_bench["Mode"] == "audio"]["Iteration"].max()  if "Mode" in df_bench.columns else np.nan
+
+        n_silent = int(n_silent_raw) if pd.notnull(n_silent_raw) else 0
+        n_audio  = int(n_audio_raw)  if pd.notnull(n_audio_raw)  else 0
+        dur_min  = round(len(df_bench[df_bench["Iteration"] == 1]) / 60) if "Iteration" in df_bench.columns and not df_bench.empty else 0
+
         full_html = f"""<!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -230,9 +238,9 @@ class ReportGenerator:
 <body>
   <h1>UniCast AV Streaming – Bilimsel Performans Raporu</h1>
   <div class="summary-box">
-    <b>Yöntem:</b> Her mod (sessiz / sesli) için {ITERATIONS} tur × 5 dakika test yapılmıştır.
-    Turlar arası 30 saniye dinlenme verilmiştir. İstatistiksel karşılaştırma için
-    Welch bağımsız iki örneklem t-testi kullanılmıştır (α = 0.05).
+    <b>Yöntem:</b> Her mod (sessiz / sesli) icin {n_silent} tur x {dur_min} dakika test yapilmistir.
+    Turlar arasi 30 saniye dinlenme verilmistir. Istatistiksel karsilastirma icin
+    Welch bagimsiz iki orneklem t-testi kullanilmistir (a = 0.05).
   </div>
 
   <h2>İstatistiksel Karşılaştırma (Student T-Testi)</h2>
@@ -281,12 +289,13 @@ class ReportGenerator:
         </table>"""
 
     def _print_summary(self, results: dict):
-        print("\n─── İSTATİSTİKSEL ÖZET ───")
+        print("\n--- ISTATISTIKSEL OZET ---")
         for metric, r in results.items():
             print(f"  {metric}:")
-            print(f"    Sessiz: {r['silent_mean']} ± {r['silent_std']} {r['unit']}")
-            print(f"    Sesli:  {r['audio_mean']} ± {r['audio_std']} {r['unit']}")
-            print(f"    t={r['t_stat']}, p={r['p_value']} → {r['significant']}")
+            print(f"    Sessiz: {r['silent_mean']} +/- {r['silent_std']} {r['unit']}")
+            print(f"    Sesli:  {r['audio_mean']} +/- {r['audio_std']} {r['unit']}")
+            sig_text = r['significant'].replace("✅ ", "").replace("❌ ", "")
+            print(f"    t={r['t_stat']}, p={r['p_value']} -> {sig_text}")
 
 
 if __name__ == "__main__":
