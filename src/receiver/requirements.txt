@@ -1,0 +1,13 @@
+# UniCast Pi Receiver — Python Dependencies
+# Install: pip install -r requirements.txt
+# Note: gi (GStreamer bindings) installed via apt, NOT pip:
+#   sudo apt install python3-gi python3-gst-1.0 python3-pil
+
+# Image generation (idle screen PNG)
+Pillow>=10.0.0
+
+# Firebase Realtime Database + Auth
+firebase-admin>=6.4.0
+
+# System metrics (optional — used in benchmarking tools)
+psutil>=5.9.0
