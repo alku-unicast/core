@@ -54,11 +54,21 @@ pub async fn start_stream(
 
     log::info!("[stream] Starting: {pipeline}");
 
+    // WINDOWS İÇİN DÜZELTME: .exe ekini kaldırdık çünkü değişkenle beraber geliyor
+    #[cfg(target_os = "windows")]
+    let child = std::process::Command::new("cmd")
+        .args(["/C", &format!("{} {}", gst_launch, pipeline)]) // .exe silindi
+        .spawn()
+        .map_err(|e| format!("Failed to launch GStreamer (Windows): {e}"))?;
+
+    // LINUX / MAC İÇİN (Eski usul devam)
+    #[cfg(not(target_os = "windows"))]
     let child = std::process::Command::new(&gst_launch)
-        .arg(&pipeline)
+        .args(pipeline.split_whitespace())
         .spawn()
         .map_err(|e| format!("Failed to launch GStreamer: {e}"))?;
-
+    
+    // PID değerini al (Arayüze göndermek için lazım)
     let pid = child.id();
 
     // Store handle
