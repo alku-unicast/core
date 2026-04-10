@@ -83,29 +83,31 @@ pub async fn start_stream(
     // Watch process in background for crashes
     let app_clone = app.clone();
     tokio::task::spawn_blocking(move || {
-        let mut g = gst_handle().lock().unwrap();
-        if let Some(ref mut c) = *g {
-            let status = c.wait();
-            drop(g);
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            let mut g = gst_handle().lock().unwrap();
+            // Checking status without blocking the mutex for long
+            let status = match &mut *g {
+                Some(c) => c.try_wait(),
+                None => break, // Process explicitly set to None by stop_stream_internal
+            };
+            drop(g); // Immediate drop before handling result
+
             match status {
-                Ok(s) if !s.success() => {
-                    log::error!("[stream] GStreamer exited with error: {s}");
-                    app_clone
-                        .emit(
-                            "stream-stopped",
-                            serde_json::json!({ "reason": "error" }),
-                        )
-                        .ok();
+                Ok(Some(s)) => {
+                    if !s.success() {
+                        log::error!("[stream] GStreamer exited with error: {s}");
+                        app_clone.emit("stream-stopped", serde_json::json!({ "reason": "error" })).ok();
+                    } else {
+                        app_clone.emit("stream-stopped", serde_json::json!({ "reason": "user" })).ok();
+                    }
+                    // Clean up handle
+                    let mut g = gst_handle().lock().unwrap();
+                    *g = None;
+                    break;
                 }
-                Ok(_) => {
-                    app_clone
-                        .emit(
-                            "stream-stopped",
-                            serde_json::json!({ "reason": "user" }),
-                        )
-                        .ok();
-                }
-                _ => {}
+                Ok(None) => {}, // Still running
+                Err(_) => break, // Check failure
             }
         }
     });
@@ -126,8 +128,18 @@ pub fn stop_stream(app: AppHandle) -> bool {
 pub fn stop_stream_internal() -> bool {
     let mut guard = gst_handle().lock().unwrap();
     if let Some(mut child) = guard.take() {
-        let _ = child.kill();
-        let _ = child.wait();
+        let pid = child.id();
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("taskkill")
+                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .output();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = child.kill();
+        }
+        let _ = child.wait(); // Safe now since we own it locally
         log::info!("[stream] GStreamer stopped.");
         return true;
     }

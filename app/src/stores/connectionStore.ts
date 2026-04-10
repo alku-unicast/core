@@ -97,27 +97,32 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         set({ streamPid: result.pid, streamElapsed: 0 });
 
         // ── Streaming bar: show window + send current stream mode ─────────
-        try {
-          const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-          const bar = await WebviewWindow.getByLabel("streaming-bar");
-          if (bar) {
-            await bar.show();
-            await bar.setFocus();
-            // Give bar a moment to mount before sending mode info
-            setTimeout(() => {
-              bar.emit("stream-mode-info", { mode: config.streamMode });
-            }, 500);
+        const { useSettingsStore } = await import("./settingsStore");
+        if (useSettingsStore.getState().streamingBar.enabled) {
+          try {
+            const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+            const bar = await WebviewWindow.getByLabel("streaming-bar");
+            if (bar) {
+              await bar.show();
+              await bar.setFocus();
+              // Give bar a moment to mount before sending mode info
+              setTimeout(() => {
+                bar.emit("stream-mode-info", { mode: config.streamMode });
+              }, 500);
+            }
+          } catch (e) {
+            console.warn("[connectionStore] Could not show streaming bar:", e);
           }
-        } catch (e) {
-          console.warn("[connectionStore] Could not show streaming bar:", e);
         }
 
         // ── Minimize main window to tray ─────────────────────────────────
-        try {
-          const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-          await getCurrentWebviewWindow().hide();
-        } catch (e) {
-          console.warn("[connectionStore] Could not hide main window:", e);
+        if (useSettingsStore.getState().streamingBar.enabled) {
+          try {
+            const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+            await getCurrentWebviewWindow().hide();
+          } catch (e) {
+            console.warn("[connectionStore] Could not hide main window:", e);
+          }
         }
       }
       return result.success;

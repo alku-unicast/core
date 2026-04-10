@@ -40,16 +40,7 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
 
   const localizedError = getLocalizedError(error);
 
-  // Auto-focus first box on mount.
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      const tId = setTimeout(() => {
-        inputRefs.current[0]?.focus();
-      }, 300); // Increased timeout to 300ms for Tauri webview focus reliability
-      return () => clearTimeout(tId);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, []);
+  // Auto-focus relies on React autoFocus prop now.
 
   // ... rest of the logic stays same ...
   // (internal helpers kept for brevity but I'll include them in the replace)
@@ -61,6 +52,17 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
+    // ── STRICT NUMERIC FILTER ──
+    if (
+      !/^[0-9]$/.test(e.key) &&
+      !["Backspace", "ArrowLeft", "ArrowRight", "Enter", "Tab", "v", "c", "Delete"].includes(e.key) &&
+      !e.ctrlKey &&
+      !e.metaKey
+    ) {
+      e.preventDefault();
+      return;
+    }
+
     if (e.key === "Backspace") {
       e.preventDefault();
       if (value[index]) {
@@ -133,6 +135,7 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
               maxLength={1}
               value={isFilled ? "•" : ""}
               disabled={disabled}
+              autoFocus={i === 0}
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"

@@ -32,6 +32,7 @@
         "alwaysOnTop": true,
         "decorations": false,
         "transparent": true,
+        "shadow": false,
         "visible": false,
         "url": "/#/streaming-bar"
       }

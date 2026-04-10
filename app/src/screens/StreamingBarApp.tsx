@@ -24,8 +24,19 @@ function formatTime(totalSecs: number): string {
 
 export function StreamingBarApp() {
   const { t } = useTranslation();
-  const { appearance } = useSettingsStore();
+  const { appearance, loadFromDisk } = useSettingsStore();
   
+  /* ── Startup: Transparent background & theme sync ──────────── */
+  useEffect(() => {
+    document.documentElement.style.backgroundColor = "transparent";
+    document.body.style.backgroundColor = "transparent";
+    loadFromDisk();
+    return () => {
+      document.documentElement.style.backgroundColor = "";
+      document.body.style.backgroundColor = "";
+    };
+  }, [loadFromDisk]);
+
   /* ── Local state (separate Tauri window — no shared Zustand) ──────────── */
   const [elapsed, setElapsed]               = useState(0);
   const [networkQuality, setNetworkQuality] = useState<NetworkQuality>("excellent");
@@ -52,9 +63,16 @@ export function StreamingBarApp() {
       setLastRTT(ev.payload.rttMs);
     }).then((fn) => fns.push(fn));
 
+    // Listen to live settings changes (like theme)
+    listen("settings-updated", () => {
+      loadFromDisk();
+    }).then((fn) => fns.push(fn));
+
     // Stream mode info sent from main window when stream starts
     listen<{ mode: string }>("stream-mode-info", (ev) => {
       setElapsed(0); // reset timer when stream is newly started
+      setStopping(false);
+      setAudioPopupOpen(false);
       if (ev.payload.mode === "fullscreen" || ev.payload.mode === "window") {
         setStreamMode(ev.payload.mode);
       }
@@ -108,23 +126,17 @@ export function StreamingBarApp() {
   );
 
   const handleModeToggle = useCallback(async () => {
-    const next = streamMode === "fullscreen" ? "window" : "fullscreen";
-    setStreamMode(next);
-    try {
-      await invoke("switch_stream_mode", { mode: next, windowId: null });
-    } catch {
-      setStreamMode(streamMode); // revert
-    }
-  }, [streamMode]);
+    // Disabled in Mini Bar: Window selection is complex, just used as indicator now.
+  }, []);
 
   /* ── Volume icon helper ───────────────────────────────────────────────── */
   const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume > 0.5 ? Volume2 : Volume1;
 
   /* ── Render ──────────────────────────────────────────────────────────── */
   return (
-    <div className="w-screen h-screen bg-transparent flex justify-center items-start pt-0 relative select-none">
+    <div className="w-screen h-screen bg-transparent flex justify-center items-end pb-3 relative select-none">
       <div
-        className="w-full flex items-center gap-2 px-3 rounded-2xl relative"
+        className="w-full mx-3 flex items-center gap-2 px-3 rounded-2xl relative"
         style={{
           height:               "56px",
           background:           "var(--bar-bg)",
@@ -135,9 +147,9 @@ export function StreamingBarApp() {
         data-bar-theme={appearance.barTheme}
         data-tauri-drag-region
       >
-      {/* ── Stream mode badge / toggle ──────────────────────────────────── */}
+      {/* ── Mode selector ─────────────────────────────────────────────── */}
       <button
-        id="btn-bar-mode-toggle"
+        id="btn-bar-mode"
         onClick={handleModeToggle}
         title={
           streamMode === "fullscreen"
@@ -147,9 +159,10 @@ export function StreamingBarApp() {
         className="
           flex items-center gap-1.5 px-2 py-1 rounded-lg
           text-xs font-medium shrink-0
-          bg-white/10 hover:bg-white/20
+          bg-white/5 opacity-80 cursor-default
           transition-colors duration-150
         "
+        disabled
       >
         {streamMode === "fullscreen" ? (
           <>

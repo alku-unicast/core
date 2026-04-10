@@ -52,6 +52,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         streamingBar: state.streamingBar,
       };
       await invoke("write_settings", { settings: payload });
+      const { emit } = await import("@tauri-apps/api/event");
+      await emit("settings-updated");
     } catch (e) {
       console.error("[settingsStore] saveToDisk failed:", e);
     }

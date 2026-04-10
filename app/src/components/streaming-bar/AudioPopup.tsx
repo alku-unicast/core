@@ -63,7 +63,7 @@ export function AudioPopup({
       </span>
 
       {/* Vertical slider — rotated range input */}
-      <div className="relative flex items-center justify-center" style={{ height: 80 }}>
+      <div className="relative flex items-center justify-center p-0" style={{ height: 80, width: 28 }}>
         <input
           id="bar-volume-slider"
           type="range"
@@ -75,13 +75,15 @@ export function AudioPopup({
             const v = Number(e.target.value) / 100;
             onVolumeChange(v);
           }}
-          className="appearance-none cursor-pointer"
+          className="appearance-none cursor-pointer absolute"
           style={{
-            writingMode: "vertical-lr",
-            direction: "rtl",
-            width: 28,
-            height: 80,
+            transform: "rotate(-90deg)",
+            transformOrigin: "center",
+            width: 80,  // The visual height when rotated
+            height: 4,  // The visual width when rotated
             accentColor: "var(--bar-text)",
+            background: "rgba(255,255,255,0.2)",
+            borderRadius: 4,
           }}
           aria-label={t("streaming_bar.volume_hint")}
         />

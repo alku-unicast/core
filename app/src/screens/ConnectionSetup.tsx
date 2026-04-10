@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Radio, Wifi } from "lucide-react";
+import { ArrowLeft, Radio, Wifi, Square } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 
@@ -267,56 +267,88 @@ export function ConnectionSetup() {
           />
         </section>
 
-        {/* ── PIN entry card ────────────────────────────────────────────── */}
-        <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-6 flex flex-col items-center gap-5">
-          {/* Radio icon decorative */}
-          <div className="w-12 h-12 rounded-2xl bg-[var(--accent-subtle)] flex items-center justify-center">
-            <Radio size={22} className="text-[var(--accent)]" />
-          </div>
+        {/* ── PIN entry or Streaming Active ─────────────────────────────────── */}
+        {isStreaming ? (
+          <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-6 flex flex-col items-center justify-center gap-5 min-h-[200px]">
+            <div className="w-16 h-16 rounded-[2rem] bg-[var(--status-streaming)] flex items-center justify-center animate-[pulse_2s_ease-in-out_infinite] shadow-lg shadow-[var(--status-streaming)]/20">
+              <Wifi size={28} className="text-white" />
+            </div>
+            
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-[var(--accent)] mb-1">
+                {t("connection.streaming")}
+              </h2>
+              <p className="text-sm text-[var(--text-muted)]">
+                Yayınınız şu anda projektör ekranına aktarılıyor.
+              </p>
+            </div>
 
-          <PINEntry
-            value={pin}
-            onChange={setPin}
-            onSubmit={handlePINSubmit}
-            error={pinError}
-            disabled={pinDisabled}
-          />
+            <button
+              id="btn-stop-stream"
+              onClick={() => stopStream()}
+              className="
+                w-full max-w-xs mt-2 py-3.5 rounded-2xl font-semibold text-sm
+                bg-[var(--status-error)] text-white
+                hover:opacity-90 active:scale-[0.98]
+                transition-all duration-150 shadow-lg shadow-[var(--status-error)]/25
+                flex items-center justify-center gap-2
+              "
+            >
+              <Square size={16} className="fill-current" />
+              YAYINI DURDUR
+            </button>
+          </section>
+        ) : (
+          <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-6 flex flex-col items-center gap-5">
+            {/* Radio icon decorative */}
+            <div className="w-12 h-12 rounded-2xl bg-[var(--accent-subtle)] flex items-center justify-center">
+              <Radio size={22} className="text-[var(--accent)]" />
+            </div>
 
-          {/* Submit button */}
-          <button
-            id="btn-start-stream"
-            onClick={handlePINSubmit}
-            disabled={
-              pin.length < 4 || 
-              pinDisabled || 
-              (streamMode === "window" && !selectedWindow)
-            }
-            className="
-              w-full max-w-xs py-3.5 rounded-2xl font-semibold text-sm
-              bg-[var(--accent)] text-white
-              hover:bg-[var(--accent-hover)] active:scale-[0.98]
-              disabled:opacity-40 disabled:cursor-not-allowed
-              transition-all duration-150 shadow-lg shadow-[var(--accent)]/25
-              flex items-center justify-center gap-2
-            "
-          >
-            {isAuthenticating ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                {t("connection.authenticating")}
-              </>
-            ) : (
-              <>
-                <Wifi size={16} />
-                {t("connection.start_stream")}
-              </>
-            )}
-          </button>
+            <PINEntry
+              value={pin}
+              onChange={setPin}
+              onSubmit={handlePINSubmit}
+              error={pinError}
+              disabled={pinDisabled}
+            />
 
-          <p className="text-[11px] text-[var(--text-muted)] text-center">
-            {t("connection.pin_placeholder")}
-          </p>
-        </section>
+            {/* Submit button */}
+            <button
+              id="btn-start-stream"
+              onClick={handlePINSubmit}
+              disabled={
+                pin.length < 4 || 
+                pinDisabled || 
+                (streamMode === "window" && !selectedWindow)
+              }
+              className="
+                w-full max-w-xs py-3.5 rounded-2xl font-semibold text-sm
+                bg-[var(--accent)] text-white
+                hover:bg-[var(--accent-hover)] active:scale-[0.98]
+                disabled:opacity-40 disabled:cursor-not-allowed
+                transition-all duration-150 shadow-lg shadow-[var(--accent)]/25
+                flex items-center justify-center gap-2
+              "
+            >
+              {isAuthenticating ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  {t("connection.authenticating")}
+                </>
+              ) : (
+                <>
+                  <Wifi size={16} />
+                  {t("connection.start_stream")}
+                </>
+              )}
+            </button>
+
+            <p className="text-[11px] text-[var(--text-muted)] text-center">
+              {t("connection.pin_placeholder")}
+            </p>
+          </section>
+        )}
 
         {/* ── Encoder info ─────────────────────────────────────────────── */}
         {encoder.detected && (
