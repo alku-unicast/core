@@ -1,3 +1,6 @@
+en önemli şey:
+  uygulama mimarisi hem mac hem linux hem de windows için uygun olmalı. Mac'de ses sorunu vardı sanırım şimdilik mac'in ses yayınlamaısnı kapatacağız.
+  sanırım uygulamanın portable olmasını tartışmıştık öyle olmaya devam dececekse mimari ona uygun olmalı. 
 ana ekranda:
     ekranın sol üstündeki logo beyaz zemin üzerinde değil belki de hafızada eskisi kaldığı içindir emin olamadım.
     ekranın sol üstünde UniCast altında Wireless Screen yazıyor Wireless Screen yazısı olmasın kalksın.
@@ -11,7 +14,7 @@ ayarlar:
     encoder çalışmıyor algılanmadı diyor ve tara diyince de algılamıyor. Ayrıca Encoder, Algılanmadı yazısı ve altındaki bilgi metni sığmıyor birbirine giriyor orada bir boyut hatası var.
     yayın sırasında hoparlörü kapat switch'inin de boyut sorunu var switch'in beyaz yuvarlağı mavi şeridin sağına taşıyor, off yapınca aslında on olması gereken yere geliyor.
     üstte bahsedilen switch sorunu diğer switchlerde de bulunmakta
-    hakında kımsında üniversite adı sağa yaslı değil sola yaslı duruyor, ayrıca en alta okulun ve uygulamanın logosunu eklemek istiyorum. bizim logomuz 'app\UniCast.png' okulun logosu ise 'app\alku-yatay-logo-rgb.png'
+    hakında kımsında üniversite adı sağa yaslı değil sola yaslı duruyor, ayrıca en alta okulun ve uygulamanın logosunu eklemek istiyorum. bizim logomuz 'app\UniCast.png' okulun logosu ise 'app\alku-yatay-logo-rgb.png' bunun da altında github repo linki olabilir tıklanabilir olaraktan: 'https://github.com/alku-unicast/core'
     hakkında kısmındaki platform mevzusunu kaldıralım gerek yok
     ayrıca çoğu ayar gelişmiş kısmına alınmalı mesela basit ayarlar çözünürlük ve fps başta olmalı diğer bit hızı ve enoder gelişmişte olmalı. gelişmişe erişmek için farklı bir yerde ekstra bir buton olmasına gerek yok aynı alanda sadece gizlenmeli. Gelişmiş ayarlar için buraya tıklayın yazısı ile açılıp kapanmalı. ağ kısmındaki senkronizasyon tamponu da bu yayın kısmındaki gelişmişe taşınmalı 
 
@@ -20,6 +23,7 @@ oda görünümü:
     pencere yakalama çalışmıyor (önemli)
     sistem sesi kısmındaki switch yukarıda bahsettiğim aynı soruna sahip
     pin girme ekranında otomatik şifre önermesini kapatmamız gerekiyor
+    final sürümünde uygulaanın herhangi bir yerine sağ tıklanması güvenlik için engellenmeli şuan kalabilir.
     mock ile deneme yaparken yayın ekranına geçmiyor bağlanıyor'da kalıyor bununla alakalı şunlar var:
     "
 deprecations.ts:9 

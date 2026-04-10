@@ -1,14 +1,45 @@
+# Node.js
 node_modules/
-__pycache__/
-.env
 dist/
-build/
+dist-ssr/
+*.local
+.npm
+.eslintcache
+
+# Rust / Tauri
 target/
-.github/
+app/src-tauri/target/
+app/src-tauri/gen/
+app/src-tauri/bin/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+
+# Project Specific
 *.csv
 *.html
 *.log
+*.exe
+*.dll
+*.so
+*.dylib
+*.pyd
+.DS_Store
+Thumbs.db
+
+# Documentation / AI (User choice to ignore these in git?)
+# User had CLAUDE.md and progress.md here, I'll keep them as per existing file.
 CLAUDE.md
 progress.md
 .claudeignore
-src/analytics/inject_dashboards.py
+
+# Firebase keys / Secrets
+firebase-key.json
+*.json.secret
+.firebase/
