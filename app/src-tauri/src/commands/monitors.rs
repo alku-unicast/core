@@ -85,6 +85,8 @@ fn enum_monitors_win32() -> Result<Vec<MonitorInfo>, String> {
         );
     }
 
+    drop(monitors_ptr);
+
     Ok(Arc::try_unwrap(monitors)
         .map_err(|_| "lock error")?
         .into_inner()

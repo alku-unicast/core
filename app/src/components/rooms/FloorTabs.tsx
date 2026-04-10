@@ -1,20 +1,22 @@
+import { useTranslation } from "react-i18next";
 import { useRoomStore } from "../../stores/roomStore";
 
-function floorLabel(floor: string): string {
-  if (floor === "0") return "Zemin Kat";
-  return `${floor}. Kat`;
-}
-
 export function FloorTabs() {
+  const { t } = useTranslation();
   const { activeFloor, setActiveFloor, getFloors } = useRoomStore();
   const floors = getFloors();
+
+  const getFloorLabel = (floor: string): string => {
+    if (floor === "0") return t("discovery.floor_0");
+    return t("discovery.floor_n", { n: floor });
+  };
 
   return (
     <div className="flex gap-1.5 px-5 overflow-x-auto scrollbar-none">
       {/* All tab */}
       <TabButton
         id="tab-floor-all"
-        label="Tümü"
+        label={t("discovery.all")}
         active={activeFloor === "all"}
         onClick={() => setActiveFloor("all")}
       />
@@ -22,7 +24,7 @@ export function FloorTabs() {
         <TabButton
           key={floor}
           id={`tab-floor-${floor}`}
-          label={floorLabel(floor)}
+          label={getFloorLabel(floor)}
           active={activeFloor === floor}
           onClick={() => setActiveFloor(floor)}
         />

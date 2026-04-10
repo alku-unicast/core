@@ -27,7 +27,7 @@
         "label": "streaming-bar",
         "title": "UniCast Stream",
         "width": 380,
-        "height": 56,
+        "height": 200,
         "resizable": false,
         "alwaysOnTop": true,
         "decorations": false,

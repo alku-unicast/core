@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Volume2, VolumeX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface AudioPopupProps {
   volume: number;      // 0.0 – 1.0
@@ -16,6 +17,7 @@ export function AudioPopup({
   onMuteToggle,
   onClose,
 }: AudioPopupProps) {
+  const { t } = useTranslation();
   const popupRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -81,7 +83,7 @@ export function AudioPopup({
             height: 80,
             accentColor: "var(--bar-text)",
           }}
-          aria-label="Ses seviyesi"
+          aria-label={t("streaming_bar.volume_hint")}
         />
       </div>
 
@@ -98,7 +100,7 @@ export function AudioPopup({
           background: isMuted ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.1)",
           color:      isMuted ? "#ef4444" : "var(--bar-text)",
         }}
-        title={isMuted ? "Sesi aç" : "Sesi kapat"}
+        title={isMuted ? t("streaming_bar.unmute") : t("streaming_bar.mute")}
       >
         {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
       </button>

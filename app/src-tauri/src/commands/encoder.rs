@@ -40,10 +40,23 @@ pub async fn detect_encoder() -> Result<EncoderResult, String> {
              ! videoconvert ! {encoder} ! fakesink"
         );
 
-        let result = tokio::process::Command::new(&gst_launch)
-            .arg(&pipeline)
-            .output()
-            .await;
+        let result = {
+            #[cfg(target_os = "windows")]
+            {
+                // Must wrap in cmd /C on Windows (same as start_stream)
+                tokio::process::Command::new("cmd")
+                    .args(["/C", &format!("{} {}", gst_launch, pipeline)])
+                    .output()
+                    .await
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                tokio::process::Command::new(&gst_launch)
+                    .args(pipeline.split_whitespace())
+                    .output()
+                    .await
+            }
+        };
 
         match result {
             Ok(output) if output.status.success() => {

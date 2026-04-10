@@ -1,0 +1,119 @@
+{
+  "common": {
+    "back": "Geri",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "close": "Kapat",
+    "loading": "Yükleniyor...",
+    "loading_alt": "UniCast Hazırlanıyor...",
+    "error": "Hata",
+    "retry": "Tekrar Dene"
+  },
+  "topbar": {
+    "settings": "Ayarlar",
+    "toggle_theme": "Tema Değiştir",
+    "toggle_language": "Dili Değiştir"
+  },
+  "discovery": {
+    "title": "Odalar",
+    "search_placeholder": "Oda ara...",
+    "no_rooms": "Oda bulunamadı",
+    "favorites": "Favoriler",
+    "recent": "Son Bağlanılanlar",
+    "all_rooms": "Tüm Odalar",
+    "all": "Tümü",
+    "floor_n": "{{n}}. Kat",
+    "floor_0": "Zemin Kat",
+    "connect": "Bağlan"
+  },
+  "status": {
+    "idle": "Boş",
+    "streaming": "Yayında",
+    "offline": "Çevrimdışı",
+    "busy": "Meşgul",
+    "in_progress": "Yayın devam ediyor",
+    "online_count": "{{count}} sınıf çevrimiçi",
+    "streaming_count": "{{count}} yayında",
+    "last_update": "Son güncelleme: {{time}}",
+    "cached": "● Önbellek"
+  },
+  "connection": {
+    "waking": "Pi Uyandırılıyor...",
+    "hdmi_ready": "HDMI Hazır",
+    "awaiting_pin": "PIN Bekleniyor",
+    "authenticating": "Doğrulanıyor...",
+    "streaming": "Yayın Başlıyor...",
+    "mode_title": "Yayın Modu",
+    "mode_fullscreen": "Tam Ekran",
+    "mode_fullscreen_desc": "Tüm ekranı paylaş",
+    "mode_window": "Pencere",
+    "mode_window_desc": "Tek uygulama paylaş",
+    "display": "Ekran",
+    "primary": "Birincil",
+    "select_window": "Uygulama Penceresi",
+    "refresh": "Yenile",
+    "loading_windows": "Pencereler yükleniyor...",
+    "no_windows": "Açık pencere bulunamadı",
+    "audio_title": "Sistem Sesi",
+    "audio_enabled": "Yayına dahil edilecek",
+    "audio_disabled": "Yayına dahil edilmeyecek",
+    "pin_instruction": "Projektördeki <1>4 haneli PIN</1>'i girin",
+    "pin_placeholder": "Projektördeki 4 haneli PIN kodunu girin",
+    "start_stream": "Yayını Başlat",
+    "encoder_info": "Encoder: {{name}}",
+    "errors": {
+      "wrong_pin": "Hatalı PIN. {{remaining}} deneme hakkınız kaldı.",
+      "busy": "Oda şu anda meşgul.",
+      "timeout": "Pi yanıt vermedi (zaman aşımı).",
+      "unknown": "Bilinmeyen bir hata oluştu.",
+      "connection_error": "Bağlantı hatası oluştu."
+    }
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "tabs": {
+      "stream": "Yayın",
+      "audio": "Ses",
+      "network": "Ağ",
+      "appearance": "Görünüm",
+      "about": "Hakkında"
+    },
+    "stream": {
+      "resolution": "Çözünürlük",
+      "fps": "Kare Hızı (FPS)",
+      "bitrate": "Bit Hızı (Mbps)",
+      "encoder": "Donanım Hızlandırma (Encoder)",
+      "advanced": "Gelişmiş ayarlar",
+      "scan": "Tara",
+      "detected": "Algılanan: {{name}}",
+      "not_detected": "Algılanmadı"
+    },
+    "audio": {
+      "device": "Ses Giriş Cihazı",
+      "mute_local": "Yayın sırasında hoparlörü kapat"
+    },
+    "network": {
+      "buffer": "Senkronizasyon Tamponu (ms)"
+    },
+    "about": {
+      "version": "Sürüm",
+      "university": "ALANYA ALAADDİN KEYKUBAT ÜNİVERSİTESİ",
+      "repo": "GitHub"
+    }
+  },
+  "streaming_bar": {
+    "mode_fullscreen": "Tam Ekran",
+    "mode_window": "Pencere",
+    "mode_fullscreen_short": "Tam",
+    "mode_window_short": "Pencere",
+    "mode_hint_fullscreen": "Tam Ekran — tıkla pencere moduna geç",
+    "mode_hint_window": "Pencere — tıkla tam ekrana geç",
+    "stop": "Yayını Durdur",
+    "stop_short": "Durdur",
+    "stopping": "Durduruluyor",
+    "mute": "Sesi Kapat",
+    "unmute": "Sesi Aç",
+    "audio_control": "Ses kontrolü",
+    "volume_hint": "Ses seviyesi"
+  }
+}

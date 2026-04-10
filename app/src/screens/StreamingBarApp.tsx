@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Square, Monitor, AppWindow, Volume2, Volume1, VolumeX } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { useTranslation } from "react-i18next";
+import { useSettingsStore } from "../stores/settingsStore";
 
 import { NetworkQualityDot } from "../components/streaming-bar/NetworkQualityDot";
 import { AudioPopup } from "../components/streaming-bar/AudioPopup";
@@ -21,6 +23,9 @@ function formatTime(totalSecs: number): string {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function StreamingBarApp() {
+  const { t } = useTranslation();
+  const { appearance } = useSettingsStore();
+  
   /* ── Local state (separate Tauri window — no shared Zustand) ──────────── */
   const [elapsed, setElapsed]               = useState(0);
   const [networkQuality, setNetworkQuality] = useState<NetworkQuality>("excellent");
@@ -49,6 +54,7 @@ export function StreamingBarApp() {
 
     // Stream mode info sent from main window when stream starts
     listen<{ mode: string }>("stream-mode-info", (ev) => {
+      setElapsed(0); // reset timer when stream is newly started
       if (ev.payload.mode === "fullscreen" || ev.payload.mode === "window") {
         setStreamMode(ev.payload.mode);
       }
@@ -71,7 +77,6 @@ export function StreamingBarApp() {
     setStopping(true);
     try {
       await invoke("stop_stream");
-      // hide is handled by stream-stopped event listener above
     } catch (e) {
       console.error("[StreamingBar] stop_stream failed:", e);
       setStopping(false);
@@ -91,7 +96,6 @@ export function StreamingBarApp() {
   const handleVolumeChange = useCallback(
     async (v: number) => {
       setVolume(v);
-      // Unmute automatically when slider is moved above 0
       const shouldMute = v === 0;
       if (shouldMute !== isMuted) setIsMuted(shouldMute);
       try {
@@ -118,31 +122,27 @@ export function StreamingBarApp() {
 
   /* ── Render ──────────────────────────────────────────────────────────── */
   return (
-    /*
-      Root div:
-      - data-tauri-drag-region → entire bar is draggable (buttons inside are auto no-drag via CSS)
-      - data-bar-theme → picks up --bar-* CSS vars from index.css
-      - transparent background via Tauri window config + backdrop-filter from CSS
-    */
-    <div
-      className="w-full h-full flex items-center gap-2 px-3 rounded-2xl select-none overflow-hidden"
-      style={{
-        background:           "var(--bar-bg)",
-        color:                "var(--bar-text)",
-        border:               "1px solid var(--bar-border)",
-        boxShadow:            "0 8px 32px rgba(0,0,0,0.4)",
-      }}
-      data-bar-theme="translucent-dark"
-      data-tauri-drag-region
-    >
+    <div className="w-screen h-screen bg-transparent flex justify-center items-start pt-0 relative select-none">
+      <div
+        className="w-full flex items-center gap-2 px-3 rounded-2xl relative"
+        style={{
+          height:               "56px",
+          background:           "var(--bar-bg)",
+          color:                "var(--bar-text)",
+          border:               "1px solid var(--bar-border)",
+          boxShadow:            "0 8px 32px rgba(0,0,0,0.4)",
+        }}
+        data-bar-theme={appearance.barTheme}
+        data-tauri-drag-region
+      >
       {/* ── Stream mode badge / toggle ──────────────────────────────────── */}
       <button
         id="btn-bar-mode-toggle"
         onClick={handleModeToggle}
         title={
           streamMode === "fullscreen"
-            ? "Tam Ekran — tıkla pencere moduna geç"
-            : "Pencere — tıkla tam ekrana geç"
+            ? t("streaming_bar.mode_hint_fullscreen")
+            : t("streaming_bar.mode_hint_window")
         }
         className="
           flex items-center gap-1.5 px-2 py-1 rounded-lg
@@ -154,12 +154,12 @@ export function StreamingBarApp() {
         {streamMode === "fullscreen" ? (
           <>
             <Monitor size={12} />
-            <span>Tam</span>
+            <span>{t("streaming_bar.mode_fullscreen_short")}</span>
           </>
         ) : (
           <>
             <AppWindow size={12} />
-            <span>Pencere</span>
+            <span>{t("streaming_bar.mode_window_short")}</span>
           </>
         )}
       </button>
@@ -183,7 +183,7 @@ export function StreamingBarApp() {
         <button
           id="btn-bar-audio"
           onClick={() => setAudioPopupOpen((o) => !o)}
-          title="Ses kontrolü"
+          title={t("streaming_bar.audio_control")}
           className="
             w-8 h-8 flex items-center justify-center rounded-lg
             bg-white/10 hover:bg-white/20
@@ -210,7 +210,7 @@ export function StreamingBarApp() {
         id="btn-bar-stop"
         onClick={handleStop}
         disabled={stopping}
-        title="Yayını durdur"
+        title={t("streaming_bar.stop")}
         className="
           flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg
           text-xs font-semibold text-white shrink-0
@@ -224,8 +224,9 @@ export function StreamingBarApp() {
         ) : (
           <Square size={10} fill="currentColor" />
         )}
-        {stopping ? "Durduruluyor" : "Durdur"}
+        {stopping ? t("streaming_bar.stopping") : t("streaming_bar.stop_short")}
       </button>
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useRoomStore } from "../../stores/roomStore";
 import { Room } from "../../types/room";
 import { RoomCard } from "./RoomCard";
@@ -8,6 +9,7 @@ interface RoomGridProps {
 }
 
 export function RoomGrid({ onConnect }: RoomGridProps) {
+  const { t } = useTranslation();
   const { isLoading, error, getRoomsByFloor } = useRoomStore();
   const rooms = getRoomsByFloor();
 
@@ -15,7 +17,7 @@ export function RoomGrid({ onConnect }: RoomGridProps) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-muted)]">
         <Loader2 size={28} className="animate-spin text-[var(--accent)]" />
-        <span className="text-sm">Sınıflar yükleniyor...</span>
+        <span className="text-sm">{t("common.loading")}</span>
       </div>
     );
   }
@@ -25,7 +27,7 @@ export function RoomGrid({ onConnect }: RoomGridProps) {
       <div className="flex-1 flex flex-col items-center justify-center gap-2 px-8 text-center">
         <span className="text-3xl">⚠️</span>
         <p className="text-sm font-medium text-[var(--status-error)]">{error}</p>
-        <p className="text-xs text-[var(--text-muted)]">Son bilinen veriler gösteriliyor.</p>
+        <p className="text-xs text-[var(--text-muted)]">{t("discovery.showing_cached", "Showing cached data.")}</p>
       </div>
     );
   }
@@ -35,10 +37,10 @@ export function RoomGrid({ onConnect }: RoomGridProps) {
       <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
         <span className="text-4xl">📡</span>
         <p className="text-sm font-medium text-[var(--text-secondary)]">
-          Bu katta çevrimiçi sınıf bulunamadı.
+          {t("discovery.no_rooms")}
         </p>
         <p className="text-xs text-[var(--text-muted)]">
-          Pi'ler çevrimiçi olduğunda otomatik görünür.
+          {t("discovery.online_notice", "Rooms will appear here when projectors are online.")}
         </p>
       </div>
     );

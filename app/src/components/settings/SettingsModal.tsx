@@ -1,32 +1,33 @@
-import { useEffect, useRef, ReactNode } from "react";
+import { useEffect, useRef, useState, ReactNode, useMemo } from "react";
 import {
-  X, Cpu, Volume2, Wifi, LayoutPanelTop, Palette, Info,
-  RefreshCw, ChevronRight,
+  X, Cpu, Volume2, LayoutPanelTop, Info,
+  RefreshCw, ChevronRight, ChevronDown, ExternalLink,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useSystemStore }   from "../../stores/systemStore";
+import unicastLogo from "../../assets/UniCast.png";
+import alkuLogo    from "../../assets/alku-yatay-logo-rgb.png";
 
 interface SettingsModalProps {
   onClose: () => void;
 }
 
-// ─── Nav sections ────────────────────────────────────────────────────────────
-
-const SECTIONS = [
-  { id: "stream",  label: "Yayın",          icon: <Cpu size={15} /> },
-  { id: "audio",   label: "Ses",            icon: <Volume2 size={15} /> },
-  { id: "network", label: "Ağ",             icon: <Wifi size={15} /> },
-  { id: "bar",     label: "Kontrol Çubuğu", icon: <LayoutPanelTop size={15} /> },
-  { id: "appear",  label: "Görünüm",        icon: <Palette size={15} /> },
-  { id: "about",   label: "Hakkında",       icon: <Info size={15} /> },
-] as const;
-
-type SectionId = (typeof SECTIONS)[number]["id"];
-
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
+  const { t } = useTranslation();
   const overlayRef = useRef<HTMLDivElement>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  const SECTIONS = useMemo(() => [
+    { id: "stream",  label: t("settings.tabs.stream"),  icon: <Cpu size={15} /> },
+    { id: "audio",   label: t("settings.tabs.audio"),   icon: <Volume2 size={15} /> },
+    { id: "bar",     label: t("settings.tabs.appearance"), icon: <LayoutPanelTop size={15} /> },
+    { id: "about",   label: t("settings.tabs.about"),   icon: <Info size={15} /> },
+  ] as const, [t]);
+
+  type SectionId = (typeof SECTIONS)[number]["id"];
 
   // ── Stores ─────────────────────────────────────────────────────────────────
   const {
@@ -53,18 +54,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  // ── Apply theme change immediately ─────────────────────────────────────────
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", appearance.mainTheme);
-  }, [appearance.mainTheme]);
-
   // ── Section scroll refs ────────────────────────────────────────────────────
   const sectionRefs: Record<SectionId, React.RefObject<HTMLDivElement>> = {
     stream:  useRef<HTMLDivElement>(null),
     audio:   useRef<HTMLDivElement>(null),
-    network: useRef<HTMLDivElement>(null),
     bar:     useRef<HTMLDivElement>(null),
-    appear:  useRef<HTMLDivElement>(null),
     about:   useRef<HTMLDivElement>(null),
   };
 
@@ -77,8 +71,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const encoderType = detectedEncoder?.hwType ?? null;
 
   const encoderLabel = encoderName
-    ? `${encoderName}${encoderType ? ` (${encoderType})` : ""}`
-    : "Algılanmadı";
+    ? t("settings.stream.detected", { name: `${encoderName}${encoderType ? ` (${encoderType})` : ""}` })
+    : t("settings.stream.not_detected");
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -93,14 +87,13 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         className="
           bg-[var(--bg-primary)] border border-[var(--border)] rounded-2xl shadow-2xl
           w-[600px] max-h-[78vh] flex overflow-hidden
-          animate-in
         "
         style={{ animation: "modal-in 0.18s ease-out" }}
       >
         {/* ── Left nav ───────────────────────────────────────────────────── */}
         <nav className="w-44 shrink-0 bg-[var(--bg-secondary)] border-r border-[var(--border)] py-4 flex flex-col gap-0.5 px-2">
           <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-            Ayarlar
+            {t("settings.title")}
           </p>
           {SECTIONS.map((s) => (
             <button
@@ -124,7 +117,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">Ayarlar</h2>
+            <h2 className="text-base font-semibold text-[var(--text-primary)]">{t("settings.title")}</h2>
             <button
               id="btn-settings-close"
               onClick={onClose}
@@ -133,7 +126,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 text-[var(--text-muted)] hover:text-[var(--text-primary)]
                 hover:bg-[var(--bg-tertiary)] transition-colors duration-100
               "
-              aria-label="Kapat"
+              aria-label={t("common.close")}
             >
               <X size={16} />
             </button>
@@ -143,16 +136,16 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-8 scrollbar-none">
 
             {/* ── 1. Yayın ─────────────────────────────────────────────── */}
-            <Section ref={sectionRefs.stream} title="Yayın" icon={<Cpu size={15} />}>
+            <Section ref={sectionRefs.stream} title={t("settings.tabs.stream")} icon={<Cpu size={15} />}>
 
               {/* Resolution */}
-              <SettingRow label="Çözünürlük" description="Video kalitesi">
+              <SettingRow label={t("settings.stream.resolution")} description="Video kalitesi">
                 <Select
                   id="select-resolution"
                   value={stream.resolution}
                   onChange={(v) => updateSettings({ stream: { ...stream, resolution: v as any } })}
                   options={[
-                    { value: "1080p", label: "1080p — Tam HD" },
+                    { value: "1080p", label: "1080p — Full HD" },
                     { value: "720p",  label: "720p — HD" },
                     { value: "480p",  label: "480p — SD" },
                   ]}
@@ -160,85 +153,137 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </SettingRow>
 
               {/* FPS */}
-              <SettingRow label="Kare Hızı" description="Saniyedeki kare sayısı">
+              <SettingRow label={t("settings.stream.fps")} description="Saniyedeki kare sayısı">
                 <Select
                   id="select-fps"
                   value={String(stream.fps)}
                   onChange={(v) => updateSettings({ stream: { ...stream, fps: Number(v) as any } })}
                   options={[
-                    { value: "30", label: "30 FPS (Önerilen)" },
+                    { value: "30", label: "30 FPS" },
                     { value: "20", label: "20 FPS" },
-                    { value: "15", label: "15 FPS (Düşük bant)" },
+                    { value: "15", label: "15 FPS" },
                   ]}
                 />
               </SettingRow>
 
-              {/* Bitrate */}
-              <SettingRow
-                label="Bit Hızı"
-                description={`${stream.bitrate.toLocaleString()} kbps`}
-              >
-                <div className="flex items-center gap-3 w-full">
-                  <span className="text-xs text-[var(--text-muted)] shrink-0">1000</span>
-                  <input
-                    id="slider-bitrate"
-                    type="range"
-                    min={1000}
-                    max={8000}
-                    step={500}
-                    value={stream.bitrate}
-                    onChange={(e) =>
-                      updateSettings({ stream: { ...stream, bitrate: Number(e.target.value) } })
-                    }
-                    className="flex-1 accent-[var(--accent)]"
-                  />
-                  <span className="text-xs text-[var(--text-muted)] shrink-0">8000</span>
-                </div>
-              </SettingRow>
+              {/* ── Gelişmiş ── */}
+              <div className="flex flex-col gap-0">
+                <button
+                  id="btn-advanced-toggle"
+                  onClick={() => setAdvancedOpen((v) => !v)}
+                  className="
+                    flex items-center gap-1.5 text-xs font-medium
+                    text-[var(--accent)] hover:opacity-80
+                    transition-opacity duration-150 self-start py-1
+                  "
+                >
+                  {advancedOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                  {t("settings.stream.advanced")}
+                </button>
 
-              {/* Encoder */}
-              <SettingRow
-                label="Encoder"
-                description="H.264 donanım kodlayıcısı"
-              >
-                <div className="flex items-center gap-2 w-full">
-                  <span
-                    className={`
-                      flex-1 px-3 py-1.5 rounded-lg text-sm font-mono
-                      bg-[var(--bg-tertiary)] text-[var(--text-secondary)]
-                      ${!encoderName ? "opacity-50" : ""}
-                    `}
-                  >
-                    {encoderLabel}
-                  </span>
-                  <button
-                    id="btn-rescan-encoder"
-                    onClick={detectEncoder}
-                    disabled={encoderDetecting}
-                    title="GPU'nu yeniden tara"
-                    className="
-                      flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                      bg-[var(--accent-subtle)] text-[var(--accent)]
-                      hover:bg-[var(--accent)] hover:text-white
-                      disabled:opacity-40 disabled:cursor-not-allowed
-                      transition-colors duration-150
-                    "
-                  >
-                    <RefreshCw size={12} className={encoderDetecting ? "animate-spin" : ""} />
-                    Tara
-                  </button>
-                </div>
-                <p className="text-[11px] text-[var(--text-muted)] mt-1">
-                  GPU'nu değiştirdiysen ya da yeni sürücü yüklediysen tekrar tara.
-                </p>
-              </SettingRow>
+                {advancedOpen && (
+                  <div className="flex flex-col gap-4 mt-3 pl-3 border-l-2 border-[var(--border)]">
+
+                    {/* Bitrate */}
+                    <SettingRow
+                      label="Bit Hızı"
+                      description={`${stream.bitrate.toLocaleString()} kbps`}
+                    >
+                      <div className="flex items-center gap-3 w-full">
+                        <span className="text-xs text-[var(--text-muted)] shrink-0">1000</span>
+                        <input
+                          id="slider-bitrate"
+                          type="range"
+                          min={1000}
+                          max={8000}
+                          step={500}
+                          value={stream.bitrate}
+                          onChange={(e) =>
+                            updateSettings({ stream: { ...stream, bitrate: Number(e.target.value) } })
+                          }
+                          className="flex-1 accent-[var(--accent)]"
+                        />
+                        <span className="text-xs text-[var(--text-muted)] shrink-0">8000</span>
+                      </div>
+                    </SettingRow>
+
+                    {/* Encoder */}
+                    <SettingRow
+                      label={t("settings.stream.encoder")}
+                      description="H.264 hardware encoder"
+                    >
+                      <div className="flex items-center gap-2 w-full max-w-[200px]">
+                        <span
+                          className={`
+                            flex-1 px-3 py-1.5 rounded-lg text-[11px] font-mono truncate
+                            bg-[var(--bg-tertiary)] text-[var(--text-secondary)]
+                            ${!encoderName ? "opacity-50" : ""}
+                          `}
+                          title={encoderLabel}
+                        >
+                          {encoderLabel}
+                        </span>
+                        <button
+                          id="btn-rescan-encoder"
+                          onClick={detectEncoder}
+                          disabled={encoderDetecting}
+                          title={t("settings.stream.scan")}
+                          className="
+                            flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-medium shrink-0
+                            bg-[var(--accent-subtle)] text-[var(--accent)]
+                            hover:bg-[var(--accent)] hover:text-white
+                            disabled:opacity-40 disabled:cursor-not-allowed
+                            transition-colors duration-150
+                          "
+                        >
+                          <RefreshCw size={11} className={encoderDetecting ? "animate-spin" : ""} />
+                          {t("settings.stream.scan")}
+                        </button>
+                      </div>
+                    </SettingRow>
+
+                    {/* Delay Buffer */}
+                    <SettingRow
+                      label={t("settings.network.buffer")}
+                      description="Ağ titreşimini telafi eder"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="input-delay-buffer"
+                          type="number"
+                          min={0}
+                          max={500}
+                          step={10}
+                          value={stream.delayBufferMs}
+                          onChange={(e) =>
+                            updateSettings({
+                              stream: { ...stream, delayBufferMs: Number(e.target.value) },
+                            })
+                          }
+                          className="
+                            w-24 px-3 py-1.5 rounded-lg border border-[var(--border)]
+                            bg-[var(--bg-secondary)] text-sm text-[var(--text-primary)]
+                            focus:outline-none focus:border-[var(--accent)]
+                            transition-colors duration-150
+                          "
+                        />
+                        <span className="text-sm text-[var(--text-muted)]">ms</span>
+                      </div>
+                    </SettingRow>
+
+                    <InfoBox>
+                      {t("settings.network.buffer_desc", "Default: 74ms. Increase if you experience lag; decrease for lowest possible delay.")}
+                    </InfoBox>
+                  </div>
+                )}
+              </div>
             </Section>
 
             {/* ── 2. Ses ───────────────────────────────────────────────── */}
-            <Section ref={sectionRefs.audio} title="Ses" icon={<Volume2 size={15} />}>
+            <Section ref={sectionRefs.audio} title={t("settings.tabs.audio")} icon={<Volume2 size={15} />}>
 
               {/* Audio device */}
-              <SettingRow label="Ses Kaynağı" description="WASAPI loopback cihazı">
+              <SettingRow label={t("settings.audio.device")} description="WASAPI loopback source">
                 <Select
                   id="select-audio-device"
                   value={audio.deviceId ?? ""}
@@ -246,7 +291,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     updateSettings({ audio: { ...audio, deviceId: v || null } })
                   }
                   options={[
-                    { value: "", label: "Varsayılan (Sistem)" },
+                    { value: "", label: "System Default" },
                     ...audioDevices.map((d) => ({
                       value: d.id,
                       label: d.name,
@@ -257,8 +302,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
               {/* Mute local */}
               <SettingRow
-                label="Yayın sırasında hoparlörü kapat"
-                description="Ses projektörden çalar; laptop'tan gelmez"
+                label={t("settings.audio.mute_local")}
+                description="Audio plays on projector only"
               >
                 <Toggle
                   id="toggle-mute-local"
@@ -268,48 +313,12 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </SettingRow>
 
               <InfoBox>
-                WASAPI Loopback: Ses mikserin çıkışından alınır — hoparlör sessize alınsa bile
-                GStreamer yakalamaya devam eder.
+                {t("settings.audio.info", "WASAPI Loopback: Audio is captured from mixer output — GStreamer continues to capture even if speaker is muted.")}
               </InfoBox>
             </Section>
 
-            {/* ── 3. Ağ ────────────────────────────────────────────────── */}
-            <Section ref={sectionRefs.network} title="Ağ" icon={<Wifi size={15} />}>
-              <SettingRow
-                label="Senkronizasyon Tamponu"
-                description="Ağ titreşimini telafi eder (ms)"
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    id="input-delay-buffer"
-                    type="number"
-                    min={0}
-                    max={500}
-                    step={10}
-                    value={stream.delayBufferMs}
-                    onChange={(e) =>
-                      updateSettings({
-                        stream: { ...stream, delayBufferMs: Number(e.target.value) },
-                      })
-                    }
-                    className="
-                      w-24 px-3 py-1.5 rounded-lg border border-[var(--border)]
-                      bg-[var(--bg-secondary)] text-sm text-[var(--text-primary)]
-                      focus:outline-none focus:border-[var(--accent)]
-                      transition-colors duration-150
-                    "
-                  />
-                  <span className="text-sm text-[var(--text-muted)]">ms</span>
-                </div>
-              </SettingRow>
-              <InfoBox>
-                Varsayılan: 74ms. Ağda gecikme yaşanıyorsa artırabilirsin; düşük gecikme
-                istiyorsan azalt.
-              </InfoBox>
-            </Section>
-
-            {/* ── 4. Kontrol Çubuğu ────────────────────────────────────── */}
-            <Section ref={sectionRefs.bar} title="Kontrol Çubuğu" icon={<LayoutPanelTop size={15} />}>
+            {/* ── 3. Kontrol Çubuğu ────────────────────────────────────── */}
+            <Section ref={sectionRefs.bar} title={t("settings.tabs.appearance")} icon={<LayoutPanelTop size={15} />}>
 
               <SettingRow
                 label="Kontrol çubuğunu göster"
@@ -332,9 +341,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     })
                   }
                   options={[
-                    { value: "translucent-dark", label: "Şeffaf Koyu (Önerilen)" },
-                    { value: "dark",             label: "Koyu" },
-                    { value: "light",            label: "Açık" },
+                    { value: "translucent-dark", label: "Translucent Dark" },
+                    { value: "dark",             label: "Dark" },
+                    { value: "light",            label: "Light" },
                   ]}
                 />
               </SettingRow>
@@ -367,41 +376,61 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </SettingRow>
             </Section>
 
-            {/* ── 5. Görünüm ───────────────────────────────────────────── */}
-            <Section ref={sectionRefs.appear} title="Görünüm" icon={<Palette size={15} />}>
-              <SettingRow label="Uygulama Teması" description="Ana pencere teması">
-                <div className="grid grid-cols-2 gap-2 w-full">
-                  {(["light", "dark"] as const).map((t) => (
-                    <button
-                      key={t}
-                      id={`btn-theme-${t}`}
-                      onClick={() =>
-                        updateSettings({ appearance: { ...appearance, mainTheme: t } })
-                      }
-                      className={`
-                        py-2 rounded-xl border-2 text-sm font-medium transition-all duration-150
-                        ${
-                          appearance.mainTheme === t
-                            ? "border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent)]"
-                            : "border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--border-hover)]"
-                        }
-                      `}
-                    >
-                      {t === "light" ? "☀️ Açık" : "🌙 Koyu"}
-                    </button>
-                  ))}
-                </div>
-              </SettingRow>
-            </Section>
-
-            {/* ── 6. Hakkında ──────────────────────────────────────────── */}
-            <Section ref={sectionRefs.about} title="Hakkında" icon={<Info size={15} />}>
+            {/* ── 4. Hakkında ──────────────────────────────────────────── */}
+            <Section ref={sectionRefs.about} title={t("settings.tabs.about")} icon={<Info size={15} />}>
               <div className="flex flex-col gap-3 text-sm">
-                <AboutRow label="Uygulama"  value="UniCast" />
-                <AboutRow label="Sürüm"     value="0.1.0" />
-                <AboutRow label="Platform"  value="Tauri v2 + React 18" />
-                <AboutRow label="Üniversite" value="Alanya Alaaddin Keykubat Üniversitesi (ALKÜ)" />
-                <AboutRow label="Lisans"    value="Akademik Proje — Okul İçi Kullanım" />
+                <div className="flex justify-between items-center py-1 border-b border-[var(--border)]">
+                  <span className="text-[var(--text-muted)]">Application</span>
+                  <span className="text-[var(--text-primary)] font-medium">UniCast</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[var(--border)]">
+                  <span className="text-[var(--text-muted)]">{t("settings.about.version", "Version")}</span>
+                  <span className="text-[var(--text-primary)] font-medium">0.1.0</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[var(--border)]">
+                  <span className="text-[var(--text-muted)]">University</span>
+                  <span className="text-[var(--text-primary)] font-medium text-right leading-snug">
+                    {t("settings.about.university")}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[var(--border)]">
+                  <span className="text-[var(--text-muted)]">License</span>
+                  <span className="text-[var(--text-primary)] font-medium">Academic Project</span>
+                </div>
+
+                {/* GitHub link */}
+                <a
+                  id="link-github"
+                  href="https://github.com/alku-unicast/core"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="
+                    flex items-center justify-center gap-2 mt-1 py-2 rounded-xl
+                    border border-[var(--border)] text-xs text-[var(--text-muted)]
+                    hover:border-[var(--accent)] hover:text-[var(--accent)]
+                    transition-colors duration-150
+                  "
+                >
+                  <ExternalLink size={12} />
+                  {t("settings.about.repo")}
+                </a>
+
+                {/* Logos */}
+                <div className="flex items-center justify-center gap-6 mt-3 pt-3 border-t border-[var(--border)]">
+                  <img
+                    src={unicastLogo}
+                    alt="UniCast"
+                    className="h-10 object-contain opacity-90"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                  <div className="w-px h-8 bg-[var(--border)]" />
+                  <img
+                    src={alkuLogo}
+                    alt="ALKÜ"
+                    className="h-8 object-contain opacity-90"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
               </div>
             </Section>
 
@@ -516,9 +545,9 @@ function Toggle({
     >
       <span
         className={`
-          absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm
-          transition-transform duration-200
-          ${value ? "translate-x-5" : "translate-x-0.5"}
+          absolute top-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm
+          transition-[left] duration-200
+          ${value ? "left-[22px]" : "left-[2px]"}
         `}
       />
     </button>
@@ -529,15 +558,6 @@ function InfoBox({ children }: { children: ReactNode }) {
   return (
     <div className="px-3 py-2 rounded-lg bg-[var(--accent-subtle)] text-[11px] text-[var(--text-secondary)] leading-relaxed">
       {children}
-    </div>
-  );
-}
-
-function AboutRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between items-center py-1 border-b border-[var(--border)] last:border-0">
-      <span className="text-[var(--text-muted)]">{label}</span>
-      <span className="text-[var(--text-primary)] font-medium">{value}</span>
     </div>
   );
 }

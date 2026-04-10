@@ -1,5 +1,6 @@
 import { useRef, useEffect, KeyboardEvent, ClipboardEvent } from "react";
 import { AlertCircle } from "lucide-react";
+import { useTranslation, Trans } from "react-i18next";
 
 interface PINEntryProps {
   value: string;            // 4-char string, e.g. "12", "1234"
@@ -10,14 +11,49 @@ interface PINEntryProps {
 }
 
 export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntryProps) {
+  const { t } = useTranslation();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Auto-focus first box on mount
+  // ── Error Mapping ──────────────────────────────────────────────────────────
+
+  const getLocalizedError = (msg: string | null): string | null => {
+    if (!msg) return null;
+    if (msg.includes("Wrong PIN") || msg.includes("Hatalı PIN")) {
+      const remainingMatch = msg.match(/\d+/);
+      const remaining = remainingMatch ? remainingMatch[0] : "0";
+      return t("connection.errors.wrong_pin", { remaining });
+    }
+    if (msg.toLowerCase().includes("busy") || msg.includes("meşgul")) {
+      return t("connection.errors.busy");
+    }
+    if (msg.toLowerCase().includes("timeout") || msg.includes("zaman aşımı")) {
+      return t("connection.errors.timeout");
+    }
+    if (msg.toLowerCase().includes("connection error") || msg.includes("bağlantı hatası")) {
+      return t("connection.errors.connection_error");
+    }
+    if (msg.toLowerCase().includes("unknown") || msg.includes("bilinmeyen")) {
+      return t("connection.errors.unknown");
+    }
+    return msg; // Fallback to raw message
+  };
+
+  const localizedError = getLocalizedError(error);
+
+  // Auto-focus first box on mount.
   useEffect(() => {
-    inputRefs.current[0]?.focus();
+    const raf = requestAnimationFrame(() => {
+      const tId = setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 300); // Increased timeout to 300ms for Tauri webview focus reliability
+      return () => clearTimeout(tId);
+    });
+    return () => cancelAnimationFrame(raf);
   }, []);
 
-  // Focus box at index
+  // ... rest of the logic stays same ...
+  // (internal helpers kept for brevity but I'll include them in the replace)
+
   const focusBox = (index: number) => {
     const el = inputRefs.current[Math.max(0, Math.min(3, index))];
     el?.focus();
@@ -28,12 +64,10 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
     if (e.key === "Backspace") {
       e.preventDefault();
       if (value[index]) {
-        // Clear current
         const arr = value.padEnd(4, " ").split("");
         arr[index] = " ";
         onChange(arr.join("").trimEnd());
       } else {
-        // Move to previous
         if (index > 0) {
           const arr = value.padEnd(4, " ").split("");
           arr[index - 1] = " ";
@@ -51,7 +85,7 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
   };
 
   const handleInput = (rawValue: string, index: number) => {
-    const digit = rawValue.replace(/\D/g, "").slice(-1); // only last digit
+    const digit = rawValue.replace(/\D/g, "").slice(-1);
     if (!digit) return;
 
     const arr = (value + "    ").slice(0, 4).split("");
@@ -59,7 +93,6 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
     const next = arr.join("").trimEnd();
     onChange(next);
 
-    // Auto-submit when 4th digit entered
     if (index === 3) {
       setTimeout(() => onSubmit(), 50);
     } else {
@@ -80,15 +113,15 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
   return (
     <div className="flex flex-col items-center gap-4">
       <p className="text-sm text-[var(--text-secondary)] text-center">
-        Projektördeki <span className="font-semibold text-[var(--text-primary)]">4 haneli PIN</span>'i girin
+        <Trans i18nKey="connection.pin_instruction">
+          Projektördeki <span className="font-semibold text-[var(--text-primary)]">4 haneli PIN</span>'i girin
+        </Trans>
       </p>
 
-      {/* 4 digit boxes */}
       <div className="flex gap-3">
         {[0, 1, 2, 3].map((i) => {
           const char = value[i] ?? "";
           const isFilled = char.trim() !== "";
-          const isFocused = false; // handled via CSS :focus
 
           return (
             <input
@@ -100,6 +133,10 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
               maxLength={1}
               value={isFilled ? "•" : ""}
               disabled={disabled}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               onChange={(e) => handleInput(e.target.value, i)}
               onKeyDown={(e) => handleKeyDown(e, i)}
               onPaste={handlePaste}
@@ -123,11 +160,10 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
         })}
       </div>
 
-      {/* Error message */}
-      {error && (
+      {localizedError && (
         <div className="flex items-center gap-2 text-sm text-[var(--status-error)] animate-pulse">
           <AlertCircle size={15} />
-          <span>{error}</span>
+          <span>{localizedError}</span>
         </div>
       )}
     </div>

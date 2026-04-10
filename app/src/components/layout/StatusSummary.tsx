@@ -1,13 +1,18 @@
+import { useTranslation } from "react-i18next";
 import { useRoomStore } from "../../stores/roomStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 
 export function StatusSummary() {
+  const { t } = useTranslation();
   const { rooms, error } = useRoomStore();
+  const { language } = useSettingsStore();
 
   const allRooms = Object.values(rooms);
   const onlineCount = allRooms.filter((r) => r.status !== "offline").length;
   const streamingCount = allRooms.filter((r) => r.status === "streaming").length;
 
-  const now = new Date().toLocaleTimeString("tr-TR", {
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  const now = new Date().toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -19,7 +24,7 @@ export function StatusSummary() {
           <span className="font-semibold text-[var(--status-idle)]">
             {onlineCount}
           </span>{" "}
-          sınıf çevrimiçi
+          {t("status.online_count", { count: onlineCount }).split(" ").slice(1).join(" ")}
         </span>
         {streamingCount > 0 && (
           <>
@@ -28,7 +33,7 @@ export function StatusSummary() {
               <span className="font-semibold text-[var(--status-streaming)]">
                 {streamingCount}
               </span>{" "}
-              yayında
+              {t("status.streaming_count", { count: streamingCount }).split(" ").slice(1).join(" ")}
             </span>
           </>
         )}
@@ -36,9 +41,9 @@ export function StatusSummary() {
 
       <div className="text-xs text-[var(--text-muted)]">
         {error ? (
-          <span className="text-[var(--status-error)]">● Önbellek</span>
+          <span className="text-[var(--status-error)]">{t("status.cached")}</span>
         ) : (
-          <span>Son güncelleme: {now}</span>
+          <span>{t("status.last_update", { time: now })}</span>
         )}
       </div>
     </footer>

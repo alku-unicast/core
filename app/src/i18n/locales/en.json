@@ -1,0 +1,119 @@
+{
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "loading": "Loading...",
+    "loading_alt": "UniCast Preparing...",
+    "error": "Error",
+    "retry": "Retry"
+  },
+  "topbar": {
+    "settings": "Settings",
+    "toggle_theme": "Toggle Theme",
+    "toggle_language": "Toggle Language"
+  },
+  "discovery": {
+    "title": "Rooms",
+    "search_placeholder": "Search rooms...",
+    "no_rooms": "No rooms found",
+    "favorites": "Favorites",
+    "recent": "Recent",
+    "all_rooms": "All Rooms",
+    "all": "All",
+    "floor_n": "Floor {{n}}",
+    "floor_0": "Ground Floor",
+    "connect": "Connect"
+  },
+  "status": {
+    "idle": "Idle",
+    "streaming": "Streaming",
+    "offline": "Offline",
+    "busy": "Busy",
+    "in_progress": "Streaming in progress",
+    "online_count": "{{count}} rooms online",
+    "streaming_count": "{{count}} streaming",
+    "last_update": "Last update: {{time}}",
+    "cached": "● Cached"
+  },
+  "connection": {
+    "waking": "Waking Pi...",
+    "hdmi_ready": "HDMI Ready",
+    "awaiting_pin": "Waiting for PIN",
+    "authenticating": "Authenticating...",
+    "streaming": "Starting Stream...",
+    "mode_title": "Stream Mode",
+    "mode_fullscreen": "Full Screen",
+    "mode_fullscreen_desc": "Share your whole screen",
+    "mode_window": "Window",
+    "mode_window_desc": "Share a single app",
+    "display": "Display",
+    "primary": "Primary",
+    "select_window": "Application Window",
+    "refresh": "Refresh",
+    "loading_windows": "Loading windows...",
+    "no_windows": "No open windows found",
+    "audio_title": "System Audio",
+    "audio_enabled": "Will be included in stream",
+    "audio_disabled": "Will not be included",
+    "pin_instruction": "Enter the <1>4-digit PIN</1> on the projector",
+    "pin_placeholder": "Enter the 4-digit PIN code on the projector",
+    "start_stream": "Start Stream",
+    "encoder_info": "Encoder: {{name}}",
+    "errors": {
+      "wrong_pin": "Invalid PIN. {{remaining}} attempts remaining.",
+      "busy": "Room is currently busy.",
+      "timeout": "Pi did not respond (timeout).",
+      "unknown": "An unknown error occurred.",
+      "connection_error": "A connection error occurred."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "stream": "Stream",
+      "audio": "Audio",
+      "network": "Network",
+      "appearance": "Appearance",
+      "about": "About"
+    },
+    "stream": {
+      "resolution": "Resolution",
+      "fps": "Frame Rate (FPS)",
+      "bitrate": "Bitrate (Mbps)",
+      "encoder": "Hardware Acceleration (Encoder)",
+      "advanced": "Advanced settings",
+      "scan": "Scan",
+      "detected": "Detected: {{name}}",
+      "not_detected": "Not detected"
+    },
+    "audio": {
+      "device": "Audio Input Device",
+      "mute_local": "Mute speaker during streaming"
+    },
+    "network": {
+      "buffer": "Sync Buffer (ms)"
+    },
+    "about": {
+      "version": "Version",
+      "university": "ALANYA ALAADDIN KEYKUBAT UNIVERSITY",
+      "repo": "GitHub"
+    }
+  },
+  "streaming_bar": {
+    "mode_fullscreen": "Full Screen",
+    "mode_window": "Window",
+    "mode_fullscreen_short": "Full",
+    "mode_window_short": "Window",
+    "mode_hint_fullscreen": "Full Screen — click to switch to window mode",
+    "mode_hint_window": "Window — click to switch to full screen",
+    "stop": "Stop Stream",
+    "stop_short": "Stop",
+    "stopping": "Stopping",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "audio_control": "Audio control",
+    "volume_hint": "Volume level"
+  }
+}

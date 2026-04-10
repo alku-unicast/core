@@ -93,6 +93,8 @@ fn enum_windows_win32() -> Result<Vec<WindowInfo>, String> {
         .map_err(|e| e.to_string())?;
     }
 
+    drop(results_ptr);
+
     Ok(Arc::try_unwrap(results)
         .map_err(|_| "lock error")?
         .into_inner()

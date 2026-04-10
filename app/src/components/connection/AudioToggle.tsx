@@ -1,4 +1,5 @@
 import { Volume2, VolumeX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface AudioToggleProps {
   enabled: boolean;
@@ -6,6 +7,8 @@ interface AudioToggleProps {
 }
 
 export function AudioToggle({ enabled, onChange }: AudioToggleProps) {
+  const { t } = useTranslation();
+
   return (
     <button
       id="btn-audio-toggle"
@@ -24,10 +27,10 @@ export function AudioToggle({ enabled, onChange }: AudioToggleProps) {
         {enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
         <div className="flex flex-col items-start">
           <span className="text-sm font-medium text-[var(--text-primary)]">
-            Sistem Sesi
+            {t("connection.audio_title")}
           </span>
           <span className="text-xs text-[var(--text-muted)]">
-            {enabled ? "Yayına dahil edilecek" : "Yayına dahil edilmeyecek"}
+            {enabled ? t("connection.audio_enabled") : t("connection.audio_disabled")}
           </span>
         </div>
       </div>
@@ -41,9 +44,9 @@ export function AudioToggle({ enabled, onChange }: AudioToggleProps) {
       >
         <span
           className={`
-            absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm
-            transition-transform duration-200
-            ${enabled ? "translate-x-5" : "translate-x-0.5"}
+          absolute top-[2px] w-[20px] h-[20px] bg-white rounded-full shadow-sm
+          transition-[left] duration-200
+          ${enabled ? "left-[22px]" : "left-[2px]"}
           `}
         />
       </div>

@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Radio, Wifi } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTranslation } from "react-i18next";
 
 import { useConnectionStore } from "../stores/connectionStore";
 import { useSystemStore }     from "../stores/systemStore";
@@ -18,6 +19,7 @@ import { StreamConfig } from "../types/stream";
 
 export function ConnectionSetup() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   /* ── Stores ─────────────────────────────────────────────────────────────── */
   const {
@@ -56,23 +58,22 @@ export function ConnectionSetup() {
 
   /* ── Bootstrap on mount ──────────────────────────────────────────────────── */
   useEffect(() => {
-    // If arrived without a target room (direct URL), go home
     if (!targetRoom) {
       navigate("/", { replace: true });
       return;
     }
 
-    // Detect encoder if not already done
-    if (!encoder.detected) {
-      detectEncoder();
-    }
+    // Sequential to prevent concurrent Rust Mutex lock errors
+    const bootstrap = async () => {
+      await refreshMonitors();
+      await handleRefreshWindows();      // monitors done first
+      if (!encoder.detected) {
+        detectEncoder();                  // fire-and-forget, non-blocking
+      }
+      wakeAndProgress();                  // UDP wake — also non-blocking
+    };
 
-    // Load monitors + windows in background
-    refreshMonitors();
-    handleRefreshWindows();
-
-    // Wake Pi → HDMI on
-    wakeAndProgress();
+    bootstrap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -163,20 +164,21 @@ export function ConnectionSetup() {
     navigate("/");
   };
 
+  /* ── Status Labels ──────────────────────────────────────────────────────── */
+  const statusLabel = useMemo(() => ({
+    waking:         t("connection.waking"),
+    hdmi_ready:     t("connection.hdmi_ready"),
+    awaiting_pin:   t("connection.awaiting_pin"),
+    authenticating: t("connection.authenticating"),
+    streaming:      t("connection.streaming"),
+  }), [t]);
+
   if (!targetRoom) return null;
 
   /* ── Derived state ───────────────────────────────────────────────────────── */
   const isAuthenticating = phase === "authenticating";
   const isStreaming      = phase === "streaming";
   const pinDisabled      = isAuthenticating || isStreaming || waking;
-
-  const statusLabel: Record<string, string> = {
-    waking:        "Pi Uyandırılıyor...",
-    hdmi_ready:    "HDMI Hazır",
-    awaiting_pin:  "PIN Bekleniyor",
-    authenticating:"Doğrulanıyor...",
-    streaming:     "Yayın Başlıyor...",
-  };
 
   /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
@@ -192,7 +194,7 @@ export function ConnectionSetup() {
             text-[var(--text-muted)] hover:text-[var(--text-primary)]
             hover:bg-[var(--bg-tertiary)] transition-colors duration-150
           "
-          aria-label="Geri"
+          aria-label={t("common.back")}
         >
           <ArrowLeft size={18} />
         </button>
@@ -230,7 +232,7 @@ export function ConnectionSetup() {
               }
             `}
           />
-          {statusLabel[phase] ?? "Bağlanıyor..."}
+          {statusLabel[phase as keyof typeof statusLabel] ?? t("common.loading")}
         </span>
       </header>
 
@@ -301,28 +303,25 @@ export function ConnectionSetup() {
             {isAuthenticating ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Doğrulanıyor...
+                {t("connection.authenticating")}
               </>
             ) : (
               <>
                 <Wifi size={16} />
-                Yayını Başlat
+                {t("connection.start_stream")}
               </>
             )}
           </button>
 
           <p className="text-[11px] text-[var(--text-muted)] text-center">
-            Projektördeki 4 haneli PIN kodunu girin
+            {t("connection.pin_placeholder")}
           </p>
         </section>
 
         {/* ── Encoder info ─────────────────────────────────────────────── */}
         {encoder.detected && (
           <p className="text-center text-[11px] text-[var(--text-muted)]">
-            Encoder:{" "}
-            <span className="font-mono text-[var(--text-secondary)]">
-              {encoder.detected}
-            </span>
+            {t("connection.encoder_info", { name: encoder.detected })}
           </p>
         )}
       </main>
@@ -340,7 +339,7 @@ export function ConnectionSetup() {
             transition-colors duration-150
           "
         >
-          İptal
+          {t("common.cancel")}
         </button>
       </footer>
     </div>

@@ -1,34 +1,23 @@
 import { Star, Wifi, WifiOff, Cast } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Room, RoomStatus } from "../../types/room";
 import { useSettingsStore } from "../../stores/settingsStore";
 
-// ── Status helpers ────────────────────────────────────────────────────────────
+// ── Status configs (visuals only) ─────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<
+const STATUS_VISUALS: Record<
   RoomStatus,
-  { dot: string; label: string; pulse: boolean }
+  { dot: string; pulse: boolean }
 > = {
-  idle: {
-    dot: "bg-[var(--status-idle)]",
-    label: "Boş",
-    pulse: true,
-  },
-  streaming: {
-    dot: "bg-[var(--status-streaming)]",
-    label: "Yayında",
-    pulse: false,
-  },
-  offline: {
-    dot: "bg-[var(--status-offline)]",
-    label: "Çevrimdışı",
-    pulse: false,
-  },
+  idle:      { dot: "bg-[var(--status-idle)]",      pulse: true  },
+  streaming: { dot: "bg-[var(--status-streaming)]", pulse: false },
+  offline:   { dot: "bg-[var(--status-offline)]",   pulse: false },
 };
 
 // ── StatusDot ─────────────────────────────────────────────────────────────────
 
 function StatusDot({ status }: { status: RoomStatus }) {
-  const { dot, pulse } = STATUS_CONFIG[status];
+  const { dot, pulse } = STATUS_VISUALS[status];
   return (
     <span className="relative flex items-center justify-center w-3 h-3">
       {pulse && (
@@ -41,7 +30,7 @@ function StatusDot({ status }: { status: RoomStatus }) {
   );
 }
 
-// ── RoomCard (full variant) ───────────────────────────────────────────────────
+// ── RoomCard ──────────────────────────────────────────────────────────────────
 
 interface RoomCardProps {
   room: Room;
@@ -50,10 +39,16 @@ interface RoomCardProps {
 }
 
 export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
+  const { t } = useTranslation();
   const { favorites, toggleFavorite } = useSettingsStore();
+
   const isFavorite = favorites.includes(room.id);
-  const { label: statusLabel } = STATUS_CONFIG[room.status];
+  const statusLabel = t(`status.${room.status}`);
   const canConnect = room.status === "idle";
+
+  const floorDisplay = room.floor === "0"
+    ? t("discovery.floor_0")
+    : t("discovery.floor_n", { n: room.floor });
 
   // ── Compact variant (used in FavoritesSection) ─────────────────────────────
   if (variant === "compact") {
@@ -98,7 +93,7 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
             {room.label}
           </span>
           <span className="text-xs text-[var(--text-muted)]">
-            Kat {room.floor === "0" ? "Zemin" : room.floor}
+            {floorDisplay}
           </span>
         </div>
 
@@ -110,7 +105,7 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
             toggleFavorite(room.id);
           }}
           className="p-1 rounded-lg hover:bg-[var(--accent-gold-subtle)] transition-colors duration-150"
-          title={isFavorite ? "Favorilerden çıkar" : "Favorilere ekle"}
+          title={isFavorite ? t("discovery.unfavorite", "Remove from favorites") : t("discovery.favorite", "Add to favorites")}
         >
           <Star
             size={18}
@@ -141,7 +136,7 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
         {room.status === "streaming" && (
           <span className="ml-auto flex items-center gap-1 text-[10px] text-[var(--status-streaming)]">
             <Cast size={11} />
-            Yayın devam ediyor
+            {t("status.in_progress")}
           </span>
         )}
       </div>
@@ -164,17 +159,17 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
         {room.status === "offline" ? (
           <>
             <WifiOff size={14} />
-            Çevrimdışı
+            {t("status.offline")}
           </>
         ) : room.status === "streaming" ? (
           <>
             <Cast size={14} />
-            Meşgul
+            {t("status.busy")}
           </>
         ) : (
           <>
             <Wifi size={14} />
-            Bağlan
+            {t("discovery.connect")}
           </>
         )}
       </button>
