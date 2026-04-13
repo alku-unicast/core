@@ -40,7 +40,7 @@ def get_config_room_id():
     return "213"  # Default fallback for your lab
 
 ROOM_ID           = get_config_room_id()
-SERVICE_ACCOUNT   = "/home/pi/core/src/receiver/firebase-key.json"
+SERVICE_ACCOUNT   = "/home/unicast_pi/core/src/receiver/firebase-key.json"
 FIREBASE_DB_URL   = "https://unicast-8a705-default-rtdb.europe-west1.firebasedatabase.app"
 
 HEARTBEAT_TIMEOUT = 5    # seconds

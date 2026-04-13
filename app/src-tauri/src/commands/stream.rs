@@ -8,8 +8,36 @@ use crate::gstreamer::{path_setup::get_gst_launch, pipeline::build_pipeline};
 static GST_PROCESS: std::sync::OnceLock<Arc<Mutex<Option<Child>>>> =
     std::sync::OnceLock::new();
 
+// Global Heartbeat flag
+static HEARTBEAT_RUNNING: std::sync::atomic::AtomicBool = 
+    std::sync::atomic::AtomicBool::new(false);
+
 fn gst_handle() -> &'static Arc<Mutex<Option<Child>>> {
     GST_PROCESS.get_or_init(|| Arc::new(Mutex::new(None)))
+}
+
+/// Spawns a background task that sends "HEARTBEAT" to the receiver every 2 seconds.
+/// This prevents the Pi's safety timeout (5s) from kicking in.
+fn spawn_heartbeat(target_ip: String) {
+    HEARTBEAT_RUNNING.store(true, std::sync::atomic::Ordering::SeqCst);
+    
+    tokio::spawn(async move {
+        let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok();
+        let addr = format!("{}:5001", target_ip);
+        
+        while HEARTBEAT_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+            if let Some(ref sock) = socket {
+                let _ = sock.send_to(b"HEARTBEAT", &addr);
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+        
+        // Final "STOP" signal for a graceful cleanup on Pi side
+        if let Some(ref sock) = socket {
+            let _ = sock.send_to(b"STOP", &addr);
+        }
+        log::info!("[heartbeat] Stopped for {}", target_ip);
+    });
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -76,6 +104,9 @@ pub async fn start_stream(
     *guard = Some(child);
     drop(guard);
 
+    // Start heartbeat loop
+    spawn_heartbeat(config.target_ip.clone());
+
     // Emit stream-started event
     app.emit("stream-started", serde_json::json!({ "pid": pid }))
         .ok();
@@ -95,15 +126,13 @@ pub async fn start_stream(
 
             match status {
                 Ok(Some(s)) => {
+                    stop_stream_internal(); // Ensure heartbeat stops too
                     if !s.success() {
                         log::error!("[stream] GStreamer exited with error: {s}");
                         app_clone.emit("stream-stopped", serde_json::json!({ "reason": "error" })).ok();
                     } else {
                         app_clone.emit("stream-stopped", serde_json::json!({ "reason": "user" })).ok();
                     }
-                    // Clean up handle
-                    let mut g = gst_handle().lock().unwrap();
-                    *g = None;
                     break;
                 }
                 Ok(None) => {}, // Still running
@@ -126,6 +155,10 @@ pub fn stop_stream(app: AppHandle) -> bool {
 }
 
 pub fn stop_stream_internal() -> bool {
+    // 1. Stop Heartbeat Loop
+    HEARTBEAT_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+
+    // 2. Kill GStreamer
     let mut guard = gst_handle().lock().unwrap();
     if let Some(mut child) = guard.take() {
         let pid = child.id();

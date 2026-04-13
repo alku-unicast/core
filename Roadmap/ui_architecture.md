@@ -236,7 +236,10 @@ React (PIN + nonce) ──(Tauri IPC)──→ Rust ──(UDP:5001)──→ Pi
                                               │
                                               ▼
                                      [OK] → start_stream()
-                                     [FAIL] → show error
+                                              │
+                                              ▼
+                                     [LOOP] → every 2s send "HEARTBEAT" to UDP:5001
+                                              (Prevents Pi timeout/PIN rotation)
 ```
 
 ---
@@ -314,9 +317,12 @@ RTT 5-20ms  → 🟡 Yellow (Good — typical Wi-Fi)
 RTT 20-50ms → 🟠 Orange (Degraded — possible congestion)
 RTT > 50ms  → 🔴 Red    (Poor — user should lower bitrate)
 RTT timeout → ⚫ Black  (Connection lost)
-```
 
-**Implementation**: A background Rust thread sends a UDP ping to the Pi every 2 seconds on port 5005 (echo service already exists on the Pi in `agent.py`). RTT result is emitted as a `stream-health` Tauri event. Both main window and streaming bar can subscribe.
+**Heartbeat (Keep-Alive)**:
+Independent of RTT, a "HEARTBEAT" string is sent to port 5001 every 2s. The Pi (Receiver) will terminate the stream and rotate the PIN if no heartbeat is received for 5s (safety fallback for PC crashes).
+
+**RTT Measurement**: A background Rust thread sends a UDP ping to the Pi every 2 seconds on port 5005 (echo service already exists on the Pi in `agent.py`). RTT result is emitted as a `stream-health` Tauri event. Both main window and streaming bar can subscribe.
+```
 
 > [!NOTE]
 > This is simple, reliable, and directly actionable. We don't need complex receiver-side feedback for the first version. If Pi-side stats are needed later, we can add a periodic stats feedback channel (Pi sends stats back via UDP).
@@ -328,7 +334,7 @@ RTT timeout → ⚫ Black  (Connection lost)
 ```typescript
 // stores/roomStore.ts
 interface RoomStore {
-  rooms: Record<string, Room>;          // from Firebase
+  rooms: Record<string, Room>;          // from Firebase (pi_ip, pi_status, name)
   activeFloor: string | null;           // "all" | floor number
   isLoading: boolean;
   error: string | null;

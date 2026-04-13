@@ -3,26 +3,28 @@ import { getFirebaseDB } from "./firebase";
 import { useRoomStore } from "../stores/roomStore";
 import { Room, RoomStatus } from "../types/room";
 
-// Raw shape coming from Firebase — may be partial/malformed
+// Raw shape coming from Firebase — aligned with Pi Agent v3 / Rules
 interface RawRoom {
-  label?: string;
+  name?: string;      // formerly label
   floor?: string;
-  ip?: string;
-  status?: string;
+  pi_ip?: string;     // formerly ip
+  pi_status?: string; // formerly status
   last_seen?: number;
 }
 
 function parseRoom(id: string, raw: RawRoom): Room {
   const validStatuses: RoomStatus[] = ["idle", "streaming", "offline"];
-  const status = validStatuses.includes(raw.status as RoomStatus)
-    ? (raw.status as RoomStatus)
+  
+  // pi_status gelmediyse varsayılan offline
+  const status = validStatuses.includes(raw.pi_status as RoomStatus)
+    ? (raw.pi_status as RoomStatus)
     : "offline";
 
   return {
     id,
-    label: raw.label ?? id,
+    label: raw.name ?? id,
     floor: raw.floor ?? "0",
-    ip: raw.ip ?? "",
+    ip: raw.pi_ip ?? "",
     status,
     lastSeen: raw.last_seen ?? 0,
   };
