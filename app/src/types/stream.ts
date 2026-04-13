@@ -10,6 +10,8 @@ export type StreamMode = "fullscreen" | "window";
 
 export type NetworkQuality = "excellent" | "good" | "degraded" | "poor" | "lost";
 
+export type StreamQualityMode = "presentation" | "video";
+
 export interface StreamConfig {
   targetIp: string;
   resolution: string;
@@ -18,6 +20,7 @@ export interface StreamConfig {
   delayBufferMs: number;
   encoderName: string;
   streamMode: StreamMode;
+  qualityMode: StreamQualityMode;
   windowId?: number;
   monitorIndex?: number;
   audioEnabled: boolean;

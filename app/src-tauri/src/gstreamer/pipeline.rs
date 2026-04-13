@@ -3,8 +3,16 @@ use crate::commands::stream::StreamConfig;
 pub fn build_pipeline(config: &StreamConfig) -> String {
     let (width, height) = parse_resolution(&config.resolution);
     let ip = &config.target_ip;
-    let fps = config.fps;
-    let bitrate = config.bitrate;
+    
+    // ── Quality Mode Tuning ──────────────────────────────────────────────────
+    // Presentation: Sharpness focus (20 FPS, higher bitrate)
+    // Video: Motion focus (30 FPS, standard bitrate)
+    let (fps, bitrate) = match config.quality_mode.as_str() {
+        "presentation" => (20, 6000),
+        "video"        => (30, 4000),
+        _              => (config.fps, config.bitrate), // Fallback
+    };
+
     let encoder = if config.encoder_name.is_empty() {
         "x264enc"
     } else {
@@ -20,8 +28,17 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
         _ => "",
     };
 
+    #[cfg(target_os = "windows")]
     let video_part = format!(
-        "{video_src} ! queue ! videoconvert ! \
+        "{video_src} ! queue ! d3d11download ! videoconvert ! videoscale ! videoconvert ! \
+         video/x-raw,width={width},height={height},framerate={fps}/1 ! queue ! \
+         {encoder} bitrate={bitrate} {encoder_params} ! \
+         rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000"
+    );
+
+    #[cfg(not(target_os = "windows"))]
+    let video_part = format!(
+        "{video_src} ! queue ! videoconvert ! videoscale ! videoconvert ! \
          video/x-raw,width={width},height={height},framerate={fps}/1 ! queue ! \
          {encoder} bitrate={bitrate} {encoder_params} ! \
          rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000"

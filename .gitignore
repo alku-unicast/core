@@ -36,7 +36,6 @@ Thumbs.db
 # Documentation / AI (User choice to ignore these in git?)
 # User had CLAUDE.md and progress.md here, I'll keep them as per existing file.
 CLAUDE.md
-progress.md
 .claudeignore
 
 # Firebase keys / Secrets

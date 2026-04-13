@@ -47,6 +47,8 @@ pub struct StreamConfig {
     pub resolution: String,
     pub fps: u32,
     pub bitrate: u32,
+    #[serde(rename = "qualityMode")]
+    pub quality_mode: String,       // "presentation" | "video"
     #[serde(rename = "delayBufferMs")]
     pub delay_buffer_ms: u32,
     #[serde(rename = "encoderName")]

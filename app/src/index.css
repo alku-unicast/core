@@ -80,11 +80,11 @@
 }
 
 [data-bar-theme="translucent-dark"] {
-  --bar-bg:     hsla(220, 25%, 10%, 0.85);
+  --bar-bg:     hsla(220, 25%, 8%, 0.5); /* Leaner but darker for better contrast */
   --bar-text:   hsl(210, 20%, 95%);
-  --bar-border: hsla(192, 40%, 40%, 0.3);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  --bar-border: hsla(192, 40%, 40%, 0.4);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 /* ── Global Base ─────────────────────────────────────────────────────────── */

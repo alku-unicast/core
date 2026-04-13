@@ -3,6 +3,7 @@ en önemli şey:
   uygulama mimarisi hem mac hem linux hem de windows için uygun olmalı. Mac'de ses sorunu vardı sanırım şimdilik mac'in ses yayınlamaısnı kapatacağız.
   sanırım uygulamanın portable olmasını tartışmıştık öyle olmaya devam dececekse mimari ona uygun olmalı. 
 
+arayüzde bağlan butounda slayt modu ve video modu olması gerekiyordu unuttuk bunu bağlan butonu yerine sunum ve video seçeneği sunmalıyız. bu seçnek dinamik olarak gstreamer parametresini güncelleyecek ve ona göre gönderecek. video modunda daha düşük bitrate ile 30fps hedef, sunum modunda ise daha yüksek bitrate ile daha düşük fps 20 civarı. (ayrıca video modunda biraz daha fazla jitter eklenebilir). bunu dinamik olarak her seferinde ayarlanmalı. (arayüzün ayar kısmını da video ve slayt modu için ayrı ayrı yaptırmamız gerekecek burada) 
 mini adada ses widget'ının üst kısımının yuvarlağı kesilmiş gibi duruyor.
 mini ada için normal ayarlar kısmında 3 seçenek var ama aslında 2 seçenek var light ve dark olarak. eğer gerçekten varsa translucent dark ile normal dark'ın farkı yok.
 kontrol çubuğu (minik ada)'yı kapatınca yayını başlat ekranı olması gerektiği gibi ana ekranda görünüyor ama ses ayarları network durumu gibi mini adadaki tüm seçenekler yok. isteğim mini adada ne varsa hangi özellik sadece ana ekranda gözükmesi. bu arada  yayını durdur tuşu çalışmıyor: "Uncaught ReferenceError: stopStream is not defined

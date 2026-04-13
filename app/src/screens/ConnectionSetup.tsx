@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Radio, Wifi, Square } from "lucide-react";
+import { ArrowLeft, Radio, Wifi, Square, Volume2, Monitor } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 
@@ -33,8 +33,12 @@ export function ConnectionSetup() {
     setAudioEnabled,
     setPhase,
     switchStreamMode,
+    stopStream,
     reset,
   } = useConnectionStore();
+
+  const isStreaming = phase === "streaming";
+  const isAuthenticating = phase === "authenticating";
 
   const {
     openWindows,
@@ -124,8 +128,8 @@ export function ConnectionSetup() {
     setWindowsLoading(false);
   }, [refreshWindows]);
 
-  /* ── PIN submit ──────────────────────────────────────────────────────────── */
-  const handlePINSubmit = useCallback(async () => {
+  /* ── PIN submit with Mode ────────────────────────────────────────────────── */
+  const handlePINSubmitWithMode = useCallback(async (mode: "presentation" | "video") => {
     if (pin.length !== 4 || phase === "authenticating") return;
 
     const encoderName =
@@ -139,6 +143,7 @@ export function ConnectionSetup() {
       delayBufferMs: streamSettings.delayBufferMs,
       encoderName,
       streamMode,
+      qualityMode:   mode, // The new parameter
       windowId:      streamMode === "window" ? selectedWindow?.id : undefined,
       monitorIndex:  streamMode === "fullscreen" ? selectedMonitorIndex : undefined,
       audioEnabled,
@@ -176,9 +181,7 @@ export function ConnectionSetup() {
   if (!targetRoom) return null;
 
   /* ── Derived state ───────────────────────────────────────────────────────── */
-  const isAuthenticating = phase === "authenticating";
-  const isStreaming      = phase === "streaming";
-  const pinDisabled      = isAuthenticating || isStreaming || waking;
+  const pinDisabled      = isAuthenticating || isStreaming || (phase === "waking");
 
   /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
@@ -269,7 +272,7 @@ export function ConnectionSetup() {
 
         {/* ── PIN entry or Streaming Active ─────────────────────────────────── */}
         {isStreaming ? (
-          <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-6 flex flex-col items-center justify-center gap-5 min-h-[200px]">
+          <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-6 flex flex-col items-center justify-center gap-5 min-h-[220px]">
             <div className="w-16 h-16 rounded-[2rem] bg-[var(--status-streaming)] flex items-center justify-center animate-[pulse_2s_ease-in-out_infinite] shadow-lg shadow-[var(--status-streaming)]/20">
               <Wifi size={28} className="text-white" />
             </div>
@@ -282,6 +285,22 @@ export function ConnectionSetup() {
                 Yayınınız şu anda projektör ekranına aktarılıyor.
               </p>
             </div>
+
+            {/* UI Parity: Simple controls when mini-bar is disabled */}
+            {!useSettingsStore.getState().streamingBar.enabled && (
+              <div className="w-full max-w-xs flex items-center gap-4 px-4 py-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border)]">
+                 <div className="flex items-center gap-2 flex-1">
+                    <Volume2 size={14} className="text-[var(--text-muted)]" />
+                    <input 
+                      type="range"
+                      min={0} max={1} step={0.01}
+                      className="w-full h-1.5 accent-[var(--accent)]"
+                      onChange={(e) => useConnectionStore.getState().setStreamVolume(Number(e.target.value))}
+                    />
+                 </div>
+                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="Ağ Durumu: Harika" />
+              </div>
+            )}
 
             <button
               id="btn-stop-stream"
@@ -300,52 +319,68 @@ export function ConnectionSetup() {
           </section>
         ) : (
           <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-6 flex flex-col items-center gap-5">
-            {/* Radio icon decorative */}
-            <div className="w-12 h-12 rounded-2xl bg-[var(--accent-subtle)] flex items-center justify-center">
-              <Radio size={22} className="text-[var(--accent)]" />
-            </div>
-
             <PINEntry
               value={pin}
               onChange={setPin}
-              onSubmit={handlePINSubmit}
+              onSubmit={() => {}} // Handle via mode buttons
               error={pinError}
               disabled={pinDisabled}
             />
 
-            {/* Submit button */}
-            <button
-              id="btn-start-stream"
-              onClick={handlePINSubmit}
-              disabled={
-                pin.length < 4 || 
-                pinDisabled || 
-                (streamMode === "window" && !selectedWindow)
-              }
-              className="
-                w-full max-w-xs py-3.5 rounded-2xl font-semibold text-sm
-                bg-[var(--accent)] text-white
-                hover:bg-[var(--accent-hover)] active:scale-[0.98]
-                disabled:opacity-40 disabled:cursor-not-allowed
-                transition-all duration-150 shadow-lg shadow-[var(--accent)]/25
-                flex items-center justify-center gap-2
-              "
-            >
-              {isAuthenticating ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  {t("connection.authenticating")}
-                </>
-              ) : (
-                <>
-                  <Wifi size={16} />
-                  {t("connection.start_stream")}
-                </>
-              )}
-            </button>
+            {/* Dual Mode Buttons */}
+            <div className="w-full flex flex-col gap-3">
+              <button
+                id="btn-start-presentation"
+                onClick={() => handlePINSubmitWithMode("presentation")}
+                disabled={pin.length < 4 || pinDisabled || (streamMode === "window" && !selectedWindow)}
+                className="
+                  w-full py-4 rounded-xl font-semibold text-sm
+                  bg-[var(--accent)] text-white
+                  hover:bg-[var(--accent-hover)] active:scale-[0.98]
+                  disabled:opacity-40 disabled:cursor-not-allowed
+                  transition-all duration-150 shadow-lg shadow-[var(--accent)]/20
+                  flex flex-col items-center gap-1
+                "
+              >
+                {isAuthenticating ? (
+                  <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Monitor size={18} />
+                    <span>SUNUM OLARAK BAŞLAT</span>
+                  </div>
+                )}
+                <span className="text-[10px] opacity-70 font-normal">Maksimum Keskinlik | 20 FPS</span>
+              </button>
+
+              <button
+                id="btn-start-video"
+                onClick={() => handlePINSubmitWithMode("video")}
+                disabled={pin.length < 4 || pinDisabled || (streamMode === "window" && !selectedWindow)}
+                className="
+                  w-full py-4 rounded-xl font-semibold text-sm
+                  bg-[var(--bg-tertiary)] text-[var(--text-primary)]
+                  border border-[var(--border)]
+                  hover:bg-[var(--bg-secondary)] active:scale-[0.98]
+                  disabled:opacity-40 disabled:cursor-not-allowed
+                  transition-all duration-150
+                  flex flex-col items-center gap-1
+                "
+              >
+                {isAuthenticating ? (
+                  <span className="w-5 h-5 border-2 border-[var(--accent)]/40 border-t-[var(--accent)] rounded-full animate-spin" />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Radio size={18} />
+                    <span>VİDEO OLARAK BAŞLAT</span>
+                  </div>
+                )}
+                <span className="text-[10px] text-[var(--text-muted)] font-normal">Akıcı Hareket | 30 FPS</span>
+              </button>
+            </div>
 
             <p className="text-[11px] text-[var(--text-muted)] text-center">
-              {t("connection.pin_placeholder")}
+              Lütfen Pi ekranında gördüğünüz 4 haneli PIN kodunu girin.
             </p>
           </section>
         )}

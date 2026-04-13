@@ -8,7 +8,7 @@ UniCast is a low-latency wireless screen mirroring system for educational enviro
 - Authenticating with Pi receivers (PIN over UDP)
 - Controlling live streams (start/stop/mute)
 
-The core GStreamer streaming engine already works. This document designs the **complete frontend architecture** that wraps around it.
+The core GStreamer streaming engine already works for full-screen capture. This document designs the **complete frontend architecture** and the **robustness enhancements** for window-specific capture.
 
 ---
 
@@ -322,6 +322,13 @@ RTT timeout → ⚫ Black  (Connection lost)
 Independent of RTT, a "HEARTBEAT" string is sent to port 5001 every 2s. The Pi (Receiver) will terminate the stream and rotate the PIN if no heartbeat is received for 5s (safety fallback for PC crashes).
 
 **RTT Measurement**: A background Rust thread sends a UDP ping to the Pi every 2 seconds on port 5005 (echo service already exists on the Pi in `agent.py`). RTT result is emitted as a `stream-health` Tauri event. Both main window and streaming bar can subscribe.
+
+#### 3.5. Window Capture Robustness Strategy
+When capturing a specific window (e.g., WhatsApp, PowerPoint) rather than a full monitor, two technical challenges arise:
+1. **Memory Type Mismatch (Windows)**: `d3d11screencapturesrc` outputs D3D11 Texture memory. High-performance encoders require a bridge to system memory via `d3d11download`.
+2. **Dynamic Resizing**: Windows are often smaller than the target 1080p/720p stream.
+   - **Solution**: Intermediate `videoscale` element with `add-borders=true` ensures the projected image maintains its aspect ratio (letterboxing) regardless of source window dimensions.
+   - **Protocol**: The stream always emits fixed resolution caps (e.g., 1920x1080) so the Pi receiver never has to renegotiate or flicker.
 ```
 
 > [!NOTE]
