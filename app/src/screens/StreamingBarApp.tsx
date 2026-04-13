@@ -129,6 +129,21 @@ export function StreamingBarApp() {
     // Disabled in Mini Bar: Window selection is complex, just used as indicator now.
   }, []);
 
+  /* ── Capture Exclusion: Hide bar from GStreamer (Windows) ──── */
+  useEffect(() => {
+    const applyExclusion = async () => {
+      try {
+        const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+        const win = getCurrentWebviewWindow();
+        const hwnd = await win.hwnd();
+        await invoke("set_bar_capture_exclusion", { hwnd: Number(hwnd) });
+      } catch (e) {
+        console.warn("[StreamingBar] Failed to set capture exclusion:", e);
+      }
+    };
+    applyExclusion();
+  }, []);
+
   /* ── Volume icon helper ───────────────────────────────────────────────── */
   const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume > 0.5 ? Volume2 : Volume1;
 
@@ -141,8 +156,8 @@ export function StreamingBarApp() {
           height:               "56px",
           background:           "var(--bar-bg)",
           color:                "var(--bar-text)",
-          border:               "1px solid var(--bar-border)",
-          boxShadow:            "0 8px 32px rgba(0,0,0,0.4)",
+          border:               "1.5px solid var(--bar-border)",
+          // CSS Shadows often cause black artifacts in screen capture; removed.
         }}
         data-bar-theme={appearance.barTheme}
         data-tauri-drag-region

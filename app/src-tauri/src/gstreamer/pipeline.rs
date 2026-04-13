@@ -18,8 +18,8 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
     let video_src = build_video_src(config);
 
     let encoder_params = match encoder {
-        "x264enc" => "tune=zerolatency speed-preset=superfast",
-        "nvh264enc" => "zerolatency=true",
+        "x264enc" => "tune=zerolatency speed-preset=superfast key-int-max=15 intra-refresh=true",
+        "nvh264enc" => "zerolatency=true gop-size=15",
         _ => "",
     };
 

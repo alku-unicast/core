@@ -23,7 +23,7 @@ env/
 
 # Project Specific
 *.csv
-*.html
+.html
 *.log
 *.exe
 *.dll

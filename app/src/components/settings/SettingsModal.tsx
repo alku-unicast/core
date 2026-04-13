@@ -269,16 +269,27 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
               <div className="mt-2 pt-4 border-t border-[var(--border)]">
                 <SettingRow label={t("settings.stream.encoder")} description="H.264 donanım kodlayıcı">
-                   <div className="flex items-center gap-2 w-full max-w-[220px]">
-                      <span className="flex-1 px-3 py-1.5 rounded-lg text-[10px] font-mono truncate bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
-                        {encoder.detected || t("settings.stream.not_detected")}
+                   <div className="flex items-center gap-2 w-full max-w-[240px]">
+                      <span 
+                        className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-mono truncate bg-[var(--bg-tertiary)] text-[var(--text-secondary)] ${!encoderName ? "opacity-50" : ""}`}
+                        title={encoderLabel}
+                      >
+                        {encoderLabel}
                       </span>
                       <button
                         type="button"
                         onClick={detectEncoder}
-                        className="p-1.5 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                        disabled={encoderDetecting}
+                        className="
+                          flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-medium shrink-0
+                          bg-[var(--accent-subtle)] text-[var(--accent)]
+                          hover:bg-[var(--accent)] hover:text-white
+                          disabled:opacity-40 disabled:cursor-not-allowed
+                          transition-colors duration-150
+                        "
                       >
                         <RefreshCw size={12} className={encoderDetecting ? "animate-spin" : ""} />
+                        {t("settings.stream.scan")}
                       </button>
                    </div>
                 </SettingRow>
