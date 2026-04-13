@@ -31,9 +31,21 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   // ── Stores ─────────────────────────────────────────────────────────────────
   const {
-    stream, audio, encoder, appearance, streamingBar,
-    updateSettings,
+    profiles, audio, encoder, appearance, streamingBar,
+    updateSettings, resetToDefaults,
   } = useSettingsStore();
+
+  const [activeProfile, setActiveProfile] = useState<"presentation" | "video">("presentation");
+  const currentProfile = profiles[activeProfile];
+
+  const updateProfile = (partial: Partial<StreamProfile>) => {
+    updateSettings({
+      profiles: {
+        ...profiles,
+        [activeProfile]: { ...currentProfile, ...partial },
+      },
+    });
+  };
 
   const {
     detectedEncoder, encoderDetecting, audioDevices,
@@ -43,6 +55,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   // ── Bootstrap ──────────────────────────────────────────────────────────────
   useEffect(() => {
     refreshAudioDevices();
+    if (!encoder.detected) {
+      detectEncoder();
+    }
   }, []);
 
   // ── Close on Escape ────────────────────────────────────────────────────────
@@ -86,31 +101,50 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
         id="settings-modal"
         className="
           bg-[var(--bg-primary)] border border-[var(--border)] rounded-2xl shadow-2xl
-          w-[600px] max-h-[78vh] flex overflow-hidden
+          w-[620px] max-h-[82vh] flex overflow-hidden
         "
         style={{ animation: "modal-in 0.18s ease-out" }}
       >
         {/* ── Left nav ───────────────────────────────────────────────────── */}
-        <nav className="w-44 shrink-0 bg-[var(--bg-secondary)] border-r border-[var(--border)] py-4 flex flex-col gap-0.5 px-2">
+        <nav className="w-48 shrink-0 bg-[var(--bg-secondary)] border-r border-[var(--border)] py-4 flex flex-col px-2">
           <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
             {t("settings.title")}
           </p>
-          {SECTIONS.map((s) => (
-            <button
-              key={s.id}
-              id={`settings-nav-${s.id}`}
-              onClick={() => scrollTo(s.id)}
-              className="
-                flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
-                text-[var(--text-secondary)] hover:text-[var(--text-primary)]
-                hover:bg-[var(--bg-tertiary)] transition-colors duration-100 text-left
-              "
-            >
-              <span className="text-[var(--accent)] shrink-0">{s.icon}</span>
-              {s.label}
-              <ChevronRight size={12} className="ml-auto opacity-40" />
-            </button>
-          ))}
+          <div className="flex-1 flex flex-col gap-0.5">
+            {SECTIONS.map((s) => (
+              <button
+                key={s.id}
+                id={`settings-nav-${s.id}`}
+                onClick={() => scrollTo(s.id)}
+                className="
+                  flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
+                  text-[var(--text-secondary)] hover:text-[var(--text-primary)]
+                  hover:bg-[var(--bg-tertiary)] transition-colors duration-100 text-left
+                "
+              >
+                <span className="text-[var(--accent)] shrink-0">{s.icon}</span>
+                {s.label}
+                <ChevronRight size={12} className="ml-auto opacity-40" />
+              </button>
+            ))}
+          </div>
+
+          {/* Reset Button */}
+          <button
+            id="btn-settings-reset"
+            onClick={async () => {
+              if (confirm("Tüm ayarlar fabrika ayarlarına döndürülecektir. Emin misiniz?")) {
+                await resetToDefaults();
+              }
+            }}
+            className="
+              mt-auto mx-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs
+              text-red-500 hover:bg-red-500/10 transition-colors duration-200 font-medium
+            "
+          >
+            <RefreshCw size={13} />
+            AYARLARI SIFIRLA
+          </button>
         </nav>
 
         {/* ── Right content ──────────────────────────────────────────────── */}
@@ -135,147 +169,119 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           {/* Scrollable sections */}
           <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-8 scrollbar-none">
 
-            {/* ── 1. Yayın ─────────────────────────────────────────────── */}
-            <Section ref={sectionRefs.stream} title={t("settings.tabs.stream")} icon={<Cpu size={15} />}>
-
-              {/* Resolution */}
-              <SettingRow label={t("settings.stream.resolution")} description="Video kalitesi">
-                <Select
-                  id="select-resolution"
-                  value={stream.resolution}
-                  onChange={(v) => updateSettings({ stream: { ...stream, resolution: v as any } })}
-                  options={[
-                    { value: "1080p", label: "1080p — Full HD" },
-                    { value: "720p",  label: "720p — HD" },
-                    { value: "480p",  label: "480p — SD" },
-                  ]}
-                />
-              </SettingRow>
-
-              {/* FPS */}
-              <SettingRow label={t("settings.stream.fps")} description="Saniyedeki kare sayısı">
-                <Select
-                  id="select-fps"
-                  value={String(stream.fps)}
-                  onChange={(v) => updateSettings({ stream: { ...stream, fps: Number(v) as any } })}
-                  options={[
-                    { value: "30", label: "30 FPS" },
-                    { value: "20", label: "20 FPS" },
-                    { value: "15", label: "15 FPS" },
-                  ]}
-                />
-              </SettingRow>
-
-              {/* ── Gelişmiş ── */}
-              <div className="flex flex-col gap-0">
+            {/* ── 1. Yayın Profilleri ─────────────────────────────────────── */}
+            <Section ref={sectionRefs.stream} title="Yayın Profilleri" icon={<Cpu size={15} />}>
+              
+              {/* Profile Tabs */}
+              <div className="flex gap-1 p-1 rounded-xl bg-[var(--bg-tertiary)] mb-2">
                 <button
-                  id="btn-advanced-toggle"
-                  onClick={() => setAdvancedOpen((v) => !v)}
-                  className="
-                    flex items-center gap-1.5 text-xs font-medium
-                    text-[var(--accent)] hover:opacity-80
-                    transition-opacity duration-150 self-start py-1
-                  "
+                  type="button"
+                  onClick={() => setActiveProfile("presentation")}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeProfile === "presentation" ? "bg-[var(--bg-primary)] text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
                 >
-                  {advancedOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                  {t("settings.stream.advanced")}
+                  SUNUM MODU
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveProfile("video")}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeProfile === "video" ? "bg-[var(--bg-primary)] text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+                >
+                  VİDEO MODU
+                </button>
+              </div>
 
-                {advancedOpen && (
-                  <div className="flex flex-col gap-4 mt-3 pl-3 border-l-2 border-[var(--border)]">
+              {/* Profile Specific Controls */}
+              <div className="flex flex-col gap-4 mb-2">
+                {/* Resolution */}
+                <SettingRow label={t("settings.stream.resolution")} description={`${activeProfile === 'presentation' ? 'Sunum' : 'Video'} kalitesi`}>
+                  <Select
+                    id="select-profile-resolution"
+                    value={currentProfile.resolution}
+                    onChange={(v) => updateProfile({ resolution: v as any })}
+                    options={[
+                      { value: "1080p", label: "1080p — Full HD" },
+                      { value: "720p",  label: "720p — HD" },
+                      { value: "480p",  label: "480p — SD" },
+                    ]}
+                  />
+                </SettingRow>
 
-                    {/* Bitrate */}
-                    <SettingRow
-                      label="Bit Hızı"
-                      description={`${stream.bitrate.toLocaleString()} kbps`}
-                    >
-                      <div className="flex items-center gap-3 w-full">
-                        <span className="text-xs text-[var(--text-muted)] shrink-0">1000</span>
-                        <input
-                          id="slider-bitrate"
-                          type="range"
-                          min={1000}
-                          max={8000}
-                          step={500}
-                          value={stream.bitrate}
-                          onChange={(e) =>
-                            updateSettings({ stream: { ...stream, bitrate: Number(e.target.value) } })
-                          }
-                          className="flex-1 accent-[var(--accent)]"
-                        />
-                        <span className="text-xs text-[var(--text-muted)] shrink-0">8000</span>
-                      </div>
-                    </SettingRow>
+                {/* FPS */}
+                <SettingRow label={t("settings.stream.fps")} description="Saniyedeki kare sayısı">
+                  <Select
+                    id="select-profile-fps"
+                    value={String(currentProfile.fps)}
+                    onChange={(v) => updateProfile({ fps: Number(v) as any })}
+                    options={[
+                      { value: "30", label: "30 FPS" },
+                      { value: "20", label: "20 FPS" },
+                      { value: "15", label: "15 FPS" },
+                    ]}
+                  />
+                </SettingRow>
 
-                    {/* Encoder */}
-                    <SettingRow
-                      label={t("settings.stream.encoder")}
-                      description="H.264 hardware encoder"
-                    >
-                      <div className="flex items-center gap-2 w-full max-w-[200px]">
-                        <span
-                          className={`
-                            flex-1 px-3 py-1.5 rounded-lg text-[11px] font-mono truncate
-                            bg-[var(--bg-tertiary)] text-[var(--text-secondary)]
-                            ${!encoderName ? "opacity-50" : ""}
-                          `}
-                          title={encoderLabel}
-                        >
-                          {encoderLabel}
-                        </span>
-                        <button
-                          id="btn-rescan-encoder"
-                          onClick={detectEncoder}
-                          disabled={encoderDetecting}
-                          title={t("settings.stream.scan")}
-                          className="
-                            flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-medium shrink-0
-                            bg-[var(--accent-subtle)] text-[var(--accent)]
-                            hover:bg-[var(--accent)] hover:text-white
-                            disabled:opacity-40 disabled:cursor-not-allowed
-                            transition-colors duration-150
-                          "
-                        >
-                          <RefreshCw size={11} className={encoderDetecting ? "animate-spin" : ""} />
-                          {t("settings.stream.scan")}
-                        </button>
-                      </div>
-                    </SettingRow>
+                <div className="flex flex-col gap-0">
+                  <button
+                    type="button"
+                    onClick={() => setAdvancedOpen((v) => !v)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-[var(--accent)] hover:opacity-80 transition-opacity duration-150 self-start py-1"
+                  >
+                    {advancedOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                    {t("settings.stream.advanced")} ({activeProfile === 'presentation' ? 'Sunum' : 'Video'})
+                  </button>
 
-                    {/* Delay Buffer */}
-                    <SettingRow
-                      label={t("settings.network.buffer")}
-                      description="Ağ titreşimini telafi eder"
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          id="input-delay-buffer"
-                          type="number"
-                          min={0}
-                          max={500}
-                          step={10}
-                          value={stream.delayBufferMs}
-                          onChange={(e) =>
-                            updateSettings({
-                              stream: { ...stream, delayBufferMs: Number(e.target.value) },
-                            })
-                          }
-                          className="
-                            w-24 px-3 py-1.5 rounded-lg border border-[var(--border)]
-                            bg-[var(--bg-secondary)] text-sm text-[var(--text-primary)]
-                            focus:outline-none focus:border-[var(--accent)]
-                            transition-colors duration-150
-                          "
-                        />
-                        <span className="text-sm text-[var(--text-muted)]">ms</span>
-                      </div>
-                    </SettingRow>
+                  {advancedOpen && (
+                    <div className="flex flex-col gap-4 mt-3 pl-3 border-l-2 border-[var(--border)]">
+                      <SettingRow label="Bit Hızı" description={`${currentProfile.bitrate.toLocaleString()} kbps`}>
+                        <div className="flex items-center gap-3 w-full">
+                          <span className="text-xs text-[var(--text-muted)] shrink-0">1000</span>
+                          <input
+                            type="range"
+                            min={1000} max={8000} step={500}
+                            value={currentProfile.bitrate}
+                            onChange={(e) => updateProfile({ bitrate: Number(e.target.value) })}
+                            className="flex-1 accent-[var(--accent)]"
+                          />
+                          <span className="text-xs text-[var(--text-muted)] shrink-0">8000</span>
+                        </div>
+                      </SettingRow>
+                      <SettingRow label={t("settings.network.buffer")} description="Ağ titreşimini telafi eder">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min={0} max={500} step={10}
+                            value={currentProfile.delayBufferMs}
+                            onChange={(e) => updateProfile({ delayBufferMs: Number(e.target.value) })}
+                            className="w-24 px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] transition-colors duration-150"
+                          />
+                          <span className="text-sm text-[var(--text-muted)]">ms</span>
+                        </div>
+                      </SettingRow>
+                      <InfoBox>
+                        {activeProfile === 'presentation' 
+                          ? "Sunum modunda düşük gecikme ve yüksek keskinlik önceliklidir." 
+                          : "Video modunda akıcılık ve hareket kalitesi önceliklidir."}
+                      </InfoBox>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                    <InfoBox>
-                      {t("settings.network.buffer_desc", "Default: 74ms. Increase if you experience lag; decrease for lowest possible delay.")}
-                    </InfoBox>
-                  </div>
-                )}
+              <div className="mt-2 pt-4 border-t border-[var(--border)]">
+                <SettingRow label={t("settings.stream.encoder")} description="H.264 donanım kodlayıcı">
+                   <div className="flex items-center gap-2 w-full max-w-[220px]">
+                      <span className="flex-1 px-3 py-1.5 rounded-lg text-[10px] font-mono truncate bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                        {encoder.detected || t("settings.stream.not_detected")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={detectEncoder}
+                        className="p-1.5 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors"
+                      >
+                        <RefreshCw size={12} className={encoderDetecting ? "animate-spin" : ""} />
+                      </button>
+                   </div>
+                </SettingRow>
               </div>
             </Section>
 

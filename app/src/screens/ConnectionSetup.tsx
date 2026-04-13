@@ -53,7 +53,7 @@ export function ConnectionSetup() {
     detectEncoder,
   } = useSystemStore();
 
-  const { stream: streamSettings, audio: audioSettings, encoder } = useSettingsStore();
+  const { profiles, audio: globalAudio, encoder, updateSettings } = useSettingsStore();
 
   /* ── Local UI state ──────────────────────────────────────────────────────── */
   const [pin, setPin]                   = useState("");
@@ -104,7 +104,7 @@ export function ConnectionSetup() {
     return () => { unlisten?.(); };
   }, [navigate, reset]);
 
-  /* ── Wake Pi HDMI ────────────────────────────────────────────────────────── */
+  /* ── Wake Projeksiyon HDMI ────────────────────────────────────────────────── */
   const wakeAndProgress = useCallback(async () => {
     if (!targetRoom) return;
     setWaking(true);
@@ -114,7 +114,7 @@ export function ConnectionSetup() {
       // Brief pause so user can see HDMI Ready step
       await new Promise((r) => setTimeout(r, 800));
     } catch (_) {
-      // Non-fatal — Pi might already be awake
+      // Non-fatal — device might already be awake
     } finally {
       setWaking(false);
       setPhase("awaiting_pin");
@@ -128,26 +128,36 @@ export function ConnectionSetup() {
     setWindowsLoading(false);
   }, [refreshWindows]);
 
+  /* ── Persistent profile update ── */
+  const toggleProfileAudio = (mode: "presentation" | "video") => {
+    updateSettings({
+      profiles: {
+        ...profiles,
+        [mode]: { ...profiles[mode], audioEnabled: !profiles[mode].audioEnabled }
+      }
+    });
+  };
+
   /* ── PIN submit with Mode ────────────────────────────────────────────────── */
   const handlePINSubmitWithMode = useCallback(async (mode: "presentation" | "video") => {
     if (pin.length !== 4 || phase === "authenticating") return;
 
-    const encoderName =
-      detectedEncoder?.name ?? encoder.detected ?? "x264enc";
+    const currentProfile = profiles[mode];
+    const encoderName = detectedEncoder?.name ?? encoder.detected ?? "x264enc";
 
     const config: StreamConfig = {
       targetIp:      targetRoom!.ip,
-      resolution:    streamSettings.resolution,
-      fps:           streamSettings.fps,
-      bitrate:       streamSettings.bitrate,
-      delayBufferMs: streamSettings.delayBufferMs,
+      resolution:    currentProfile.resolution,
+      fps:           currentProfile.fps,
+      bitrate:       currentProfile.bitrate,
+      delayBufferMs: currentProfile.delayBufferMs,
       encoderName,
       streamMode,
-      qualityMode:   mode, // The new parameter
+      qualityMode:   mode,
       windowId:      streamMode === "window" ? selectedWindow?.id : undefined,
       monitorIndex:  streamMode === "fullscreen" ? selectedMonitorIndex : undefined,
-      audioEnabled,
-      audioDeviceId: audioSettings.deviceId,
+      audioEnabled:  currentProfile.audioEnabled,
+      audioDeviceId: globalAudio.deviceId,
     };
 
     const ok = await submitPIN(pin);
@@ -159,7 +169,7 @@ export function ConnectionSetup() {
     }
   }, [
     pin, phase, targetRoom, streamMode, selectedWindow, selectedMonitorIndex,
-    audioEnabled, audioSettings, streamSettings, encoder, detectedEncoder,
+    profiles, globalAudio, encoder, detectedEncoder,
     submitPIN, startStream,
   ]);
 
@@ -217,7 +227,7 @@ export function ConnectionSetup() {
             ${
               phase === "streaming"
                 ? "bg-[var(--accent-subtle)] text-[var(--accent)]"
-                : waking || phase === "waking"
+                : phase === "waking" || waking
                 ? "bg-amber-50/10 text-amber-400"
                 : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
             }
@@ -229,7 +239,7 @@ export function ConnectionSetup() {
               ${
                 phase === "streaming"
                   ? "bg-[var(--accent)] animate-pulse"
-                  : waking || phase === "waking"
+                  : phase === "waking" || waking
                   ? "bg-amber-400 animate-pulse"
                   : "bg-[var(--text-muted)]"
               }
@@ -247,8 +257,8 @@ export function ConnectionSetup() {
           <ConnectionProgress phase={phase} />
         </section>
 
-        {/* ── Stream mode + audio card ──────────────────────────────────── */}
-        <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-4 flex flex-col gap-4">
+        {/* ── Stream mode selection ──────────────────────────────────── */}
+        <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-4">
           <StreamModeSelector
             mode={streamMode}
             onModeChange={(m) => switchStreamMode(m)}
@@ -260,13 +270,6 @@ export function ConnectionSetup() {
             onWindowChange={setSelectedWindow}
             onRefreshWindows={handleRefreshWindows}
             windowsLoading={windowsLoading}
-          />
-
-          <div className="border-t border-[var(--border)]" />
-
-          <AudioToggle
-            enabled={audioEnabled}
-            onChange={setAudioEnabled}
           />
         </section>
 
@@ -288,18 +291,18 @@ export function ConnectionSetup() {
 
             {/* UI Parity: Simple controls when mini-bar is disabled */}
             {!useSettingsStore.getState().streamingBar.enabled && (
-              <div className="w-full max-w-xs flex items-center gap-4 px-4 py-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border)]">
-                 <div className="flex items-center gap-2 flex-1">
-                    <Volume2 size={14} className="text-[var(--text-muted)]" />
-                    <input 
-                      type="range"
-                      min={0} max={1} step={0.01}
-                      className="w-full h-1.5 accent-[var(--accent)]"
-                      onChange={(e) => useConnectionStore.getState().setStreamVolume(Number(e.target.value))}
-                    />
-                 </div>
-                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="Ağ Durumu: Harika" />
-              </div>
+               <div className="w-full max-w-xs flex items-center gap-4 px-4 py-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border)]">
+                  <div className="flex items-center gap-2 flex-1">
+                     <Volume2 size={14} className="text-[var(--text-muted)]" />
+                     <input 
+                       type="range"
+                       min={0} max={1} step={0.01}
+                       className="w-full h-1.5 accent-[var(--accent)]"
+                       onChange={(e) => useConnectionStore.getState().setStreamVolume(Number(e.target.value))}
+                     />
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="Ağ Durumu: Harika" />
+               </div>
             )}
 
             <button
@@ -327,60 +330,92 @@ export function ConnectionSetup() {
               disabled={pinDisabled}
             />
 
-            {/* Dual Mode Buttons */}
+            {/* Dual Mode Buttons with Persistent Audio Switches */}
             <div className="w-full flex flex-col gap-3">
-              <button
-                id="btn-start-presentation"
-                onClick={() => handlePINSubmitWithMode("presentation")}
-                disabled={pin.length < 4 || pinDisabled || (streamMode === "window" && !selectedWindow)}
-                className="
-                  w-full py-4 rounded-xl font-semibold text-sm
-                  bg-[var(--accent)] text-white
-                  hover:bg-[var(--accent-hover)] active:scale-[0.98]
-                  disabled:opacity-40 disabled:cursor-not-allowed
-                  transition-all duration-150 shadow-lg shadow-[var(--accent)]/20
-                  flex flex-col items-center gap-1
-                "
-              >
-                {isAuthenticating ? (
-                  <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Monitor size={18} />
-                    <span>SUNUM OLARAK BAŞLAT</span>
-                  </div>
-                )}
-                <span className="text-[10px] opacity-70 font-normal">Maksimum Keskinlik | 20 FPS</span>
-              </button>
+              <div className="flex items-stretch gap-2">
+                <button
+                  id="btn-start-presentation"
+                  onClick={() => handlePINSubmitWithMode("presentation")}
+                  disabled={pin.length < 4 || pinDisabled || (streamMode === "window" && !selectedWindow)}
+                  className="
+                    flex-1 py-4 rounded-xl font-semibold text-xs
+                    bg-[var(--accent)] text-white
+                    hover:bg-[var(--accent-hover)] active:scale-[0.98]
+                    disabled:opacity-40 disabled:cursor-not-allowed
+                    transition-all duration-150 shadow-lg shadow-[var(--accent)]/20
+                    flex flex-col items-center gap-1
+                  "
+                >
+                  {isAuthenticating ? (
+                    <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Monitor size={16} />
+                      <span>SUNUM OLARAK BAŞLAT</span>
+                    </div>
+                  )}
+                  <span className="text-[9px] opacity-75 font-normal">Maksimum Keskinlik | {profiles.presentation.fps} FPS</span>
+                </button>
 
-              <button
-                id="btn-start-video"
-                onClick={() => handlePINSubmitWithMode("video")}
-                disabled={pin.length < 4 || pinDisabled || (streamMode === "window" && !selectedWindow)}
-                className="
-                  w-full py-4 rounded-xl font-semibold text-sm
-                  bg-[var(--bg-tertiary)] text-[var(--text-primary)]
-                  border border-[var(--border)]
-                  hover:bg-[var(--bg-secondary)] active:scale-[0.98]
-                  disabled:opacity-40 disabled:cursor-not-allowed
-                  transition-all duration-150
-                  flex flex-col items-center gap-1
-                "
-              >
-                {isAuthenticating ? (
-                  <span className="w-5 h-5 border-2 border-[var(--accent)]/40 border-t-[var(--accent)] rounded-full animate-spin" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Radio size={18} />
-                    <span>VİDEO OLARAK BAŞLAT</span>
-                  </div>
-                )}
-                <span className="text-[10px] text-[var(--text-muted)] font-normal">Akıcı Hareket | 30 FPS</span>
-              </button>
+                {/* Presentation Audio Toggle */}
+                <button
+                  onClick={() => toggleProfileAudio("presentation")}
+                  className={`
+                    w-12 px-2 rounded-xl border border-[var(--border)] flex flex-col items-center justify-center gap-1
+                    transition-colors duration-200
+                    ${profiles.presentation.audioEnabled ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"}
+                  `}
+                  title="Sunumda Ses"
+                >
+                  <Volume2 size={16} className={profiles.presentation.audioEnabled ? "opacity-100" : "opacity-40"} />
+                  <span className="text-[8px] font-bold">{profiles.presentation.audioEnabled ? "AÇIK" : "KAPALI"}</span>
+                </button>
+              </div>
+
+              <div className="flex items-stretch gap-2">
+                <button
+                  id="btn-start-video"
+                  onClick={() => handlePINSubmitWithMode("video")}
+                  disabled={pin.length < 4 || pinDisabled || (streamMode === "window" && !selectedWindow)}
+                  className="
+                    flex-1 py-4 rounded-xl font-semibold text-xs
+                    bg-[var(--bg-tertiary)] text-[var(--text-primary)]
+                    border border-[var(--border)]
+                    hover:bg-[var(--bg-secondary)] active:scale-[0.98]
+                    disabled:opacity-40 disabled:cursor-not-allowed
+                    transition-all duration-150
+                    flex flex-col items-center gap-1
+                  "
+                >
+                  {isAuthenticating ? (
+                    <span className="w-5 h-5 border-2 border-[var(--accent)]/40 border-t-[var(--accent)] rounded-full animate-spin" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Radio size={16} />
+                      <span>VİDEO OLARAK BAŞLAT</span>
+                    </div>
+                  )}
+                  <span className="text-[9px] text-[var(--text-muted)] font-normal">Akıcı Hareket | {profiles.video.fps} FPS</span>
+                </button>
+
+                {/* Video Audio Toggle */}
+                <button
+                  onClick={() => toggleProfileAudio("video")}
+                  className={`
+                    w-12 px-2 rounded-xl border border-[var(--border)] flex flex-col items-center justify-center gap-1
+                    transition-colors duration-200
+                    ${profiles.video.audioEnabled ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"}
+                  `}
+                  title="Videoda Ses"
+                >
+                  <Volume2 size={16} className={profiles.video.audioEnabled ? "opacity-100" : "opacity-40"} />
+                  <span className="text-[8px] font-bold">{profiles.video.audioEnabled ? "AÇIK" : "KAPALI"}</span>
+                </button>
+              </div>
             </div>
 
             <p className="text-[11px] text-[var(--text-muted)] text-center">
-              Lütfen Pi ekranında gördüğünüz 4 haneli PIN kodunu girin.
+              Lütfen projeksiyon ekranında gördüğünüz 4 haneli PIN kodunu girin.
             </p>
           </section>
         )}
@@ -388,7 +423,7 @@ export function ConnectionSetup() {
         {/* ── Encoder info ─────────────────────────────────────────────── */}
         {encoder.detected && (
           <p className="text-center text-[11px] text-[var(--text-muted)]">
-            {t("connection.encoder_info", { name: encoder.detected })}
+            Kodlayıcı: {encoder.detected}
           </p>
         )}
       </main>
@@ -406,7 +441,7 @@ export function ConnectionSetup() {
             transition-colors duration-150
           "
         >
-          {t("common.cancel")}
+          İptal
         </button>
       </footer>
     </div>

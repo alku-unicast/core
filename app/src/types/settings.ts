@@ -4,15 +4,21 @@ export type MainTheme = "light" | "dark";
 export type BarTheme = "light" | "dark" | "translucent-dark";
 export type Language = "tr" | "en";
 
+export interface StreamProfile {
+  resolution: Resolution;
+  fps: FPS;
+  bitrate: number;         // kbps
+  delayBufferMs: number;
+  audioEnabled: boolean;   // Persistent per-mode audio state
+}
+
 export interface Settings {
   version: number;
   language: Language;
   favorites: string[];       // room IDs
-  stream: {
-    resolution: Resolution;
-    fps: FPS;
-    bitrate: number;         // kbps, 1000-8000
-    delayBufferMs: number;   // default 74
+  profiles: {
+    presentation: StreamProfile;
+    video: StreamProfile;
   };
   audio: {
     deviceId: string | null;
@@ -33,14 +39,24 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  version: 1,
+  version: 2, // Increment version for migration
   language: "tr",
   favorites: [],
-  stream: {
-    resolution: "1080p",
-    fps: 30,
-    bitrate: 3000,
-    delayBufferMs: 74,
+  profiles: {
+    presentation: {
+      resolution: "1080p",
+      fps: 15,
+      bitrate: 5000,
+      delayBufferMs: 60,
+      audioEnabled: false, // Default off for slides
+    },
+    video: {
+      resolution: "1080p",
+      fps: 30,
+      bitrate: 4000,
+      delayBufferMs: 74,
+      audioEnabled: true,  // Default on for video
+    },
   },
   audio: {
     deviceId: null,

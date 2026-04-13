@@ -4,14 +4,9 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
     let (width, height) = parse_resolution(&config.resolution);
     let ip = &config.target_ip;
     
-    // ── Quality Mode Tuning ──────────────────────────────────────────────────
-    // Presentation: Sharpness focus (20 FPS, higher bitrate)
-    // Video: Motion focus (30 FPS, standard bitrate)
-    let (fps, bitrate) = match config.quality_mode.as_str() {
-        "presentation" => (20, 6000),
-        "video"        => (30, 4000),
-        _              => (config.fps, config.bitrate), // Fallback
-    };
+    // ── Quality Parameters ───────────────────────────────────────────────────
+    let fps = config.fps;
+    let bitrate = config.bitrate;
 
     let encoder = if config.encoder_name.is_empty() {
         "x264enc"

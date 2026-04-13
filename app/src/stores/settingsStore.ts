@@ -5,6 +5,7 @@ interface SettingsStore extends Settings {
   // Actions
   toggleFavorite: (roomId: string) => void;
   updateSettings: (partial: Partial<Settings>) => void;
+  resetToDefaults: () => Promise<void>;
   loadFromDisk: () => Promise<void>;
   saveToDisk: () => Promise<void>;
 }
@@ -26,11 +27,22 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     get().saveToDisk();
   },
 
+  resetToDefaults: async () => {
+    set({ ...DEFAULT_SETTINGS });
+    await get().saveToDisk();
+  },
+
   loadFromDisk: async () => {
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const data = await invoke<Settings>("read_settings");
-      set({ ...data });
+      // Migration: if the data is old (v1), we force defaults for profiles
+      if (data.version < 2) {
+        set({ ...DEFAULT_SETTINGS });
+        await get().saveToDisk();
+      } else {
+        set({ ...data });
+      }
     } catch (e) {
       console.error("[settingsStore] loadFromDisk failed:", e);
     }
@@ -45,7 +57,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         version: state.version,
         language: state.language,
         favorites: state.favorites,
-        stream: state.stream,
+        profiles: state.profiles,
         audio: state.audio,
         encoder: state.encoder,
         appearance: state.appearance,

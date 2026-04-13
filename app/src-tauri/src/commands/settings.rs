@@ -7,7 +7,7 @@ pub struct Settings {
     pub version: u32,
     pub language: String,
     pub favorites: Vec<String>,
-    pub stream: StreamSettings,
+    pub profiles: ProfileSettings,
     pub audio: AudioSettings,
     pub encoder: EncoderSettings,
     pub appearance: AppearanceSettings,
@@ -16,12 +16,20 @@ pub struct Settings {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct StreamSettings {
+pub struct ProfileSettings {
+    pub presentation: StreamProfile,
+    pub video: StreamProfile,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StreamProfile {
     pub resolution: String,
     pub fps: u32,
     pub bitrate: u32,
     #[serde(rename = "delayBufferMs")]
     pub delay_buffer_ms: u32,
+    #[serde(rename = "audioEnabled")]
+    pub audio_enabled: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -57,14 +65,24 @@ pub struct StreamingBarSettings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: 2,
             language: "tr".to_string(),
             favorites: vec![],
-            stream: StreamSettings {
-                resolution: "1080p".to_string(),
-                fps: 30,
-                bitrate: 3000,
-                delay_buffer_ms: 74,
+            profiles: ProfileSettings {
+                presentation: StreamProfile {
+                    resolution: "1080p".to_string(),
+                    fps: 15,
+                    bitrate: 5000,
+                    delay_buffer_ms: 60,
+                    audio_enabled: false,
+                },
+                video: StreamProfile {
+                    resolution: "1080p".to_string(),
+                    fps: 30,
+                    bitrate: 4000,
+                    delay_buffer_ms: 74,
+                    audio_enabled: true,
+                },
             },
             audio: AudioSettings {
                 device_id: None,
