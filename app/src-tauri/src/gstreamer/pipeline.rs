@@ -25,8 +25,8 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
 
     #[cfg(target_os = "windows")]
     let video_part = format!(
-        "{video_src} ! queue ! d3d11download ! videoconvert ! videoscale ! videoconvert ! \
-         video/x-raw,width={width},height={height},framerate={fps}/1 ! queue ! \
+        "{video_src} ! queue ! d3d11download ! videoconvert ! videoscale ! \
+         video/x-raw,format=NV12,width={width},height={height},framerate={fps}/1 ! queue ! \
          {encoder} bitrate={bitrate} {encoder_params} ! \
          rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000"
     );
@@ -34,7 +34,7 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
     #[cfg(not(target_os = "windows"))]
     let video_part = format!(
         "{video_src} ! queue ! videoconvert ! videoscale ! videoconvert ! \
-         video/x-raw,width={width},height={height},framerate={fps}/1 ! queue ! \
+         video/x-raw,format=NV12,width={width},height={height},framerate={fps}/1 ! queue ! \
          {encoder} bitrate={bitrate} {encoder_params} ! \
          rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000"
     );
@@ -60,17 +60,17 @@ fn build_video_src(config: &StreamConfig) -> String {
             "window" => {
                 // C3: Window capture — pass HWND from get_open_windows
                 if let Some(hwnd) = config.window_id {
-                    format!("d3d11screencapturesrc window-handle={hwnd}")
+                    format!("d3d11screencapturesrc window-handle={hwnd} show-cursor=false")
                 } else {
                     // Fallback: full primary monitor
                     let idx = config.monitor_index.unwrap_or(0);
-                    format!("d3d11screencapturesrc monitor-index={idx}")
+                    format!("d3d11screencapturesrc monitor-index={idx} show-cursor=false")
                 }
             }
             _ => {
                 // fullscreen
                 let idx = config.monitor_index.unwrap_or(0);
-                format!("d3d11screencapturesrc monitor-index={idx}")
+                format!("d3d11screencapturesrc monitor-index={idx} show-cursor=false")
             }
         }
     }
