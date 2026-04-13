@@ -1,3 +1,4 @@
+deneme
 # Faz 0: Karar, Hazırlık ve Altyapı Kurulumu
 
 Bu aşama, projenin iki temel direğini oluşturmaya odaklanır:
