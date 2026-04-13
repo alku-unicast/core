@@ -22,16 +22,30 @@ except ImportError:
     print("[WARN] firebase-admin not installed. Running without Firebase.")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CONFIGURATION — edit these for each Pi unit
+# CONFIGURATION — Master Image logic
 # ─────────────────────────────────────────────────────────────────────────────
 
-ROOM_ID           = "oda-101"          # Firebase key: /rooms/<ROOM_ID>
+def get_config_room_id():
+    """Reads ROOM_ID from SD card boot partition for easy cloning."""
+    config_paths = ["/boot/firmware/unicast_config.txt", "/boot/unicast_config.txt"]
+    for path in config_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    for line in f:
+                        if line.startswith("ROOM_ID="):
+                            return line.split("=")[1].strip()
+            except Exception:
+                pass
+    return "213"  # Default fallback for your lab
+
+ROOM_ID           = get_config_room_id()
 SERVICE_ACCOUNT   = "/home/pi/core/src/receiver/firebase-key.json"
 FIREBASE_DB_URL   = "https://unicast-8a705-default-rtdb.europe-west1.firebasedatabase.app"
 
-HEARTBEAT_TIMEOUT = 5    # seconds — if no heartbeat, assume connection lost
-GRACE_PERIOD      = 20   # seconds — reconnection window (PIN stays same)
-FIREBASE_INTERVAL = 60   # seconds — Firebase last_seen refresh
+HEARTBEAT_TIMEOUT = 5    # seconds
+GRACE_PERIOD      = 20   # seconds
+FIREBASE_INTERVAL = 60   # seconds
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -59,7 +73,7 @@ class UniCastReceiver:
         self.last_heartbeat = 0
         self.pin_attempts: dict[str, int] = {}  # ip -> failed attempts
 
-        # Firebase reference (set in _init_firebase)
+        # Firebase reference
         self._fb_ref = None
 
         # ALKÜ brand palette
@@ -85,7 +99,7 @@ class UniCastReceiver:
         signal.signal(signal.SIGTERM, self._shutdown_handler)
         signal.signal(signal.SIGINT,  self._shutdown_handler)
 
-        print(f"[UniCast] Agent v3 started | Room: {ROOM_ID} | IP: {self.ip_address} | PIN: {self.pin}")
+        print(f"[UniCast] Agent v3.1 Master Image | Room: {ROOM_ID} | IP: {self.ip_address} | PIN: {self.pin}")
 
         # Firebase init
         self._init_firebase()
@@ -105,34 +119,45 @@ class UniCastReceiver:
 
     def _init_firebase(self):
         if not _FIREBASE_AVAILABLE:
+            print("[Firebase] firebase-admin library missing. No cloud presence.")
             return
         if not os.path.exists(SERVICE_ACCOUNT):
-            print(f"[Firebase] Service account not found at {SERVICE_ACCOUNT}. Skipping.")
+            print(f"[Firebase] Key not found at {SERVICE_ACCOUNT}. Presence local-only.")
             return
         try:
             cred = credentials.Certificate(SERVICE_ACCOUNT)
             firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_DB_URL})
             self._fb_ref = firebase_db.reference(f"/rooms/{ROOM_ID}")
             self._fb_write_status(State.IDLE)
-            print(f"[Firebase] Connected — /rooms/{ROOM_ID} set to idle")
+            print(f"[Firebase] Active — Heartbeats updating /rooms/{ROOM_ID}")
         except Exception as e:
-            print(f"[Firebase] Init failed: {e}")
+            print(f"[Firebase] Connection error: {e}")
             self._fb_ref = None
 
     def _fb_write_status(self, status: str):
-        """Write room status to Firebase. No-op if Firebase not configured."""
+        """Write room status to Firebase using the user's security rules alignment."""
         if self._fb_ref is None:
             return
         try:
+            # Floor decoding: room 213 -> floor 2
+            floor = "0"
+            if "-" in ROOM_ID:
+                parts = ROOM_ID.split("-")
+                for p in parts:
+                    if p.isdigit(): floor = p[0]; break
+            elif any(c.isdigit() for c in ROOM_ID):
+                for c in ROOM_ID:
+                    if c.isdigit(): floor = c; break
+
             self._fb_ref.update({
                 "pi_ip":      self.ip_address,
                 "pi_status":  status,
                 "last_seen":  int(time.time()),
-                "label":      ROOM_ID,
-                "floor":      ROOM_ID.split("-")[1][0] if "-" in ROOM_ID else "0",
+                "name":       ROOM_ID,  # Matches user's ".validate": "newData.isString()" rule
+                "floor":      floor,     # Matches user's rule
             })
         except Exception as e:
-            print(f"[Firebase] Write failed ({status}): {e}")
+            print(f"[Firebase] DB Update failed: {e}")
 
     def _firebase_heartbeat(self):
         """Background daemon: refreshes last_seen every FIREBASE_INTERVAL seconds."""
