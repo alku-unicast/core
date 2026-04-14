@@ -1,5 +1,22 @@
 # UniCast Development Progress
 
+### 🗓️ 2026-04-14 — Portable GStreamer Deployment & Multi-Platform Bundling
+
+#### Yapılan Teknik İyileştirmeler (Mühendislik Denetimi)
+
+1. **GStreamer Bundling & Resource Management (Tauri v2)**
+   - **Hedef:** Kullanıcıların bilgisayarına manuel GStreamer kurma zorunluluğunu ortadan kaldırmak ve "admin" izni olmadan çalışabilmek.
+   - **Çözüm (Bundling):** GStreamer kütüphanesi projenin `app/src-tauri/gstreamer` klasörüne dahil edildi ve `tauri.conf.json` içinde `resources` olarak tanımlandı. Bu sayede uygulama paketlendiğinde GStreamer otomatik olarak pakete giriyor.
+   - **Çözüm (AppData & Portable Support):** `path_setup.rs` dosyası Tauri v2 mimarisine uyarlandı. `std::env::current_exe()` yerine `AppHandle.path().resource_dir()` API'si kullanılarak kütüphaneler kurulduğu yer (AppData) veya taşındığı yer (exe yanı) neresi olursa olsun dinamik olarak bulunabiliyor.
+
+2. **Dinamik Çevresel Değişken (Runtime PATH) Yönetimi**
+   - Uygulama başladığında sistemin global `PATH` değişkenini kirletmeden, sadece UniCast süreci için GStreamer'ın `bin/` ve `lib/` dizinleri çalışma anında `PATH`, `GST_PLUGIN_PATH` ve `GST_PLUGIN_SYSTEM_PATH` değişkenlerine ekleniyor. Bu, DLL çakışmalarını (DLL Hell) önleyen en temiz yöntemdir.
+
+3. **Versiyon ve Mimari Doğrulaması**
+   - `msvc_x86_64` (VS 2022) mimarisi standart olarak belirlendi. `detect_encoder` ve `start_stream` komutları `AppHandle` üzerinden kütüphanelere erişecek şekilde refactor edildi.
+
+---
+
 ### 🗓️ 2026-04-13 — Intelligent Quality Modes & UI Parity (Stabilizasyon Fazı 2)
 
 #### Yapılan Teknik İyileştirmeler (Mühendislik Denetimi)

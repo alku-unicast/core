@@ -79,7 +79,7 @@ pub async fn start_stream(
     // Kill any existing stream first
     stop_stream_internal();
 
-    let gst_launch = get_gst_launch();
+    let gst_launch = get_gst_launch(&app);
     let pipeline = build_pipeline(&config);
 
     log::info!("[stream] Starting: {pipeline}");

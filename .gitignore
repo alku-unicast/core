@@ -10,6 +10,9 @@ dist-ssr/
 target/
 app/src-tauri/target/
 app/src-tauri/gen/
+/app/src-tauri/gstreamer
+/app/node_modules
+/receiver/venv
 app/src-tauri/bin/
 
 # Python

@@ -1,38 +1,34 @@
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use tauri::{AppHandle, Manager};
 
-static GST_LAUNCH_PATH: OnceLock<String> = OnceLock::new();
+/// Resolve the gst-launch-1.0 binary path using Tauri's resource resolver.
+/// On Windows, it looks into the bundled 'gstreamer' resource folder.
+pub fn get_gst_launch(app: &AppHandle) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        // Resolve gstreamer folder from resources
+        let gst_root = app.path().resource_dir()
+            .unwrap_or_default()
+            .join("gstreamer");
 
-/// Resolve the gst-launch-1.0 binary path.
-/// On Windows, looks for portable GStreamer bundle in app directory first,
-/// then falls back to PATH.
-pub fn get_gst_launch() -> String {
-    GST_LAUNCH_PATH
-        .get_or_init(|| {
-            #[cfg(target_os = "windows")]
-            {
-                // Check for portable bundle next to the executable
-                let exe_dir = std::env::current_exe()
-                    .ok()
-                    .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-                    .unwrap_or_default();
+        let bin_path = gst_root.join("bin").join("gst-launch-1.0.exe");
 
-                let portable = exe_dir.join("gstreamer").join("bin").join("gst-launch-1.0.exe");
-                if portable.exists() {
-                    // Set GStreamer PATH so plugins load correctly
-                    setup_gstreamer_env(&exe_dir.join("gstreamer"));
-                    return portable.to_string_lossy().to_string();
-                }
+        if bin_path.exists() {
+            // Set GStreamer environment variables for this process
+            setup_gstreamer_env(&gst_root);
+            return bin_path.to_string_lossy().to_string();
+        }
 
-                // Fall back to system PATH
-                "gst-launch-1.0.exe".to_string()
-            }
-            #[cfg(not(target_os = "windows"))]
-            {
-                "gst-launch-1.0".to_string()
-            }
-        })
-        .clone()
+        // Fallback to system PATH if resource is missing
+        log::warn!("[gst] Bundled GStreamer not found at {:?}, falling back to system PATH", bin_path);
+        "gst-launch-1.0.exe".to_string()
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // macOS/Linux handling (assuming system GStreamer or AppImage bundled)
+        "gst-launch-1.0".to_string()
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -41,7 +37,7 @@ fn setup_gstreamer_env(gst_root: &PathBuf) {
     let lib = gst_root.join("lib");
     let plugins = gst_root.join("lib").join("gstreamer-1.0");
 
-    // Prepend GStreamer bin to PATH
+    // Prepend GStreamer bin and lib to PATH for DLL discovery
     let current_path = std::env::var("PATH").unwrap_or_default();
     let new_path = format!(
         "{};{};{}",
@@ -49,7 +45,13 @@ fn setup_gstreamer_env(gst_root: &PathBuf) {
         lib.display(),
         current_path
     );
+    
     std::env::set_var("PATH", &new_path);
-    std::env::set_var("GST_PLUGIN_PATH", plugins.display().to_string());
-    std::env::set_var("GST_PLUGIN_SYSTEM_PATH", plugins.display().to_string());
+    
+    // Set plugin search paths
+    let plugins_str = plugins.display().to_string();
+    std::env::set_var("GST_PLUGIN_PATH", &plugins_str);
+    std::env::set_var("GST_PLUGIN_SYSTEM_PATH", &plugins_str);
+    
+    log::info!("[gst] Environment configured with: {}", bin.display());
 }

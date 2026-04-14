@@ -31,8 +31,8 @@ const ENCODER_CHAIN: &[(&str, &str)] = &[
 
 /// Test each encoder in the fallback chain, return first working one.
 #[tauri::command]
-pub async fn detect_encoder() -> Result<EncoderResult, String> {
-    let gst_launch = get_gst_launch();
+pub async fn detect_encoder(app: tauri::AppHandle) -> Result<EncoderResult, String> {
+    let gst_launch = get_gst_launch(&app);
 
     for (encoder, hw_type) in ENCODER_CHAIN {
         let pipeline = format!(
