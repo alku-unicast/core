@@ -135,8 +135,7 @@ export function StreamingBarApp() {
       try {
         const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
         const win = getCurrentWebviewWindow();
-        const hwnd = await win.hwnd();
-        await invoke("set_bar_capture_exclusion", { hwnd: Number(hwnd) });
+        await invoke("set_bar_capture_exclusion", { label: win.label });
       } catch (e) {
         console.warn("[StreamingBar] Failed to set capture exclusion:", e);
       }
