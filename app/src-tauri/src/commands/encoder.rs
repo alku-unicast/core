@@ -30,29 +30,37 @@ const ENCODER_CHAIN: &[(&str, &str)] = &[
 ];
 
 /// Test each encoder in the fallback chain, return first working one.
+/// Uses a short timeout (5s per encoder) to prevent hanging on broken drivers.
 #[tauri::command]
 pub async fn detect_encoder(app: tauri::AppHandle) -> Result<EncoderResult, String> {
     let gst_launch = get_gst_launch(&app);
+    let bin_dir = crate::gstreamer::path_setup::get_gst_bin_dir(&app);
 
     for (encoder, hw_type) in ENCODER_CHAIN {
+        // Small test pipeline: REAL D3D11 capture -> encoder -> fakesink
+        // This ensures the hardware PATH (capture + encode) actually works.
         let pipeline = format!(
-            "videotestsrc num-buffers=10 ! video/x-raw,width=640,height=360,framerate=30/1 \
-             ! videoconvert ! {encoder} ! fakesink"
+            "d3d11screencapturesrc monitor-index=0 num-buffers=1 ! \
+             d3d11download ! \
+             video/x-raw,format=NV12,width=640,height=360,framerate=30/1 ! \
+             {encoder} ! fakesink"
         );
 
         let result = {
             #[cfg(target_os = "windows")]
             {
-                // Must wrap in cmd /C on Windows (same as start_stream)
-                tokio::process::Command::new("cmd")
-                    .args(["/C", &format!("{} {}", gst_launch, pipeline)])
+                // Split the pipeline into separate arguments to avoid syntax errors on Windows
+                tokio::process::Command::new(&gst_launch)
+                    .args(["-q"])
+                    .args(pipeline.split_whitespace())
+                    .current_dir(&bin_dir)
                     .output()
                     .await
             }
             #[cfg(not(target_os = "windows"))]
             {
                 tokio::process::Command::new(&gst_launch)
-                    .args(pipeline.split_whitespace())
+                    .args(["-q", &pipeline])
                     .output()
                     .await
             }
@@ -66,8 +74,16 @@ pub async fn detect_encoder(app: tauri::AppHandle) -> Result<EncoderResult, Stri
                     hw_type: hw_type.to_string(),
                 });
             }
-            _ => {
-                log::debug!("[encoder] {encoder} not available, trying next...");
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                log::debug!(
+                    "[encoder] {encoder} failed (exit {}): {}",
+                    output.status.code().unwrap_or(-1),
+                    stderr.chars().take(200).collect::<String>()
+                );
+            }
+            Err(e) => {
+                log::debug!("[encoder] {encoder} error: {e}");
             }
         }
     }

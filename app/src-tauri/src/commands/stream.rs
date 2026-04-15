@@ -80,24 +80,44 @@ pub async fn start_stream(
     stop_stream_internal();
 
     let gst_launch = get_gst_launch(&app);
+    let bin_dir = crate::gstreamer::path_setup::get_gst_bin_dir(&app);
     let pipeline = build_pipeline(&config);
 
-    log::info!("[stream] Starting: {pipeline}");
+    println!("[stream] gst_launch path: {}", gst_launch);
+    println!("[stream] bin_dir (CWD): {}", bin_dir);
+    println!("[stream] pipeline: {}", pipeline);
+    println!("[stream] Full command about to run: {} {}", gst_launch, pipeline);
 
-    // WINDOWS İÇİN DÜZELTME: .exe ekini kaldırdık çünkü değişkenle beraber geliyor
+    // WINDOWS: Split the pipeline into separate arguments for gst-launch-1.0. 
+    // This is safer and prevents the 'syntax error' often caused by passing the 
+    // entire pipeline as a single quoted argument.
     #[cfg(target_os = "windows")]
-    let child = std::process::Command::new("cmd")
-        .args(["/C", &format!("{} {}", gst_launch, pipeline)]) // .exe silindi
+    let mut child = std::process::Command::new(&gst_launch)
+        .args(pipeline.split_whitespace())
+        .current_dir(&bin_dir)
         .spawn()
         .map_err(|e| format!("Failed to launch GStreamer (Windows): {e}"))?;
 
     // LINUX / MAC İÇİN (Eski usul devam)
     #[cfg(not(target_os = "windows"))]
-    let child = std::process::Command::new(&gst_launch)
+    let mut child = std::process::Command::new(&gst_launch)
         .args(pipeline.split_whitespace())
         .spawn()
         .map_err(|e| format!("Failed to launch GStreamer: {e}"))?;
-    
+
+    // --- UNIVERSAL FALLBACK LOGIC ---
+    // Wait a tiny bit to see if it crashes immediately (e.g. driver error)
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    if let Ok(Some(status)) = child.try_wait() {
+        if !status.success() && config.encoder_name != "x264enc" {
+            log::warn!("[stream] Hardware encoder failed immediately. Falling back to software (x264enc)...");
+            let mut fallback_config = config.clone();
+            fallback_config.encoder_name = "x264enc".to_string();
+            return Box::pin(start_stream(app, fallback_config)).await;
+        }
+    }
+    // --------------------------------
+
     // PID değerini al (Arayüze göndermek için lazım)
     let pid = child.id();
 

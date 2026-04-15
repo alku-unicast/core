@@ -1,57 +1,170 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
+use std::sync::Once;
+
+static GST_SETUP_ONCE: Once = Once::new();
 
 /// Resolve the gst-launch-1.0 binary path using Tauri's resource resolver.
-/// On Windows, it looks into the bundled 'gstreamer' resource folder.
 pub fn get_gst_launch(app: &AppHandle) -> String {
     #[cfg(target_os = "windows")]
     {
-        // Resolve gstreamer folder from resources
         let gst_root = app.path().resource_dir()
             .unwrap_or_default()
             .join("gstreamer");
 
-        let bin_path = gst_root.join("bin").join("gst-launch-1.0.exe");
+        if gst_root.exists() {
+            GST_SETUP_ONCE.call_once(|| {
+                if let Err(e) = setup_gstreamer_junction(app, &gst_root) {
+                    log::error!("[gst] Junction setup failed: {}", e);
+                }
+            });
 
-        if bin_path.exists() {
-            // Set GStreamer environment variables for this process
-            setup_gstreamer_env(&gst_root);
+            let drive_prefix = get_drive_prefix(&gst_root);
+            let pid = std::process::id();
+            let junction_path = PathBuf::from(format!("{}\\UCGst_{}", drive_prefix, pid));
+            
+            let bin_path = junction_path.join("bin").join("gst-launch-1.0.exe");
+            setup_gstreamer_env(app, &junction_path);
             return bin_path.to_string_lossy().to_string();
         }
 
-        // Fallback to system PATH if resource is missing
-        log::warn!("[gst] Bundled GStreamer not found at {:?}, falling back to system PATH", bin_path);
+        log::warn!("[gst] Bundled GStreamer not found at {:?}, falling back to system PATH", gst_root);
         "gst-launch-1.0.exe".to_string()
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        // macOS/Linux handling (assuming system GStreamer or AppImage bundled)
         "gst-launch-1.0".to_string()
     }
 }
 
 #[cfg(target_os = "windows")]
-fn setup_gstreamer_env(gst_root: &PathBuf) {
+fn get_drive_prefix(path: &Path) -> String {
+    let root_str = path.to_string_lossy();
+    if root_str.starts_with("\\\\?\\") {
+        root_str[4..6].to_string()
+    } else if root_str.len() >= 2 && &root_str[1..2] == ":" {
+        root_str[0..2].to_string()
+    } else {
+        "C:".to_string()
+    }
+}
+
+/// Creates a directory junction at the root of the current drive to avoid spaces in paths.
+/// For example: D:\Okul Belgeleri\... -> D:\UC_Gst
+#[cfg(target_os = "windows")]
+fn setup_gstreamer_junction(_app: &AppHandle, gst_root: &Path) -> Result<PathBuf, String> {
+    let drive_prefix = get_drive_prefix(gst_root);
+    let pid = std::process::id();
+    let junction_path = PathBuf::from(format!("{}\\UCGst_{}", drive_prefix, pid));
+
+    if junction_path.exists() {
+        return Ok(junction_path);
+    }
+
+    let _ = std::process::Command::new("cmd")
+        .args(["/C", "rmdir", "/S", "/Q", &junction_path.to_string_lossy()])
+        .output();
+
+    let mut clean_target = gst_root.to_string_lossy().to_string();
+    if clean_target.starts_with("\\\\?\\") {
+        clean_target = clean_target[4..].to_string();
+    }
+
+    log::info!("[gst] Mapping GStreamer runtime to: {}", junction_path.display());
+    
+    let output = std::process::Command::new("cmd")
+        .args(["/C", "mklink", "/J", &junction_path.to_string_lossy(), &clean_target])
+        .output()
+        .map_err(|e| format!("Failed to execute mklink command: {}", e))?;
+
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        if !junction_path.exists() {
+            return Err(format!("mklink /J failed: {}", err.trim()));
+        }
+    }
+
+    Ok(junction_path)
+}
+
+#[cfg(target_os = "windows")]
+fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
     let bin = gst_root.join("bin");
     let lib = gst_root.join("lib");
     let plugins = gst_root.join("lib").join("gstreamer-1.0");
+    let scanner = gst_root.join("libexec").join("gstreamer-1.0").join("gst-plugin-scanner.exe");
 
-    // Prepend GStreamer bin and lib to PATH for DLL discovery
+    let bin_str = bin.to_string_lossy().to_string();
+    let lib_str = lib.to_string_lossy().to_string();
+    let plugins_str = plugins.to_string_lossy().to_string();
+    let scanner_str = scanner.to_string_lossy().to_string();
+
     let current_path = std::env::var("PATH").unwrap_or_default();
-    let new_path = format!(
-        "{};{};{}",
-        bin.display(),
-        lib.display(),
-        current_path
-    );
+    if !current_path.contains(&bin_str) {
+        let new_path = format!(
+            "{};{};{}",
+            bin_str,
+            lib_str,
+            current_path
+        );
+        std::env::set_var("PATH", &new_path);
+    }
     
-    std::env::set_var("PATH", &new_path);
-    
-    // Set plugin search paths
-    let plugins_str = plugins.display().to_string();
     std::env::set_var("GST_PLUGIN_PATH", &plugins_str);
     std::env::set_var("GST_PLUGIN_SYSTEM_PATH", &plugins_str);
     
-    log::info!("[gst] Environment configured with: {}", bin.display());
+    if scanner.exists() {
+        std::env::set_var("GST_PLUGIN_SCANNER", &scanner_str);
+    }
+
+    let registry_path = app
+        .path()
+        .app_local_data_dir()
+        .unwrap_or_default()
+        .join("gstreamer_registry.bin");
+
+    if registry_path.exists() {
+        if let Err(e) = std::fs::remove_file(&registry_path) {
+            log::warn!("[gst] Could not clear registry: {}", e);
+        } else {
+            log::info!("[gst] Registry cleared for fresh scan: {:?}", registry_path);
+        }
+    }
+
+    if let Some(path_str) = registry_path.to_str() {
+        std::env::set_var("GST_REGISTRY", path_str);
+    }
+    
+    // 5. Add debug info
+    std::env::set_var("GST_DEBUG", "2");
+    
+    println!("[gst] Environment pointing to junction: {}", bin_str);
+}
+
+/// Helper to get the bin dir for setting CWD during execution
+pub fn get_gst_bin_dir(app: &AppHandle) -> String {
+    let gst_root = app.path().resource_dir()
+        .unwrap_or_default()
+        .join("gstreamer");
+        
+    #[cfg(target_os = "windows")]
+    {
+        // Determine the junction path drive letter
+        let root_str = gst_root.to_string_lossy();
+        let drive_prefix = if root_str.starts_with("\\\\?\\") {
+            &root_str[4..6]
+        } else if root_str.len() >= 2 && &root_str[1..2] == ":" {
+            &root_str[0..2]
+        } else {
+            "D:"
+        };
+        let pid = std::process::id();
+        format!("{}\\UCGst_{}\\bin", drive_prefix, pid)
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        gst_root.join("bin").to_string_lossy().to_string()
+    }
 }

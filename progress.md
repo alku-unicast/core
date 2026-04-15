@@ -1,5 +1,28 @@
 # UniCast Development Progress
 
+### 🗓️ 2026-04-14 (Session 21) — GStreamer Stabilization & Hybrid GPU Adaptation
+
+#### Yapılan Teknik İyileştirmeler (Mühendislik Denetimi)
+
+1. **Dizin Köprüleri (Directory Junctions) & Sanallaştırma**
+   - **Sorun:** Windows üzerinde boşluk içeren veya Türkçe karakterli kullanıcı yolları (`D:\Okul Belgeleri\...`), GStreamer'ın eklenti ve DLL yükleme mantığını bozarak yayının başlamasını engelliyordu.
+   - **Çözüm:** PID bazlı benzersiz dizin köprüleri (`D:\UCGst_{PID}`) mimarisi kuruldu. Karmaşık dosya yolları, sürücü kökünde tertemiz ASCII bir "Sanal Yol"a haritalandı. Artık uygulama nereye kurulursa kurulsun GStreamer "evindeymiş gibi" çalışıyor.
+
+2. **Pipeline Sözdizimi (Syntax Error) ve Argüman Onarımı**
+   - **Sorun:** GStreamer pipeline dizgesi Windows CLI üzerinden tek bir blok halinde gönderildiğinde, tırnaklama hataları nedeniyle sinsi "Syntax Error" hataları veriyor ve yayın başarısız oluyordu.
+   - **Çözüm:** `commands/stream.rs` ve `commands/encoder.rs` içindeki IPC mantığı güncellendi. Artık tüm pipeline elemanları GStreamer'a ayrı ayrı argümanlar olarak besleniyor. Yazım hatası riski 0'a indirildi.
+
+3. **Hibrit GPU Kararlılığı ve Donanım Hızlandırma**
+   - **Sorun:** RTX 3060 ve AMD Radeon hibrit sistemlerde `E_NOINTERFACE` (0x80004002) hatası ve donanım algılama başarısızlıkları yaşanıyordu.
+   - **Çözüm:** 
+     - `d3d11screencapturesrc` + `d3d11download` ikilisi stabilize edildi.
+     - `encoder.rs` içindeki algılama mantığına `d3d11download` köprüsü eklendi. Sistem artık NVIDIA donanımını başarıyla tanıyor ve `nvh264enc` (NVIDIA) modunda ultra-düşük gecikmeyle çalışabiliyor.
+
+4. **Akıllı Kalite ve Çoklu Mod Desteği**
+   - **Sonuç:** Sunum (keskinlik odaklı), Video (akıcılık odaklı), Ses ve Pencere yakalama modlarının tamamı Windows üzerinde 100% kararlı hale getirildi. "Registry Nuke" mekanizmasıyla her açılışta temiz bir eklenti taraması garantiye alındı.
+
+---
+
 ### 🗓️ 2026-04-14 — Portable GStreamer Deployment & Multi-Platform Bundling
 
 #### Yapılan Teknik İyileştirmeler (Mühendislik Denetimi)

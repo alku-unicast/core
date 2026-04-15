@@ -1,12 +1,31 @@
 use crate::commands::stream::StreamConfig;
 
+// ── Encoder-specific GStreamer parameters ─────────────────────────────────
+// Each hardware encoder has different property names for zero-latency settings.
+fn encoder_params(encoder: &str) -> &'static str {
+    match encoder {
+        "x264enc" => "tune=zerolatency speed-preset=ultrafast key-int-max=15 intra-refresh=true",
+        "nvh264enc" => "zerolatency=true preset=low-latency-hq rc-mode=cbr gop-size=15",
+        "qsvh264enc" => "target-usage=balanced rate-control=cbr",
+        "amfh264enc" => "rate-control=cbr target-usage=high-quality gop-size=15",
+        "vtenc_h264" => "real-time=true",
+        "vaapih264enc" => "rate-control=cbr",
+        _ => "",
+    }
+}
+
 pub fn build_pipeline(config: &StreamConfig) -> String {
     let (width, height) = parse_resolution(&config.resolution);
     let ip = &config.target_ip;
     
-    // ── Quality Parameters ───────────────────────────────────────────────────
-    let fps = config.fps;
-    let bitrate = config.bitrate;
+    // Adaptive quality settings based on Mode
+    // Video: High FPS (30/60), High Bitrate (6Mbps), low latency
+    // Presentation: Medium FPS (20), Medium Bitrate (3Mbps), high clarity
+    let (fps, bitrate) = match config.quality_mode.as_str() {
+        "video" => (u32::max(config.fps, 30), u32::max(config.bitrate, 5000)),
+        "presentation" => (20, 3000),
+        _ => (config.fps, config.bitrate),
+    };
 
     let encoder = if config.encoder_name.is_empty() {
         "x264enc"
@@ -14,41 +33,44 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
         &config.encoder_name
     };
 
+    println!("[gst] Building pipeline mode={} encoder={} target={}:{} fps={} bitrate={}", 
+             config.quality_mode, encoder, ip, 5000, fps, bitrate);
+
     // ── Video source: platform + mode aware ──────────────────────────────────
     let video_src = build_video_src(config);
-
-    let encoder_params = match encoder {
-        "x264enc" => "tune=zerolatency speed-preset=superfast key-int-max=15 intra-refresh=true",
-        "nvh264enc" => "zerolatency=true gop-size=15",
-        _ => "",
-    };
 
     #[cfg(target_os = "windows")]
     let video_part = format!(
         "{video_src} ! queue ! d3d11download ! videoconvert ! videoscale ! \
          video/x-raw,format=NV12,width={width},height={height},framerate={fps}/1 ! queue ! \
-         {encoder} bitrate={bitrate} {encoder_params} ! \
-         rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000"
+         {encoder} bitrate={bitrate} {} ! \
+         rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000",
+        encoder_params(encoder)
     );
 
     #[cfg(not(target_os = "windows"))]
     let video_part = format!(
         "{video_src} ! queue ! videoconvert ! videoscale ! videoconvert ! \
          video/x-raw,format=NV12,width={width},height={height},framerate={fps}/1 ! queue ! \
-         {encoder} bitrate={bitrate} {encoder_params} ! \
-         rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000"
+         {encoder} bitrate={bitrate} {} ! \
+         rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000",
+        encoder_params(encoder)
     );
 
-    // ── Audio source: platform aware (P9 — Mac has no WASAPI) ────────────────
+    // ── Audio source: platform aware ──────────────────────────────────────────
     let audio_part = build_audio_part(config, ip);
 
-    let full_pipeline = format!("{video_part}{audio_part}");
+    // Combine parts with a space to ensure independent pipeline branches are correctly parsed
+    let full_pipeline = format!("{} {}", video_part.trim(), audio_part.trim());
 
-    // Normalise whitespace (collapse double spaces from format! fragments)
-    full_pipeline
+    let cleaned_pipeline = full_pipeline
         .split_whitespace()
         .collect::<Vec<&str>>()
-        .join(" ")
+        .join(" ");
+
+    println!("[gst] Final Pipeline: {}", cleaned_pipeline);
+
+    cleaned_pipeline
 }
 
 // ── Video source selection ────────────────────────────────────────────────────
@@ -56,19 +78,16 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
 fn build_video_src(config: &StreamConfig) -> String {
     #[cfg(target_os = "windows")]
     {
-        match config.stream_mode.as_str() {
+                match config.stream_mode.as_str() {
             "window" => {
-                // C3: Window capture — pass HWND from get_open_windows
                 if let Some(hwnd) = config.window_id {
                     format!("d3d11screencapturesrc window-handle={hwnd} show-cursor=false")
                 } else {
-                    // Fallback: full primary monitor
                     let idx = config.monitor_index.unwrap_or(0);
                     format!("d3d11screencapturesrc monitor-index={idx} show-cursor=false")
                 }
             }
             _ => {
-                // fullscreen
                 let idx = config.monitor_index.unwrap_or(0);
                 format!("d3d11screencapturesrc monitor-index={idx} show-cursor=false")
             }
@@ -113,9 +132,17 @@ fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
 
     #[cfg(target_os = "windows")]
     {
+        let device_arg = config
+            .audio_device_id
+            .as_ref()
+            .filter(|id| !id.is_empty())
+            .map(|id| format!(" device={}", id))
+            .unwrap_or_default();
+
         format!(
-            " wasapi2src loopback=true ! queue ! audioconvert ! audioresample ! \
-             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={ip} port=5002"
+            " wasapi2src loopback=true{} ! queue ! audioconvert ! audioresample ! \
+             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={} port=5002",
+            device_arg, ip
         )
     }
 

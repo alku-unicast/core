@@ -40,6 +40,7 @@ windows = { version = "0.57", features = [
   "Win32_System_Com_StructuredStorage",
   "Win32_UI_Shell_PropertiesSystem",
   "Win32_UI_Shell",
+  "Win32_Storage_FileSystem",
 ] }
 
 [profile.release]
