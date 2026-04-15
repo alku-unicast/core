@@ -1,5 +1,91 @@
 # UniCast Development Progress
 
+### 🗓️ 2026-04-15 (Session 22) — Cross-Platform Bağımsızlık Analizi
+
+#### Yapılan Analiz (Claude)
+
+1. **VCRUNTIME140.dll Hatası — Tespit Edildi**
+   - **Sorun:** Fresh Windows 10'da "VCRUNTIME140.dll bulunamadı" hatası.
+   - **Sebep:** GStreamer DLL'i değil — Visual C++ Redistributable eksik.
+   - **Çözüm:** Tauri bundle'a VC++ Redistributable eklenmeli (vc_redist.x64.exe).
+   - **Kaynak:** ui_issues.md satır 67-68.
+
+2. **Kod İncelemesi — path_setup.rs, encoder.rs, pipeline.rs, stream.rs**
+   - Junction approach doğru çalışıyor (PID bazlı `D:\UCGst_{PID}`)
+   - `detect_encoder` artık `d3d11screencapturesrc` kullanıyor (CLAUDE.md güncellendi)
+   - Plugin scanner (`libexec/gstreamer-1.0/gst-plugin-scanner.exe`) eksik olabilir
+
+3. **D3D11 Pencere Modu Hatası — Detaylandı**
+   - `E_NOINTERFACE (0x80004002)` hatası pencere modunda alınıyor
+   - `d3d11download` ile GPU→RAM köprüsü var ama tam çözüm değil
+   - Hata log'ları: ui_issues.md satır 3-61
+
+4. **Thinning Planı — Önce Stabilite Sonra Optimizasyon**
+   - 259 plugin'den 20-30 kullanılıyor (~80MB kazanılabilir)
+   - **Dikkat:** Thinning yapmadan önce cross-platform stabilite sağlanmalı
+   - Eksik DLL tespiti daha kritik (VCRUNTIME140 örneği)
+
+#### Sonraki Adımlar
+- [ ] Fresh Windows 10'a erişince tam hata log'u al
+- [ ] VC++ Redistributable'ı bundle'a ekle
+- [ ] Plugin scanner'ın varlığını kontrol et
+- [ ] Thinning planı uygula
+
+---
+
+### 🗓️ 2026-04-15 (Session 22 - Phase 2) — Cross-Platform Mimari Kararları
+
+#### Kilit Kararlar
+
+1. **Mevcut Build MinGW-w64 (Windows Özel)**
+   - Görüldü: `libgcc_s_seh-1.dll`, `libstdc++-6.dll` → MinGW runtime
+   - Gemini Flash'ın "MSVC hepsinde çalışır" önerisi yanlış
+   - MSVC de Windows'a özel
+
+2. **CI/CD Matrix Build Kararı (KESİN)**
+   - **Ayrı binary:** Her platform için ayrı CI runner
+   - Windows → `unicast-windows.exe`
+   - Linux → `unicast-linux`
+   - macOS → `unicast-macos.app`
+   - `#[cfg(target_os)]` compile-time tespiti — path_setup.rs aynı kalır
+   - Native GStreamer gerekli (D3D11/VA-API/VideoToolbox)
+
+3. **Yeni Klasör Yapısı**
+   ```
+   app/src-tauri/gstreamer/
+   ├── windows/          ← MinGW-w64 (mevcut)
+   ├── linux/            ← Linux glibc (eklenecek)
+   └── macos/            ← macOS Mach-O (eklenecek)
+   ```
+
+4. **Platform Bazlı Element Seçimi**
+   - Windows: `d3d11screencapturesrc` + `wasapi2src`
+   - Linux: `pipewiresrc` (Wayland) / `ximagesrc` (X11) + `pulsesrc`
+   - macOS: `avfvideosrc` + `avfaudiosrc`
+
+5. **Thinning Ertelenebilir**
+   - Cross-platform stable olunca uygulanacak
+   - **Önce çalışsın, sonra optimizasyon**
+
+#### Yapılacaklar (Priority)
+- [ ] GStreamer resmi builds indir (windows/linux/macos)
+- [ ] `path_setup.rs`'yi platform tespitiyle güncelle
+- [ ] CI/CD workflow matrix build ekle
+- [ ] Linux'ta `pipewiresrc` test et
+- [ ] macOS'ta audio loopback test et (BlackHole gerekebilir)
+
+---
+
+### 📋 DETAYLI REHBER OLUŞTURULDU
+**Dosya:** `Roadmap/cross_platform_setup_guide.md`
+- GStreamer indirme linkleri (windows/linux/macos)
+- Klasörlere kopyalama adımları
+- 7-Zip ile .tar.xz açma
+- path_setup.rs notları
+- Sorun giderme
+
+---
+
 ### 🗓️ 2026-04-14 (Session 21) — GStreamer Stabilization & Hybrid GPU Adaptation
 
 #### Yapılan Teknik İyileştirmeler (Mühendislik Denetimi)
