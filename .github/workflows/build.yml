@@ -112,4 +112,4 @@ jobs:
           releaseBody: 'UniCast Cross-Platform Release for ${{ matrix.os }} (${{ matrix.arch }})'
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.arch == 'aarch64' ? '--target aarch64-apple-darwin' : (matrix.os == 'macos' ? '--target x86_64-apple-darwin' : '') }}
+          args: ${{ matrix.arch == 'aarch64' && '--target aarch64-apple-darwin' || (matrix.os == 'macos' && '--target x86_64-apple-darwin' || '') }}
