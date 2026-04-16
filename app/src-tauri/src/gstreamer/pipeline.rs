@@ -102,15 +102,33 @@ fn build_video_src(config: &StreamConfig) -> String {
 
     #[cfg(target_os = "linux")]
     {
+        let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
+        
         match config.stream_mode.as_str() {
             "window" => {
                 if let Some(wid) = config.window_id {
-                    format!("ximagesrc xid={wid} use-damage=false")
+                    if is_wayland {
+                        // Wayland window capture usually requires pipewiresrc + portal
+                        log::warn!("[gst] Window capture on Wayland is experimental; using pipewiresrc");
+                        format!("pipewiresrc path={} ! videoconvert", wid)
+                    } else {
+                        format!("ximagesrc xid={wid} use-damage=false")
+                    }
+                } else {
+                    if is_wayland {
+                        "pipewiresrc ! videoconvert".to_string()
+                    } else {
+                        "ximagesrc use-damage=false".to_string()
+                    }
+                }
+            }
+            _ => {
+                if is_wayland {
+                    "pipewiresrc ! videoconvert".to_string()
                 } else {
                     "ximagesrc use-damage=false".to_string()
                 }
             }
-            _ => "ximagesrc use-damage=false".to_string(),
         }
     }
 }
@@ -148,6 +166,18 @@ fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
 
     #[cfg(target_os = "linux")]
     {
+        // Check for PulseAudio or Pipewire-Pulse
+        let pulse_running = std::process::Command::new("pactl")
+            .arg("info")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+
+        if !pulse_running {
+            log::warn!("[pipeline] PulseAudio source not available, streaming video-only");
+            return String::new();
+        }
+
         format!(
             " pulsesrc device=\"@DEFAULT_MONITOR@\" ! queue ! audioconvert ! audioresample ! \
              opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={ip} port=5002"

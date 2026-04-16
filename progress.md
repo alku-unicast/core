@@ -1,5 +1,34 @@
 # UniCast Development Progress
 
+### 🗓️ 2026-04-16 (Session 23) — Cross-Platform Mimari & Mühendislik Denetimi
+
+#### 📊 Mimari Karar Kaydı (ADR)
+Bugünkü oturumda sistemin taşınabilirliği ve çapraz platform uyumluluğu üzerine derinlemesine bir mühendislik denetimi yapıldı.
+
+1. **GStreamer Klasör Yapısı (KESİN)**
+   - `app/src-tauri/gstreamer/` altında `windows`, `linux`, `macos/intel` ve `macos/silicon` ayrımı yapılacak.
+   - Her platform kendi binary bağımlılıklarını izole bir şekilde taşıyacak.
+
+2. **Windows DLL Bağımlılık Çözümü**
+   - **Teşhis:** MinGW build kullanılmasına rağmen yaşanan `VCRUNTIME140.dll` hatasının, MSVC ile derlenmiş olası NVIDIA/CUDA eklentilerinden kaynaklandığı saptandı.
+   - **Karar:** `vc_redist` kurmak yerine, minimal `VCRUNTIME140.dll` ve `MSVCP140.dll` dosyaları `bin/` klasörüne kopyalanarak "Side-by-Side" yükleme yapılacak.
+
+3. **Linux (Ubuntu 20.04) Stratejisi**
+   - **Risk:** GLIBC 2.31 sınırlaması.
+   - **Karar:** Ubuntu 20.04 tabanlı veya uyumlu kütüphaneler toplanacak. `WAYLAND_DISPLAY` kontrolü ile `pipewiresrc` (Wayland) veya `ximagesrc` (X11) otomatik seçilecek.
+   - **Fail-Safe:** Ses kaynağı bulunamazsa sessizce geçiştirilmeyecek, loglanacak ve video-only stream olarak devam edilecek.
+
+4. **macOS Faz 1**
+   - **Karar:** Sistem ses yakalama (loopback) karmaşıklığı nedeniyle şimdilik ses devre dışı bırakıldı. Intel ve Silicon mimarileri için ayrı binary'ler üretilecek.
+
+#### Yapılanlar
+- [x] Detaylı Çapraz Platform Uygulama Planı oluşturuldu.
+- [x] Mühendislik Denetimi (Audit) tamamlandı, riskler (GLIBC, Notarization) belirlendi.
+- [x] Görev listesi (`task.md`) hazırlandı.
+
+---
+
+
 ### 🗓️ 2026-04-15 (Session 22) — Cross-Platform Bağımsızlık Analizi
 
 #### Yapılan Analiz (Claude)
