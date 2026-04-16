@@ -17,19 +17,23 @@ jobs:
           - platform: 'windows-latest'
             os: 'windows'
             arch: 'x86_64'
-            args: ''
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.12/msvc/gstreamer-1.0-msvc-x86_64-1.24.12.msi'
+            gst_folder: 'windows'
           - platform: 'ubuntu-20.04'
             os: 'linux'
             arch: 'x86_64'
-            args: ''
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/linux/1.24.12/gstreamer-1.0-linux-x86_64-1.24.12.tar.xz'
+            gst_folder: 'linux'
           - platform: 'macos-13'
             os: 'macos'
             arch: 'x86_64'
-            args: '--target x86_64-apple-darwin'
-          - platform: 'macos-latest' # macOS 14 is Apple Silicon
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.12/gstreamer-1.0-1.24.12-macos-universal.pkg'
+            gst_folder: 'macos/intel'
+          - platform: 'macos-latest'
             os: 'macos'
             arch: 'aarch64'
-            args: '--target aarch64-apple-darwin'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.12/gstreamer-1.0-1.24.12-macos-universal.pkg'
+            gst_folder: 'macos/silicon'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -45,18 +49,53 @@ jobs:
         with:
           targets: ${{ matrix.arch == 'aarch64' && 'aarch64-apple-darwin' || (matrix.arch == 'x86_64' && matrix.os == 'macos' && 'x86_64-apple-darwin' || '') }}
 
-      - name: Install dependencies (Ubuntu only)
+      - name: Cache GStreamer
+        id: cache-gst
+        uses: actions/cache@v4
+        with:
+          path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.12-v1
+
+      - name: Download & Extract GStreamer (Linux)
+        if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'linux'
+        run: |
+          mkdir -p app/src-tauri/gstreamer/linux
+          wget ${{ matrix.gst_url }} -O gst.tar.xz
+          tar -xf gst.tar.xz -C app/src-tauri/gstreamer/linux --strip-components=1 || tar -xf gst.tar.xz -C app/src-tauri/gstreamer/linux
+
+      - name: Download & Extract GStreamer (Windows)
+        if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
+        run: |
+          curl -L ${{ matrix.gst_url }} -o gst.msi
+          msiexec /a gst.msi /qn TARGETDIR=$(pwd)\gst_extract
+          mkdir -p app/src-tauri/gstreamer/windows
+          # Extract GStreamer files (path might vary slightly depending on MSI version)
+          cp -r gst_extract/gstreamer/* app/src-tauri/gstreamer/windows/ || cp -r gst_extract/PFiles/GStreamer/* app/src-tauri/gstreamer/windows/ || true
+          # Source VC++ Runtime DLLs directly from the System (Reliable in GitHub Runners)
+          cp C:/Windows/System32/vcruntime140.dll app/src-tauri/gstreamer/windows/bin/
+          cp C:/Windows/System32/msvcp140.dll app/src-tauri/gstreamer/windows/bin/
+
+      - name: Download & Extract GStreamer (macOS)
+        if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'macos'
+        run: |
+          curl -L ${{ matrix.gst_url }} -o gst.pkg
+          pkgutil --expand-full gst.pkg ./gst_expand
+          mkdir -p app/src-tauri/gstreamer/${{ matrix.gst_folder }}
+          # Robust location of the core framework for shell compatibility
+          FOUND_DIR=$(find ./gst_expand -type d -path "*/GStreamer.framework/Versions/1.0" 2>/dev/null | head -1)
+          if [ -n "$FOUND_DIR" ]; then
+            cp -r "$FOUND_DIR"/* app/src-tauri/gstreamer/${{ matrix.gst_folder }}/
+          else
+            echo "ERROR: Mac GStreamer Library path not found!"
+            exit 1
+          fi
+
+      - name: Install system dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-20.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
-          # Install GStreamer for development headers
           sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-
-      - name: Install dependencies (macOS only)
-        if: matrix.os == 'macos'
-        run: |
-          # No extra OS deps needed for Tauri core on macOS
 
       - name: Frontend Build
         run: |
@@ -68,19 +107,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__ # tauri-action automatically replaces this
+          tagName: v__VERSION__
           releaseName: 'UniCast v__VERSION__'
           releaseBody: 'UniCast Cross-Platform Release for ${{ matrix.os }} (${{ matrix.arch }})'
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.args }}
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: unicast-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            app/src-tauri/target/release/bundle/msi/*.msi
-            app/src-tauri/target/release/bundle/dmg/*.dmg
-            app/src-tauri/target/release/bundle/appimage/*.AppImage
-            app/src-tauri/target/release/bundle/deb/*.deb
+          args: ${{ matrix.arch == 'aarch64' ? '--target aarch64-apple-darwin' : (matrix.os == 'macos' ? '--target x86_64-apple-darwin' : '') }}

@@ -105,12 +105,43 @@ fn setup_gstreamer_junction(_app: &AppHandle, gst_root: &Path) -> Result<PathBuf
 }
 
 fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
-    let bin = gst_root.join("bin");
-    let lib = gst_root.join("lib");
-    let plugins = gst_root.join("lib").join("gstreamer-1.0");
+    // Smart root detection: some extractions (like dpkg -x) nest everything under "usr/"
+    let actual_root = if gst_root.join("usr").exists() {
+        gst_root.join("usr")
+    } else {
+        gst_root.to_path_buf()
+    };
+
+    let bin = actual_root.join("bin");
+    
+    // Smart lib detection: Official tar.xz uses "lib", Debian uses "lib/x86_64-linux-gnu"
+    let mut lib = actual_root.join("lib");
+    let mut plugins = lib.join("gstreamer-1.0");
+
+    if !plugins.exists() {
+        // Check for common multiarch paths used in Ubuntu/Debian
+        let possible_lib = if cfg!(target_arch = "x86_64") && cfg!(target_os = "linux") {
+            actual_root.join("lib").join("x86_64-linux-gnu")
+        } else if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+            actual_root.join("lib").join("aarch64-linux-gnu")
+        } else {
+            actual_root.join("lib")
+        };
+
+        if possible_lib.join("gstreamer-1.0").exists() {
+            lib = possible_lib;
+            plugins = lib.join("gstreamer-1.0");
+            log::info!("[gst] Detected multiarch lib path: {:?}", lib);
+        }
+    }
 
     let scanner_name = if cfg!(target_os = "windows") { "gst-plugin-scanner.exe" } else { "gst-plugin-scanner" };
-    let scanner = gst_root.join("libexec").join("gstreamer-1.0").join(scanner_name);
+    
+    // Scanner can be in libexec or in the same bin dir depending on build
+    let mut scanner = actual_root.join("libexec").join("gstreamer-1.0").join(scanner_name);
+    if !scanner.exists() {
+        scanner = bin.join(scanner_name);
+    }
 
     let bin_str = bin.to_string_lossy().to_string();
     let lib_str = lib.to_string_lossy().to_string();
