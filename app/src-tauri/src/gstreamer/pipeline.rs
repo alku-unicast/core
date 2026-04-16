@@ -108,9 +108,9 @@ fn build_video_src(config: &StreamConfig) -> String {
             "window" => {
                 if let Some(wid) = config.window_id {
                     if is_wayland {
-                        // Wayland window capture usually requires pipewiresrc + portal
-                        log::warn!("[gst] Window capture on Wayland is experimental; using pipewiresrc");
-                        format!("pipewiresrc path={} ! videoconvert", wid)
+                        // Wayland window isolation prevents simple XID capture. Fallback to full screen picker.
+                        log::warn!("[gst] Wayland window capture is experimental; falling back to full-screen (portal choice)");
+                        "pipewiresrc ! videoconvert".to_string()
                     } else {
                         format!("ximagesrc xid={wid} use-damage=false")
                     }
