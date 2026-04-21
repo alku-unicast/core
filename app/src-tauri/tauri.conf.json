@@ -56,10 +56,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "gstreamer/windows/**/*",
-      "gstreamer/macos/**/*",
-      "gstreamer/linux/**/*"
-    ]
+    "resources": []
   }
 }

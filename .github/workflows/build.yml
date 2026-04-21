@@ -77,19 +77,21 @@ jobs:
           curl -L ${{ matrix.gst_url }} -o gst.msi
           mkdir -p gst_extract
           
-          # Use 7z to fully extract MSI contents (msiexec /a is unreliable for binaries)
-          7z x gst.msi -ogst_extract
+          # Use msiexec /a for administrative extraction (properly unpacks CAB files into bin/lib)
+          msiexec /a gst.msi /qn TARGETDIR="$(pwd)\gst_extract"
           
           mkdir -p app/src-tauri/gstreamer/windows
           
           # Smart Search for the extracted GStreamer folder
           $extractedRoot = "$pwd\gst_extract"
           $found = $false
+
+          # Known paths: msiexec /a creates gstreamer\1.0\msvc_x86_64\ relative to TARGETDIR
           $possiblePaths = @(
+            "$extractedRoot\gstreamer\1.0\msvc_x86_64",
             "$extractedRoot\gstreamer",
             "$extractedRoot\PFiles\GStreamer",
-            "$extractedRoot\gstreamer-1.0",
-            (Get-ChildItem -Path $extractedRoot -Directory -Filter "gstreamer*" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+            "$extractedRoot\gstreamer-1.0"
           )
 
           foreach ($src in $possiblePaths) {
@@ -101,7 +103,18 @@ jobs:
             }
           }
 
-          if (!$found) { 
+          # Fallback: find gst-launch-1.0.exe anywhere in extraction tree
+          if (!$found) {
+            $gstLaunch = Get-ChildItem -Path $extractedRoot -Filter "gst-launch-1.0.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($gstLaunch) {
+              $src = $gstLaunch.Directory.Parent.FullName
+              Write-Host "Recursive search found GStreamer root: $src"
+              Copy-Item -Path "$src\*" -Destination "app/src-tauri/gstreamer/windows/" -Recurse -Force
+              $found = $true
+            }
+          }
+
+          if (!$found) {
               Write-Error "Could not find GStreamer bin directory in extraction"
               exit 1
           }
@@ -170,7 +183,9 @@ jobs:
           releaseBody: 'UniCast Cross-Platform Release for ${{ matrix.os }} (${{ matrix.arch }})'
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.arch == 'aarch64' && '--target aarch64-apple-darwin' || (matrix.os == 'macos' && '--target x86_64-apple-darwin' || '') }}
+          args: >
+            ${{ (matrix.os == 'macos' && (matrix.arch == 'aarch64' && '--target aarch64-apple-darwin' || '--target x86_64-apple-darwin') || '') }}
+            --config "{\"bundle\":{\"resources\":[\"gstreamer/${{ matrix.gst_folder }}/**/*\"]}}"
 
       - name: Build Linux AppImage with GStreamer
         if: matrix.os == 'linux'
