@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sI \"https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/gstreamer-1.0-msvc-x86_64-1.24.13.msi\")",
+      "Bash(curl -sI \"https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-macos-universal.pkg\")",
+      "Bash(curl -sI \"https://gstreamer.freedesktop.org/data/pkg/linux/1.24.13/gstreamer-1.0-linux-x86_64-1.24.13.tar.xz\")",
+      "Bash(curl -sL \"https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/\")",
+      "Bash(curl -sL \"https://gstreamer.freedesktop.org/data/pkg/macos/\")",
+      "Bash(curl -sL \"https://gstreamer.freedesktop.org/data/pkg/linux/\")",
+      "Bash(curl -sL \"https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/\")",
+      "Bash(curl -sL \"https://gstreamer.freedesktop.org/data/pkg/linux/1.24.13/\")",
+      "Bash(curl -sL \"https://gstreamer.freedesktop.org/data/pkg/\")",
+      "Bash(curl -sL \"https://gstreamer.freedesktop.org/download/\")",
+      "WebFetch(domain:gstreamer.freedesktop.org)",
+      "WebSearch"
+    ]
+  }
+}

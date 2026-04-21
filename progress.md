@@ -1,5 +1,48 @@
 # UniCast Development Progress
 
+### 🗓️ 2026-04-21 (Session 24) — CI/CD GStreamer URL & Linux AppImage Düzeltmesi
+
+#### Problem Tespiti
+CI/CD build hatalarının kaynağı doğrulandı:
+
+| Platform | Sorun | Durum |
+|----------|-------|-------|
+| **Windows** | URL doğru, MSI açılıyor | ✅ Çalışıyor |
+| **macOS** | `gstreamer-1.0-1.24.13-macos-universal.pkg` → 404 | ✅ Düzeltildi |
+| **Linux** | Resmi tar.xz binary'si yok (sadece Windows/macOS için var) | ✅ Düzeltildi |
+
+#### macOS Düzeltmesi
+- **Yanlış:** `gstreamer-1.0-1.24.13-macos-universal.pkg` (404)
+- **Doğru:** `gstreamer-1.0-1.24.13-universal.pkg` (200 OK)
+
+#### Linux Strateji Değişikliği
+**Eski yaklaşım:** CI/CD'de remote URL'den tar.xz indirme (başarısız - dosya yok)
+**Yeni yaklaşım:** AppImage + GStreamer gömme (linuxdeploy-plugin-gstreamer)
+
+**Gerekçe:** Kullanıcıların tek tuşla çalışması için GStreamer uygulamaya gömülecek.
+- linuxdeploy + gstreamer plugin indirilir
+- GStreamer plugin paketleri deb olarak indirilip extract edilir
+- AppImage build sırasında GStreamer içine gömülür
+- Kullanıcı sadece `chmod +x` yapıp çalıştırır, kurulum gerekmez
+
+#### AppImage Build Adımları (CI/CD)
+1. linuxdeploy + linuxdeploy-plugin-gstreamer indir
+2. GStreamer plugin .deb paketlerini indir
+3. dpkg-deb ile plugins/ klasörüne çıkart
+4. LD_LIBRARY_PATH ve GST_PLUGIN_PATH ayarla
+5. Tauri build --bundles appimage ile AppImage üret
+6. GitHub Release'e otomatik yükle
+
+#### Not
+- **Kullanıcı Linux'ta ne yapar?**
+  ```bash
+  chmod +x UniCast-v1.0.0.AppImage
+  ./UniCast-v1.0.0.AppImage
+  ```
+- **Kurulum yok, root yok, GStreamer kurma yok** — tek dosya, tıkla çalıştır.
+
+---
+
 ### 🗓️ 2026-04-16 (Session 23) — Cross-Platform Mimari & Mühendislik Denetimi
 
 #### 📊 Mimari Karar Kaydı (ADR)

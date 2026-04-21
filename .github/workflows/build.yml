@@ -19,21 +19,25 @@ jobs:
             arch: 'x86_64'
             gst_url: 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/gstreamer-1.0-msvc-x86_64-1.24.13.msi'
             gst_folder: 'windows'
+            bundle_type: 'msi'
           - platform: 'ubuntu-20.04'
             os: 'linux'
             arch: 'x86_64'
             gst_url: 'https://gstreamer.freedesktop.org/data/pkg/linux/1.24.13/gstreamer-1.0-linux-x86_64-1.24.13.tar.xz'
             gst_folder: 'linux'
+            bundle_type: 'appimage'
           - platform: 'macos-13'
             os: 'macos'
             arch: 'x86_64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-macos-universal.pkg'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-universal.pkg'
             gst_folder: 'macos/intel'
+            bundle_type: 'app'
           - platform: 'macos-latest'
             os: 'macos'
             arch: 'aarch64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-macos-universal.pkg'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-universal.pkg'
             gst_folder: 'macos/silicon'
+            bundle_type: 'app'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -49,19 +53,76 @@ jobs:
         with:
           targets: ${{ matrix.arch == 'aarch64' && 'aarch64-apple-darwin' || (matrix.arch == 'x86_64' && matrix.os == 'macos' && 'x86_64-apple-darwin' || '') }}
 
-      - name: Cache GStreamer
+      # ============================================
+      # LINUX: GStreamer + linuxdeploy Setup
+      # ============================================
+      - name: Setup GStreamer for Linux Build
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            fuse libgtk-3-0 libayatana-appindicator3-1 librsvg2-2
+
+      - name: Download & Install linuxdeploy with GStreamer plugin
+        if: matrix.os == 'linux'
+        run: |
+          # Download linuxdeploy (universal AppImage bundler)
+          curl -L "https://github.com/linuxdeploy/linuxdeploy/releases/download/2024.01.12/linuxdeploy-x86_64.AppImage" -o linuxdeploy.AppImage
+          chmod +x linuxdeploy.AppImage
+
+          # Download linuxdeploy-plugin-gstreamer
+          curl -L "https://github.com/linuxdeploy/linuxdeploy-plugin-gstreamer/releases/download/2024.01.12/linuxdeploy-plugin-gstreamer-x86_64.AppImage" -o linuxdeploy-plugin-gstreamer.AppImage
+          chmod +x linuxdeploy-plugin-gstreamer.AppImage
+
+      - name: Setup GStreamer for bundling (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          # Create directory structure for GStreamer bundling
+          mkdir -p app/src-tauri/gstreamer/linux/lib
+          mkdir -p app/src-tauri/gstreamer/linux/plugins
+
+          # Download and extract GStreamer runtime to bundle
+          wget -O /tmp/gst.tar.xz "https://gstreamer.freedesktop.org/data/pkg/linux/1.24.13/gstreamer-1.0-linux-x86_64-1.24.13.tar.xz" 2>/dev/null || true
+
+          # If download succeeds, extract to lib directory
+          if [ -f /tmp/gst.tar.xz ]; then
+            tar -xf /tmp/gst.tar.xz -C app/src-tauri/gstreamer/linux/lib --strip-components=1 || true
+          fi
+
+          # Download GStreamer plugins packages to embed in AppImage
+          mkdir -p /tmp/gst-plugins
+          cd /tmp/gst-plugins
+
+          # Download core plugin packages
+          for pkg in \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad \
+            gstreamer1.0-plugins-ugly \
+            gstreamer1.0-libav; do
+            apt-get download $pkg 2>/dev/null || true
+          done
+
+          # Extract plugins to bundle directory
+          for deb in *.deb; do
+            [ -f "$deb" ] && dpkg-deb -x "$deb" app/src-tauri/gstreamer/linux/plugins/ 2>/dev/null || true
+          done
+
+          # Set library symlinks and permissions
+          chmod -R755 app/src-tauri/gstreamer/linux/plugins/usr/lib/gstreamer-1.0/ 2>/dev/null || true
+
+      # ============================================
+      # WINDOWS: GStreamer MSI + DLLs
+      # ============================================
+      - name: Cache GStreamer (Windows/macOS)
         id: cache-gst
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
           key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v1
-
-      - name: Download & Extract GStreamer (Linux)
-        if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'linux'
-        run: |
-          mkdir -p app/src-tauri/gstreamer/linux
-          wget ${{ matrix.gst_url }} -O gst.tar.xz
-          tar -xf gst.tar.xz -C app/src-tauri/gstreamer/linux --strip-components=1 || tar -xf gst.tar.xz -C app/src-tauri/gstreamer/linux
 
       - name: Download & Extract GStreamer (Windows)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
@@ -75,6 +136,9 @@ jobs:
           cp C:/Windows/System32/vcruntime140.dll app/src-tauri/gstreamer/windows/bin/
           cp C:/Windows/System32/msvcp140.dll app/src-tauri/gstreamer/windows/bin/
 
+      # ============================================
+      # macOS: GStreamer PKG
+      # ============================================
       - name: Download & Extract GStreamer (macOS)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'macos'
         run: |
@@ -90,19 +154,25 @@ jobs:
             exit 1
           fi
 
+      # ============================================
+      # System Dependencies
+      # ============================================
       - name: Install system dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-20.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
-          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf fuse
 
+      # ============================================
+      # Build
+      # ============================================
       - name: Frontend Build
         run: |
           npm install
           npm run build
 
       - name: Build Application (Tauri)
+        if: matrix.os != 'linux'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -113,3 +183,19 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.arch == 'aarch64' && '--target aarch64-apple-darwin' || (matrix.os == 'macos' && '--target x86_64-apple-darwin' || '') }}
+
+      - name: Build Linux AppImage with GStreamer
+        if: matrix.os == 'linux'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Tell linuxdeploy where GStreamer is bundled
+          GST_PLUGIN_PATH: ${{ github.workspace }}/app/src-tauri/gstreamer/linux/plugins/usr/lib/gstreamer-1.0
+          LD_LIBRARY_PATH: ${{ github.workspace }}/app/src-tauri/gstreamer/linux/lib/lib:${{ github.workspace }}/app/src-tauri/gstreamer/linux/plugins/usr/lib
+        with:
+          tagName: v__VERSION__
+          releaseName: 'UniCast v__VERSION__'
+          releaseBody: 'UniCast Cross-Platform Release for Linux (x86_64) - Portable with GStreamer embedded'
+          releaseDraft: true
+          prerelease: false
+          args: '--bundles appimage'

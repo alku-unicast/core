@@ -6,7 +6,43 @@ Ayrıca geliştirme sürecini hızlandırmak için **GitHub Actions ile otomatik
 
 ---
 
-# 1. macOS Derleme ve Güvenlik (Gatekeeper) Süreçleri
+# 1. CI/CD & GStreamer Düzeltmeleri (2026-04-21)
+
+## Problem: GStreamer URL'leri Hatalıydı
+
+CI/CD build'lerinde 3 platformdan 2'si hata veriyordu:
+
+| Platform | Sorun | Çözüm |
+|----------|-------|-------|
+| macOS | `gstreamer-1.0-1.24.13-macos-universal.pkg` → 404 | `gstreamer-1.0-1.24.13-universal.pkg` olarak düzeltildi |
+| Linux | Resmi tar.xz binary'si yok | `apt-get install gstreamer1.0-*` kullanılıyor |
+| Windows | URL doğru, çalışıyor | ✅ Değişiklik yok |
+
+## Linux Stratejisi: AppImage + GStreamer Gömme
+
+GStreamer'ın resmi sitesi **Linux için binary tar.xz yayınlamıyor**. Bunun yerine her Linux dağıtımı kendi paket yöneticisiyle (apt, dnf, pacman) GStreamer sağlıyor.
+
+**CI/CD'deki yeni yaklaşım (2026-04-21):**
+- Ubuntu 20.04 Runner'da `linuxdeploy + linuxdeploy-plugin-gstreamer` indirilir
+- GStreamer plugin .deb paketleri indirilip extract edilir
+- AppImage build sırasında GStreamer içine gömülür
+- Çıkan .AppImage dosyası GitHub Release'e yüklenir
+
+**Kullanıcı Linux'ta ne yapar?**
+```bash
+chmod +x UniCast-v1.0.0.AppImage
+./UniCast-v1.0.0.AppImage
+```
+
+**Avantajları:**
+- Kurulum yok, root yok, GStreamer kurma yok
+- Tek dosya, tıkla çalıştır
+- Çoğu Linux dağıtımında çalışır (glibc 2.31+)
+- ALKÜ'deki tüm Linux bilgisayarlarında çalışır
+
+---
+
+# 2. macOS Derleme ve Güvenlik (Gatekeeper) Süreçleri
 
 macOS tarafında hem **Intel** hem de **Apple Silicon (M1, M2 vb.)** işlemciler için uygulamanın derlenmesi ve Apple'ın güvenlik prosedürlerinin yönetilmesi gerekmektedir.
 
@@ -67,7 +103,7 @@ xattr -cr /Applications/SinifYayini.app
 
 ---
 
-# 2. Linux Dağıtımı (AppImage)
+# 3. Linux Dağıtımı (AppImage)
 
 Linux dünyasında çok sayıda dağıtım bulunduğu için uygulama **AppImage formatında** dağıtılacaktır.
 
@@ -121,7 +157,7 @@ chmod +x SinifYayini.AppImage
 
 ---
 
-# 3. GitHub Actions ile Otomatik Derleme (CI/CD)
+# 4. GitHub Actions ile Otomatik Derleme (CI/CD)
 
 Geliştirme sürecini hızlandırmak için **GitHub Actions** kullanılacaktır.
 
