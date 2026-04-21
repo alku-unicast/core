@@ -19,15 +19,10 @@ jobs:
             arch: 'x86_64'
             gst_url: 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/gstreamer-1.0-msvc-x86_64-1.24.13.msi'
             gst_folder: 'windows'
-          - platform: 'ubuntu-20.04'
+          - platform: 'ubuntu-22.04'
             os: 'linux'
             arch: 'x86_64'
             gst_folder: 'linux'
-          - platform: 'macos-13'
-            os: 'macos'
-            arch: 'x86_64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-universal.pkg'
-            gst_folder: 'macos/intel'
           - platform: 'macos-latest'
             os: 'macos'
             arch: 'aarch64'
@@ -46,7 +41,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.arch == 'aarch64' && 'aarch64-apple-darwin' || (matrix.arch == 'x86_64' && matrix.os == 'macos' && 'x86_64-apple-darwin' || '') }}
+          targets: ${{ matrix.os == 'macos' && 'aarch64-apple-darwin' || '' }}
 
       # ============================================
       # LINUX: System packages + Tauri built-in GStreamer
