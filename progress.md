@@ -1,37 +1,31 @@
 # UniCast Development Progress
 
-### 🗓️ 2026-04-21 (Session 24) — CI/CD GStreamer URL & Linux AppImage Düzeltmesi
+### 🗓️ 2026-04-21 (Session 24) — CI/CD GStreamer & Tauri Built-in GStreamer Desteği
 
 #### Problem Tespiti
 CI/CD build hatalarının kaynağı doğrulandı:
 
 | Platform | Sorun | Durum |
 |----------|-------|-------|
-| **Windows** | URL doğru, MSI açılıyor | ✅ Çalışıyor |
-| **macOS** | `gstreamer-1.0-1.24.13-macos-universal.pkg` → 404 | ✅ Düzeltildi |
-| **Linux** | Resmi tar.xz binary'si yok (sadece Windows/macOS için var) | ✅ Düzeltildi |
+| **Windows** | MSI extract path hatası, lessmsi gerekli | ✅ Düzeltildi |
+| **macOS** | `GStreamer.framework/Versions/1.0` path'i yanlış | ✅ Düzeltildi |
+| **Linux** | linuxdeploy ve plugin 404 — artık gerekmiyor | ✅ Düzeltildi |
 
-#### macOS Düzeltmesi
-- **Yanlış:** `gstreamer-1.0-1.24.13-macos-universal.pkg` (404)
-- **Doğru:** `gstreamer-1.0-1.24.13-universal.pkg` (200 OK)
+#### Çözüm: Tauri'nin Yerleşik GStreamer Desteği
 
-#### Linux Strateji Değişikliği
-**Eski yaklaşım:** CI/CD'de remote URL'den tar.xz indirme (başarısız - dosya yok)
-**Yeni yaklaşım:** AppImage + GStreamer gömme (linuxdeploy-plugin-gstreamer)
+**Keşif:** Tauri v2 zaten GStreamer gömme desteği içinde built-in olarak geliyor. `linuxdeploy-plugin-gstreamer` eski bir yöntem — artık Tauri'nin kendisi bu işi yapıyor.
 
-**Gerekçe:** Kullanıcıların tek tuşla çalışması için GStreamer uygulamaya gömülecek.
-- linuxdeploy + gstreamer plugin indirilir
-- GStreamer plugin paketleri deb olarak indirilip extract edilir
-- AppImage build sırasında GStreamer içine gömülür
-- Kullanıcı sadece `chmod +x` yapıp çalıştırır, kurulum gerekmez
+**Yeni yaklaşım:**
+1. **Linux:** `APPIMAGE_BUNDLE_GSTREAMER=1` ortam değişkeni ile Tauri otomatik GStreamer gömüyor
+2. **tauri.conf.json:** `appimage.bundleMediaFramework: true` config'i eklendi
+3. **Windows:** `lessmsi` tool kullanılarak MSI extract daha güvenilir yapıldı
+4. **macOS:** Framework path araması genişletildi
 
-#### AppImage Build Adımları (CI/CD)
-1. linuxdeploy + linuxdeploy-plugin-gstreamer indir
-2. GStreamer plugin .deb paketlerini indir
-3. dpkg-deb ile plugins/ klasörüne çıkart
-4. LD_LIBRARY_PATH ve GST_PLUGIN_PATH ayarla
-5. Tauri build --bundles appimage ile AppImage üret
-6. GitHub Release'e otomatik yükle
+#### AppImage Build Adımları (CI/CD - Güncel)
+1. GStreamer system packages kurulumu (build için)
+2. `APPIMAGE_BUNDLE_GSTREAMER=1` ortam değişkeni
+3. `tauri build --bundles appimage` → Tauri otomatik GStreamer gömüyor
+4. GitHub Release'e otomatik yükle
 
 #### Not
 - **Kullanıcı Linux'ta ne yapar?**

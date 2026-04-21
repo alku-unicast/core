@@ -8,24 +8,24 @@ Ayrıca geliştirme sürecini hızlandırmak için **GitHub Actions ile otomatik
 
 # 1. CI/CD & GStreamer Düzeltmeleri (2026-04-21)
 
-## Problem: GStreamer URL'leri Hatalıydı
+## Problem: GStreamer URL'leri + linuxdeploy 404
 
-CI/CD build'lerinde 3 platformdan 2'si hata veriyordu:
+CI/CD build'lerinde 3 platform hata veriyordu:
 
 | Platform | Sorun | Çözüm |
 |----------|-------|-------|
 | macOS | `gstreamer-1.0-1.24.13-macos-universal.pkg` → 404 | `gstreamer-1.0-1.24.13-universal.pkg` olarak düzeltildi |
-| Linux | Resmi tar.xz binary'si yok | `apt-get install gstreamer1.0-*` kullanılıyor |
-| Windows | URL doğru, çalışıyor | ✅ Değişiklik yok |
+| Linux | linuxdeploy ve plugin 404 (proje artık aktif değil) | Tauri built-in GStreamer desteği kullanılıyor |
+| Windows | MSI extract path tutarsızlığı | lessmsi tool ile güvenilir extract |
 
-## Linux Stratejisi: AppImage + GStreamer Gömme
+## Linux Stratejisi: Tauri Built-in AppImage GStreamer (2026-04-21 Güncel)
 
-GStreamer'ın resmi sitesi **Linux için binary tar.xz yayınlamıyor**. Bunun yerine her Linux dağıtımı kendi paket yöneticisiyle (apt, dnf, pacman) GStreamer sağlıyor.
+**Keşif:** Tauri v2 zaten AppImage için GStreamer gömme desteği built-in olarak geliyor. `linuxdeploy-plugin-gstreamer` artık gerekli değil.
 
-**CI/CD'deki yeni yaklaşım (2026-04-21):**
-- Ubuntu 20.04 Runner'da `linuxdeploy + linuxdeploy-plugin-gstreamer` indirilir
-- GStreamer plugin .deb paketleri indirilip extract edilir
-- AppImage build sırasında GStreamer içine gömülür
+**CI/CD'deki yeni yaklaşım:**
+- `tauri.conf.json` → `appimage.bundleMediaFramework: true`
+- CI/CD'de `APPIMAGE_BUNDLE_GSTREAMER=1` ortam değişkeni
+- Tauri build sırasında otomatik GStreamer gömüyor
 - Çıkan .AppImage dosyası GitHub Release'e yüklenir
 
 **Kullanıcı Linux'ta ne yapar?**
@@ -38,6 +38,7 @@ chmod +x UniCast-v1.0.0.AppImage
 - Kurulum yok, root yok, GStreamer kurma yok
 - Tek dosya, tıkla çalıştır
 - Çoğu Linux dağıtımında çalışır (glibc 2.31+)
+- Tauri'nin yerleşik desteği → daha güvenilir build
 - ALKÜ'deki tüm Linux bilgisayarlarında çalışır
 
 ---
