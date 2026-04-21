@@ -6,11 +6,11 @@ static GST_SETUP_ONCE: Once = Once::new();
 
 /// Resolve the gst-launch-1.0 binary path using Tauri's resource resolver.
 pub fn get_gst_launch(app: &AppHandle) -> String {
-    let platform_subfolder = match (cfg!(target_os), cfg!(target_arch)) {
+    let platform_subfolder = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("windows", _) => "windows",
         ("linux", _) => "linux",
         ("macos", "aarch64") => "macos/silicon",
-        ("macos", "x86_64") => "macos/intel",
+        ("macos", _) => "macos/intel",
         _ => "windows",
     };
 
@@ -207,11 +207,11 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
 
 /// Helper to get the bin dir for setting CWD during execution
 pub fn get_gst_bin_dir(app: &AppHandle) -> String {
-    let platform_subfolder = match (cfg!(target_os), cfg!(target_arch)) {
+    let platform_subfolder = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("windows", _) => "windows",
         ("linux", _) => "linux",
         ("macos", "aarch64") => "macos/silicon",
-        ("macos", "x86_64") => "macos/intel",
+        ("macos", _) => "macos/intel",
         _ => "windows",
     };
 

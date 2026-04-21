@@ -59,11 +59,13 @@ pub fn run() {
             // ── macOS: streaming bar capture exclusion ──────────────────────
             #[cfg(target_os = "macos")]
             {
-                use tauri::objc_id::Id;
                 if let Some(bar) = app.get_webview_window("streaming-bar") {
-                    let ns_window = bar.ns_window().unwrap();
-                    unsafe {
-                        let _: () = msg_send![ns_window as *mut _, setSharingType: 0i64];
+                    if let Ok(ns_window) = bar.ns_window() {
+                        use objc2::runtime::AnyObject;
+                        unsafe {
+                            let window: *mut AnyObject = ns_window as *mut _;
+                            let _: () = objc2::msg_send![&*window, setSharingType: 0usize];
+                        }
                     }
                 }
             }
