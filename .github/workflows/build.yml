@@ -75,15 +75,21 @@ jobs:
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
         run: |
           curl -L ${{ matrix.gst_url }} -o gst.msi
-          mkdir -p gst_extract
-          
-          # Use msiexec /a for administrative extraction (properly unpacks CAB files into bin/lib)
-          msiexec /a gst.msi /qn TARGETDIR="$(pwd)\gst_extract"
-          
-          mkdir -p app/src-tauri/gstreamer/windows
-          
+          New-Item -ItemType Directory -Force -Path gst_extract | Out-Null
+
+          # Start-Process -Wait ensures msiexec finishes before we continue (it's async otherwise)
+          $msiPath = (Resolve-Path "gst.msi").Path
+          $targetPath = (Resolve-Path "gst_extract").Path
+          Write-Host "Extracting: $msiPath -> $targetPath"
+          $proc = Start-Process msiexec -ArgumentList "/a `"$msiPath`" /qn TARGETDIR=`"$targetPath`"" -Wait -NoNewWindow -PassThru
+          Write-Host "msiexec exit code: $($proc.ExitCode)"
+          Write-Host "--- Extraction tree (depth 4) ---"
+          Get-ChildItem -Path $targetPath -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object -First 50 -ExpandProperty FullName
+
+          New-Item -ItemType Directory -Force -Path app/src-tauri/gstreamer/windows | Out-Null
+
           # Smart Search for the extracted GStreamer folder
-          $extractedRoot = "$pwd\gst_extract"
+          $extractedRoot = $targetPath
           $found = $false
 
           # Known paths: msiexec /a creates gstreamer\1.0\msvc_x86_64\ relative to TARGETDIR
@@ -165,6 +171,14 @@ jobs:
       # ============================================
       # Build
       # ============================================
+      - name: Write Tauri resource config (Windows/macOS)
+        if: matrix.os != 'linux'
+        shell: bash
+        run: |
+          echo '{"bundle":{"resources":["gstreamer/${{ matrix.gst_folder }}/**/*"]}}' > app/tauri-resource-override.json
+          echo "--- Tauri resource config ---"
+          cat app/tauri-resource-override.json
+
       - name: Frontend Build
         working-directory: ./app
         run: |
@@ -185,7 +199,7 @@ jobs:
           prerelease: false
           args: >
             ${{ (matrix.os == 'macos' && (matrix.arch == 'aarch64' && '--target aarch64-apple-darwin' || '--target x86_64-apple-darwin') || '') }}
-            --config "{\"bundle\":{\"resources\":[\"gstreamer/${{ matrix.gst_folder }}/**/*\"]}}"
+            --config tauri-resource-override.json
 
       - name: Build Linux AppImage with GStreamer
         if: matrix.os == 'linux'
