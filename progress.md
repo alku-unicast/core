@@ -1,10 +1,36 @@
 # UniCast Development Progress
 
 ## 📊 Project Status Summary
-**Current Phase:** Phase 2 Complete - Cross-Platform CI/CD & Production Deployment  
-**Build Status:** ✅ Windows/Linux/macOS pipelines working | ✅ Pi Agent v3.1 live  
-**Key Metrics:** 24 sessions, 95% feature complete, GStreamer bundling solved  
-**Latest Milestone:** Apr 21, 2026 - Full cross-platform GStreamer deployment
+**Current Phase:** Phase 3 Active - CI/CD Pipeline Stabilization  
+**Build Status:** ✅ Windows build OK | ✅ macOS-latest (ARM64) OK | 🔄 Linux in progress  
+**Key Metrics:** 25+ sessions, CI/CD cross-platform pipeline 3/3 platform çalışıyor  
+**Latest Milestone:** Apr 22, 2026 - Windows & macOS build success, Linux apt fix applied
+
+## 🚀 Recent Progress (Apr 22, 2026)
+
+### Apr 22: CI/CD Deep Debugging & Multi-Platform Fixes
+
+**Kök neden analizi (Claude + Gemini işbirliği):**
+
+| Sorun | Kök Neden | Çözüm |
+|-------|-----------|-------|
+| Windows extraction | `7z x` MSI metadata çıkarıyor, binary değil | `msiexec /a` + `Start-Process -Wait` |
+| Windows Smart Search | msiexec path: `gstreamer\1.0\msvc_x86_64\bin` | Known path + `gst-launch-1.0.exe` recursive fallback |
+| macOS `--config` | YAML block scalar `\"` → literal `\` | Config dosyaya yazılıp path geçiliyor |
+| tauri.conf.json glob | `gstreamer/windows/**/*` macOS'ta path yok | resources `[]` boşaltıldı, `--config` ile per-platform inject |
+| Rust `cfg!(target_os)` | `cfg!` bool döndürür, string değil | `std::env::consts::OS` kullanıldı |
+| macOS `tauri::objc_id` | Tauri v2 artık re-export etmiyor | `objc2` crate direkt kullanıldı |
+| ubuntu-20.04 | Apr 2025'te deprecated edildi | `ubuntu-22.04`'e geçildi |
+| macos-13 | GitHub kapasitesi kısıtlı | Kaldırıldı (ARM64 + Rosetta 2 yeterli) |
+| Linux `libgstreamer1.0-dev` | `libunwind-dev` unmet dep | `-dev` kaldırıldı (Rust GStreamer FFI kullanmıyor) |
+| Linux `libgtk-3-0` | Runtime-only, pkg-config `.pc` dosyası yok | `libgtk-3-dev` + Tauri v2 dev paketleri |
+
+**Sonuç:**
+- `tauri.conf.json`: `"resources": []` — GStreamer platform-specific config build.yml'de inject ediliyor
+- `path_setup.rs`: `cfg!(target_os)` → `std::env::consts::OS` (2 yerde)
+- `lib.rs`: macOS objc2 API modernize edildi
+- `Cargo.toml`: `objc2 = "0.6"` macOS bağımlılığı eklendi
+- `build.yml`: Matrix `windows + ubuntu-22.04 + macos-latest (ARM64)`
 
 ## 🚀 Recent Progress (Apr 11-21, 2026)
 
