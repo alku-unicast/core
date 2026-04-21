@@ -56,13 +56,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "windows": ["gstreamer/windows/**/*"],
-      "macos": ["gstreamer/macos/**/*"],
-      "linux": ["gstreamer/linux/**/*"]
-    },
-    "appimage": {
-      "bundleMediaFramework": true
-    }
+    "resources": [
+      "gstreamer/windows/**/*",
+      "gstreamer/macos/**/*",
+      "gstreamer/linux/**/*"
+    ]
   }
 }

@@ -69,15 +69,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v4
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v5
 
       - name: Download & Extract GStreamer (Windows)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
         run: |
           curl -L ${{ matrix.gst_url }} -o gst.msi
           mkdir -p gst_extract
-          # Use native msiexec /a for administrative extraction
-          msiexec /a gst.msi /qn TARGETDIR="$(pwd)\gst_extract"
+          
+          # Use 7z to fully extract MSI contents (msiexec /a is unreliable for binaries)
+          7z x gst.msi -ogst_extract
           
           mkdir -p app/src-tauri/gstreamer/windows
           
