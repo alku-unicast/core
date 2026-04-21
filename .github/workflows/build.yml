@@ -17,22 +17,22 @@ jobs:
           - platform: 'windows-latest'
             os: 'windows'
             arch: 'x86_64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.12/msvc/gstreamer-1.0-msvc-x86_64-1.24.12.msi'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/gstreamer-1.0-msvc-x86_64-1.24.13.msi'
             gst_folder: 'windows'
           - platform: 'ubuntu-20.04'
             os: 'linux'
             arch: 'x86_64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/linux/1.24.12/gstreamer-1.0-linux-x86_64-1.24.12.tar.xz'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/linux/1.24.13/gstreamer-1.0-linux-x86_64-1.24.13.tar.xz'
             gst_folder: 'linux'
           - platform: 'macos-13'
             os: 'macos'
             arch: 'x86_64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.12/gstreamer-1.0-1.24.12-macos-universal.pkg'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-macos-universal.pkg'
             gst_folder: 'macos/intel'
           - platform: 'macos-latest'
             os: 'macos'
             arch: 'aarch64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.12/gstreamer-1.0-1.24.12-macos-universal.pkg'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-macos-universal.pkg'
             gst_folder: 'macos/silicon'
 
     runs-on: ${{ matrix.platform }}
@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.12-v1
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v1
 
       - name: Download & Extract GStreamer (Linux)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'linux'
