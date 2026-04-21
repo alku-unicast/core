@@ -69,36 +69,48 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v2
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v4
 
       - name: Download & Extract GStreamer (Windows)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
         run: |
           curl -L ${{ matrix.gst_url }} -o gst.msi
-
-          # Create extract directory
           mkdir -p gst_extract
-
-          # Extract MSI using lessmsi (more reliable than msiexec /a)
-          curl -L "https://github.com/activesmith/lessmsi/releases/download/v1.10.0/lessmsi-x64.exe" -o lessmsi.exe
-          ./lessmsi.exe x gst.msi gst_extract\
-
+          # Use native msiexec /a for administrative extraction
+          msiexec /a gst.msi /qn TARGETDIR="$(pwd)\gst_extract"
+          
           mkdir -p app/src-tauri/gstreamer/windows
+          
+          # Smart Search for the extracted GStreamer folder
+          $extractedRoot = "$pwd\gst_extract"
+          $found = $false
+          $possiblePaths = @(
+            "$extractedRoot\gstreamer",
+            "$extractedRoot\PFiles\GStreamer",
+            "$extractedRoot\gstreamer-1.0",
+            (Get-ChildItem -Path $extractedRoot -Directory -Filter "gstreamer*" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          )
 
-          # Find GStreamer directory (try multiple possible paths)
-          $gstPaths = @("gst_extract\gstreamer", "gst_extract\PFiles\GStreamer", "gst_extract\gstreamer-1.0")
-          foreach ($path in $gstPaths) {
-            if (Test-Path $path) {
-              Copy-Item -Path "$path\*" -Destination "app/src-tauri/gstreamer/windows/" -Recurse -Force
-              Write-Host "Copied from: $path"
+          foreach ($src in $possiblePaths) {
+            if ($src -and (Test-Path "$src\bin")) {
+              Write-Host "Found GStreamer binaries at: $src"
+              Copy-Item -Path "$src\*" -Destination "app/src-tauri/gstreamer/windows/" -Recurse -Force
+              $found = $true
               break
             }
           }
 
+          if (!$found) { 
+              Write-Error "Could not find GStreamer bin directory in extraction"
+              exit 1
+          }
+
           # Source VC++ Runtime DLLs from System32 (Reliable in GitHub Runners)
-          Copy-Item "C:/Windows/System32/vcruntime140.dll" "app/src-tauri/gstreamer/windows/bin/" -Force
-          Copy-Item "C:/Windows/System32/msvcp140.dll" "app/src-tauri/gstreamer/windows/bin/" -Force
-          Copy-Item "C:/Windows/System32/vcruntime140_app.dll" "app/src-tauri/gstreamer/windows/bin/" -Force -ErrorAction SilentlyContinue
+          $binDir = "app/src-tauri/gstreamer/windows/bin"
+          if (!(Test-Path $binDir)) { mkdir -p $binDir }
+          Copy-Item "C:/Windows/System32/vcruntime140.dll" "$binDir/" -Force
+          Copy-Item "C:/Windows/System32/msvcp140.dll" "$binDir/" -Force
+          Copy-Item "C:/Windows/System32/vcruntime140_app.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
 
       # ============================================
       # macOS: GStreamer PKG
@@ -110,43 +122,37 @@ jobs:
           pkgutil --expand-full gst.pkg ./gst_expand
           mkdir -p app/src-tauri/gstreamer/${{ matrix.gst_folder }}
 
-          # Find GStreamer.framework (pkg structure varies, try multiple patterns)
-          FOUND_DIR=$(find ./gst_expand -type d \( -path "*/GStreamer.framework" -o -path "*/GStreamer.framework/Versions/Current" -o -path "*/GStreamer.framework/Versions/1.0" \) 2>/dev/null | head -1)
+          # 1. Primary Strategy: Direct Target (Official PKG Structure)
+          DIRECT_PATH=$(find ./gst_expand -type d -path "*/Versions/1.0" 2>/dev/null | head -1)
+          if [ -z "$DIRECT_PATH" ]; then
+             DIRECT_PATH=$(find ./gst_expand -type d -path "*/GStreamer.framework/Versions/Current" 2>/dev/null | head -1)
+          fi
 
-          if [ -n "$FOUND_DIR" ]; then
-            echo "Found GStreamer at: $FOUND_DIR"
-            cp -R "$FOUND_DIR"/* app/src-tauri/gstreamer/${{ matrix.gst_folder }}/ 2>/dev/null || true
-            # If Versions/1.0 contents were copied, move them up
-            if [ -d "app/src-tauri/gstreamer/${{ matrix.gst_folder }}/Versions/1.0" ]; then
-              cp -R "app/src-tauri/gstreamer/${{ matrix.gst_folder }}/Versions/1.0/"* "app/src-tauri/gstreamer/${{ matrix.gst_folder }}/" 2>/dev/null || true
-            fi
+          if [ -n "$DIRECT_PATH" ] && [ -d "$DIRECT_PATH/lib" ]; then
+            echo "Direct match found: $DIRECT_PATH"
+            cp -R "$DIRECT_PATH"/* app/src-tauri/gstreamer/${{ matrix.gst_folder }}/
           else
-            echo "WARNING: GStreamer path not found, trying alternative method..."
-            # Try to find any .framework directory
-            FRAMEWORK_DIR=$(find ./gst_expand -name "*.framework" -type d 2>/dev/null | head -1)
-            if [ -n "$FRAMEWORK_DIR" ]; then
-              cp -R "$FRAMEWORK_DIR"/* app/src-tauri/gstreamer/${{ matrix.gst_folder }}/ 2>/dev/null || true
+            # 2. Fallback Strategy: Deep Search for known dylib
+            echo "Direct match failed, starting deep search fallback..."
+            CORE_DYLIB=$(find ./gst_expand -name "libgstreamer-1.0.0.dylib" 2>/dev/null | head -1)
+            if [ -n "$CORE_DYLIB" ]; then
+               BASE_DIR=$(dirname $(dirname "$CORE_DYLIB"))
+               echo "Deep search found library root: $BASE_DIR"
+               cp -R "$BASE_DIR"/* app/src-tauri/gstreamer/${{ matrix.gst_folder }}/
             fi
           fi
 
-          # Verify we got files
-          if [ ! -d "app/src-tauri/gstreamer/${{ matrix.gst_folder }}/lib" ] && [ ! -d "app/src-tauri/gstreamer/${{ matrix.gst_folder }}/bin" ]; then
-            echo "WARNING: GStreamer extraction may have failed, continuing anyway..."
+          # Verification
+          if [ ! -d "app/src-tauri/gstreamer/${{ matrix.gst_folder }}/lib" ]; then
+             echo "ERROR: Could not locate GStreamer libraries in expanded package"
+             exit 1
           fi
-
-      # ============================================
-      # System Dependencies
-      # ============================================
-      - name: Install system dependencies (Ubuntu only)
-        if: matrix.platform == 'ubuntu-20.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf fuse
 
       # ============================================
       # Build
       # ============================================
       - name: Frontend Build
+        working-directory: ./app
         run: |
           npm install
           npm run build
@@ -157,6 +163,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          projectPath: ./app
           tagName: v__VERSION__
           releaseName: 'UniCast v__VERSION__'
           releaseBody: 'UniCast Cross-Platform Release for ${{ matrix.os }} (${{ matrix.arch }})'
@@ -171,6 +178,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPIMAGE_BUNDLE_GSTREAMER: "1"
         with:
+          projectPath: ./app
           tagName: v__VERSION__
           releaseName: 'UniCast v__VERSION__'
           releaseBody: 'UniCast Cross-Platform Release for Linux (x86_64) - Portable with GStreamer embedded'

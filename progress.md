@@ -1,6 +1,15 @@
-# UniCast Development Progress
-
-### 🗓️ 2026-04-21 (Session 24) — CI/CD GStreamer & Tauri Built-in GStreamer Desteği
+1: # UniCast Development Progress
+2: 
+3: ### 🗓️ 2026-04-21 (Session 24 - Phase 2) — CI/CD Pipeline Repair & Directory Fixes
+4: 
+5: #### Yapılan Düzeltmeler
+6: - **Windows GStreamer Extraction:** `lessmsi.exe` bağımlılığı kaldırıldı. Windows Runner'larda daha kararlı olan yerleşik `msiexec /a` (Administrative Install) yöntemine geri dönüldü. PowerShell ile "Smart Search" mekanizması eklenerek kütüphane yolu otomatik tespit ediliyor.
+7: - **Frontend/Build Working Directory:** Proje yapısındaki `package.json` dosyasının `./app` klasöründe olması nedeniyle oluşan `ENOENT` hatası, tüm `npm` ve `tauri` adımlarına `working-directory: ./app` (veya `projectPath: ./app`) eklenerek çözüldü.
+8: - **macOS Framework Extraction:** Resmi `.pkg` yapısını doğrudan hedefleyen (`Versions/1.0`) ama bulunamazsa "Deep Search" ile fallback yapan hibrit bir arama algoritması kuruldu.
+9: 
+10: ---
+11: 
+12: ### 🗓️ 2026-04-21 (Session 24) — CI/CD GStreamer & Tauri Built-in GStreamer Desteği
 
 #### Problem Tespiti
 CI/CD build hatalarının kaynağı doğrulandı:
