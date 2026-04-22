@@ -4233,6 +4233,7 @@ dependencies = [
  "anyhow",
  "env_logger",
  "log",
+ "objc2",
  "serde",
  "serde_json",
  "tauri",

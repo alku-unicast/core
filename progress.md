@@ -1,21 +1,28 @@
 # UniCast Development Progress
 
 ## 📊 Project Status Summary
-**Current Phase:** Phase 3 Active - CI/CD Pipeline Stabilization  
-**Build Status:** ✅ Windows build OK | ✅ macOS-latest (ARM64) OK | 🔄 Linux in progress  
-**Key Metrics:** 25+ sessions, CI/CD cross-platform pipeline 3/3 platform çalışıyor  
-**Latest Milestone:** Apr 22, 2026 - Windows & macOS build success, Linux apt fix applied
+**Current Phase:** Phase 3 Active - CI/CD & Release Stabilization  
+**Build Status:** ✅ Windows/macOS/Linux CI/CD Pipeline Working | ⚠️ Release Binaries Unstable  
+**Key Metrics:** CI/CD pipeline cross-platform fixed, initial release testing in progress  
+**Latest Milestone:** Apr 22, 2026 - Successful cross-platform build, identified critical release-only bugs
 
 ## 🚀 Recent Progress (Apr 22, 2026)
 
-### Apr 22: CI/CD Deep Debugging & Multi-Platform Fixes
+### Apr 22: Release Testing & Stabilization
+- **CI/CD:** GitHub Actions üzerinden otomatik Release oluşturma başarıyla tamamlandı.
+- **Testing:** Oluşturulan `.exe` dosyası ile başka bilgisayarda testler yapıldı.
+- **Bug Discovery:** 
+    - Release build'lerde GStreamer bağlantı sorunu (muhtemelen DLL/Redist eksikliği).
+    - Streaming Bar'ın hem dev hem release modunda bazen görünmemesi.
+    - Pi alıcı tarafında yayın başlarken yaşanan çökme/kapanma sorunu.
 
-**Kök neden analizi (Claude + Gemini işbirliği):**
-
-| Sorun | Kök Neden | Çözüm |
+### Kök Neden Analizi (Devam Ediyor):
+| Sorun | Tahmin Edilen Neden | Aksiyon Planı |
 |-------|-----------|-------|
-| Windows extraction | `7z x` MSI metadata çıkarıyor, binary değil | `msiexec /a` + `Start-Process -Wait` |
-| Windows Smart Search | msiexec path: `gstreamer\1.0\msvc_x86_64\bin` | Known path + `gst-launch-1.0.exe` recursive fallback |
+| Release Bağlantı | Eksik VCRUNTIME/Gst DLL veya Firewall | `tauri build --debug` ile test edilecek |
+| Mini Bar Kayıp | Window creation JS error veya event mismatch | Rust logları ve window management incelenecek |
+| Pi Çökmesi | Bitrate/Profile uyumsuzluğu | Pipeline parametreleri (`x264enc` profile/level) sıkılaştırılacak |
+
 | macOS `--config` | YAML block scalar `\"` → literal `\` | Config dosyaya yazılıp path geçiliyor |
 | tauri.conf.json glob | `gstreamer/windows/**/*` macOS'ta path yok | resources `[]` boşaltıldı, `--config` ile per-platform inject |
 | Rust `cfg!(target_os)` | `cfg!` bool döndürür, string değil | `std::env::consts::OS` kullanıldı |

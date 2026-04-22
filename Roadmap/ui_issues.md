@@ -1,3 +1,20 @@
+# 🚨 KRİTİK - YENİ TESPİT EDİLENLER (2026-04-22)
+
+### 1. Release Sürümünde "Bağlantı Kurulamaması" & Debug Zorluğu
+- **Sorun:** `.exe` olarak paketlenen uygulama başka bilgisayara kurulduğunda "Bağlan" denmesine rağmen yayın başlamıyor.
+- **Engel:** Release build'de terminal/konsol kapalı olduğu için GStreamer hataları görülemiyor. Sağ tık "İncele" modu kapalı.
+- **Gözlem:** Kullanıcı terminale erişemediği için GStreamer'ın hangi DLL'den patladığını veya hangi network hatasını aldığını göremiyor.
+
+### 2. Yüzen Ada (Streaming Bar) Kaybolma Sorunu
+- **Sorun:** Ayarlarda açık olmasına rağmen yayın başladığında yüzen ada (mini bar) ekrana gelmiyor.
+- **Durum:** Hem `dev` hem `release` sürümlerinde gözlemleniyor. Yayın bitince veya durdurulunca kontrol tamamen kayboluyor.
+
+### 3. "Hayalet" Yayın (UI Aktif, Stream Yok)
+- **Sorun:** UI tarafı yayın yapıldığını sanıyor ama aslında video gitmiyor.
+- **Teknik Detay:** `gst-launch-1.0.exe` komutu loglarda doğru görünüyor ama arka planda sessizce crash veriyor olabilir. Pi tarafında ekran kararırken yayın moduna geçmeden kapanıyor.
+
+---
+
 yeni sorun:
 pencere modunda mesela yputube'dan video açtım alt tab ile başka yere gittiğimde youtube'daki yayın donuyor görüntü donuyor temrianlde de şöyle  hata veriyor:
 "12672 000002B63EA9C320 WARN
