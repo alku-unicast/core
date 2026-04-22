@@ -193,7 +193,7 @@ jobs:
         if: matrix.os != 'linux'
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
           projectPath: ./app
           tagName: ${{ github.ref_name }}
@@ -209,7 +209,7 @@ jobs:
         if: matrix.os == 'linux'
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           APPIMAGE_BUNDLE_GSTREAMER: "1"
         with:
           projectPath: ./app
