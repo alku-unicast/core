@@ -196,6 +196,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
           projectPath: ./app
+          token: ${{ secrets.RELEASE_TOKEN }}
           tagName: ${{ github.ref_name }}
           releaseName: 'UniCast ${{ github.ref_name }}'
           releaseBody: 'UniCast Cross-Platform Release for ${{ matrix.os }} (${{ matrix.arch }})'
@@ -213,6 +214,7 @@ jobs:
           APPIMAGE_BUNDLE_GSTREAMER: "1"
         with:
           projectPath: ./app
+          token: ${{ secrets.RELEASE_TOKEN }}
           tagName: ${{ github.ref_name }}
           releaseName: 'UniCast ${{ github.ref_name }}'
           releaseBody: 'UniCast Cross-Platform Release for Linux (x86_64) - Portable with GStreamer embedded'
