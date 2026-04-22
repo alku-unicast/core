@@ -4,7 +4,7 @@ use crate::commands::stream::StreamConfig;
 // Each hardware encoder has different property names for zero-latency settings.
 fn encoder_params(encoder: &str) -> &'static str {
     match encoder {
-        "x264enc" => "tune=zerolatency speed-preset=ultrafast key-int-max=15 intra-refresh=true",
+        "x264enc" => "tune=zerolatency speed-preset=ultrafast key-int-max=15",
         "nvh264enc" => "zerolatency=true preset=low-latency-hq rc-mode=cbr gop-size=15",
         "qsvh264enc" => "target-usage=balanced rate-control=cbr",
         "amfh264enc" => "rate-control=cbr target-usage=high-quality gop-size=15",

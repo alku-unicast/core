@@ -219,16 +219,25 @@ pub fn get_gst_bin_dir(app: &AppHandle) -> String {
         .unwrap_or_default()
         .join("gstreamer")
         .join(platform_subfolder);
-        
+
     #[cfg(target_os = "windows")]
     {
-        let drive_prefix = get_drive_prefix(&gst_root);
-        let pid = std::process::id();
-        format!("{}\\UCGst_{}\\bin", drive_prefix, pid)
+        if gst_root.exists() {
+            let drive_prefix = get_drive_prefix(&gst_root);
+            let pid = std::process::id();
+            format!("{}\\UCGst_{}\\bin", drive_prefix, pid)
+        } else {
+            // Bundled GStreamer not found; system GStreamer via PATH doesn't need a special CWD
+            std::env::temp_dir().to_string_lossy().to_string()
+        }
     }
-    
+
     #[cfg(not(target_os = "windows"))]
     {
-        gst_root.join("bin").to_string_lossy().to_string()
+        if gst_root.exists() {
+            gst_root.join("bin").to_string_lossy().to_string()
+        } else {
+            std::env::temp_dir().to_string_lossy().to_string()
+        }
     }
 }

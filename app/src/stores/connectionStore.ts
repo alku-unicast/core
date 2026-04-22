@@ -22,6 +22,9 @@ interface ConnectionStore {
   networkQuality: NetworkQuality;
   lastRTT: number | null;       // ms
 
+  // Stream error (shown when pipeline fails to start)
+  streamError: string | null;
+
   // Actions
   connect: (room: Room) => void;
   submitPIN: (pin: string) => Promise<boolean>;
@@ -35,6 +38,7 @@ interface ConnectionStore {
   setNetworkQuality: (quality: NetworkQuality, rtt: number) => void;
   incrementElapsed: () => void;
   reset: () => void;
+  resetStream: (error?: string) => void;
 }
 
 const initialState = {
@@ -50,6 +54,7 @@ const initialState = {
   streamVolume: 1.0,
   networkQuality: "excellent" as NetworkQuality,
   lastRTT: null,
+  streamError: null as string | null,
 };
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
@@ -90,6 +95,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   },
 
   startStream: async (config) => {
+    set({ streamError: null });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const result = await invoke<{ success: boolean; pid: number }>("start_stream", { config });
@@ -128,6 +134,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       return result.success;
     } catch (e) {
       console.error("[connectionStore] startStream failed:", e);
+      set({ phase: "awaiting_pin", streamError: String(e) });
       return false;
     }
   },
@@ -184,4 +191,14 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   incrementElapsed: () => set((s) => ({ streamElapsed: s.streamElapsed + 1 })),
 
   reset: () => set({ ...initialState }),
+
+  resetStream: (error?) => set((s) => ({
+    phase: "awaiting_pin" as ConnectionPhase,
+    streamElapsed: 0,
+    streamPid: null,
+    streamError: error ?? null,
+    networkQuality: "excellent" as NetworkQuality,
+    lastRTT: null,
+    isMuted: s.isMuted,
+  })),
 }));

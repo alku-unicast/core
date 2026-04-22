@@ -26,6 +26,7 @@ export function ConnectionSetup() {
     phase,
     targetRoom,
     pinError,
+    streamError,
     audioEnabled,
     streamMode,
     submitPIN,
@@ -35,6 +36,7 @@ export function ConnectionSetup() {
     switchStreamMode,
     stopStream,
     reset,
+    resetStream,
   } = useConnectionStore();
 
   const isStreaming = phase === "streaming";
@@ -81,12 +83,12 @@ export function ConnectionSetup() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── stream-stopped Tauri event: re-show main window + go home ───────────── */
+  /* ── stream-stopped Tauri event: re-show main window ────────────────────── */
   useEffect(() => {
     let unlisten: (() => void) | null = null;
 
     import("@tauri-apps/api/event").then(({ listen }) => {
-      listen("stream-stopped", async () => {
+      listen<{ reason: string }>("stream-stopped", async (event) => {
         // Re-show main window (it was hidden when stream started)
         try {
           const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
@@ -96,13 +98,26 @@ export function ConnectionSetup() {
         } catch (e) {
           console.warn("[ConnectionSetup] Could not re-show main window:", e);
         }
-        reset();
-        navigate("/", { replace: true });
+
+        // Hide streaming bar if visible
+        try {
+          const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+          const bar = await WebviewWindow.getByLabel("streaming-bar");
+          if (bar) await bar.hide();
+        } catch (_) {}
+
+        if (event.payload.reason === "error") {
+          // Stay on connection screen so user can see the error and retry
+          resetStream("Akış beklenmedik şekilde durdu. GStreamer eklentilerini kontrol edin.");
+        } else {
+          reset();
+          navigate("/", { replace: true });
+        }
       }).then((fn) => { unlisten = fn; });
     });
 
     return () => { unlisten?.(); };
-  }, [navigate, reset]);
+  }, [navigate, reset, resetStream]);
 
   /* ── Wake Projeksiyon HDMI ────────────────────────────────────────────────── */
   const wakeAndProgress = useCallback(async () => {
@@ -256,6 +271,17 @@ export function ConnectionSetup() {
         <section className="flex justify-center pt-2">
           <ConnectionProgress phase={phase} />
         </section>
+
+        {/* ── Stream error banner ────────────────────────────────────────── */}
+        {streamError && (
+          <section className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 flex gap-3 items-start">
+            <span className="text-red-400 text-base leading-none mt-0.5">✕</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-400 mb-0.5">Akış başlatılamadı</p>
+              <p className="text-xs text-red-400/70 break-words">{streamError}</p>
+            </div>
+          </section>
+        )}
 
         {/* ── Stream mode selection ──────────────────────────────────── */}
         <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-4">

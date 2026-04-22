@@ -109,11 +109,19 @@ pub async fn start_stream(
     // Wait a tiny bit to see if it crashes immediately (e.g. driver error)
     std::thread::sleep(std::time::Duration::from_millis(500));
     if let Ok(Some(status)) = child.try_wait() {
-        if !status.success() && config.encoder_name != "x264enc" {
-            log::warn!("[stream] Hardware encoder failed immediately. Falling back to software (x264enc)...");
-            let mut fallback_config = config.clone();
-            fallback_config.encoder_name = "x264enc".to_string();
-            return Box::pin(start_stream(app, fallback_config)).await;
+        if !status.success() {
+            if config.encoder_name != "x264enc" {
+                log::warn!("[stream] Hardware encoder failed immediately. Falling back to software (x264enc)...");
+                let mut fallback_config = config.clone();
+                fallback_config.encoder_name = "x264enc".to_string();
+                return Box::pin(start_stream(app, fallback_config)).await;
+            } else {
+                return Err(format!(
+                    "GStreamer pipeline failed immediately (exit code: {:?}). d3d11screencapturesrc veya x264enc eklentisi bulunamıyor olabilir. GST_PLUGIN_PATH: {:?}",
+                    status.code(),
+                    std::env::var("GST_PLUGIN_PATH").unwrap_or_else(|_| "<not set>".to_string())
+                ));
+            }
         }
     }
     // --------------------------------
