@@ -75,7 +75,8 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
 
 // ── Video source selection ────────────────────────────────────────────────────
 
-fn build_video_src(_config: &StreamConfig) -> String {
+#[allow(unused_variables)]
+fn build_video_src(config: &StreamConfig) -> String {
     #[cfg(target_os = "windows")]
     {
                 match config.stream_mode.as_str() {

@@ -1,4 +1,6 @@
 use std::path::Path;
+#[cfg(target_os = "windows")]
+use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use std::sync::Once;
 

@@ -1,4 +1,4 @@
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 /// Apply WDA_EXCLUDEFROMCAPTURE to streaming bar window.
 /// Called from React via IPC after bar is created/shown.
