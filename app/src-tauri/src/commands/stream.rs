@@ -191,6 +191,7 @@ pub fn stop_stream_internal() -> bool {
     // 2. Kill GStreamer
     let mut guard = gst_handle().lock().unwrap();
     if let Some(mut child) = guard.take() {
+        #[cfg(target_os = "windows")]
         let pid = child.id();
         #[cfg(target_os = "windows")]
         {

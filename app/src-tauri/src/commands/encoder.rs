@@ -34,6 +34,7 @@ const ENCODER_CHAIN: &[(&str, &str)] = &[
 #[tauri::command]
 pub async fn detect_encoder(app: tauri::AppHandle) -> Result<EncoderResult, String> {
     let gst_launch = get_gst_launch(&app);
+    #[cfg(target_os = "windows")]
     let bin_dir = crate::gstreamer::path_setup::get_gst_bin_dir(&app);
 
     for (encoder, hw_type) in ENCODER_CHAIN {

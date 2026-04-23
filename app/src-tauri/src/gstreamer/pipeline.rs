@@ -75,7 +75,7 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
 
 // ── Video source selection ────────────────────────────────────────────────────
 
-fn build_video_src(config: &StreamConfig) -> String {
+fn build_video_src(_config: &StreamConfig) -> String {
     #[cfg(target_os = "windows")]
     {
                 match config.stream_mode.as_str() {
@@ -136,7 +136,7 @@ fn build_video_src(config: &StreamConfig) -> String {
 // ── Audio source selection ────────────────────────────────────────────────────
 
 #[allow(unreachable_code)]
-fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
+fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
     if !config.audio_enabled {
         return String::new();
     }
@@ -160,7 +160,7 @@ fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
         format!(
             " wasapi2src loopback=true{} ! queue ! audioconvert ! audioresample ! \
              opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={} port=5002",
-            device_arg, ip
+            device_arg, _ip
         )
     }
 
@@ -180,7 +180,7 @@ fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
 
         format!(
             " pulsesrc device=\"@DEFAULT_MONITOR@\" ! queue ! audioconvert ! audioresample ! \
-             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={ip} port=5002"
+             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={_ip} port=5002"
         )
     }
 }

@@ -37,7 +37,7 @@ fn enum_windows_win32() -> Result<Vec<WindowInfo>, String> {
         PROCESS_QUERY_LIMITED_INFORMATION,
     };
 
-    use std::sync::Mutex;
+    use std::sync::{Arc, Mutex};
 
     let results: Arc<Mutex<Vec<WindowInfo>>> = Arc::new(Mutex::new(Vec::new()));
     let results_ptr = results.clone();
@@ -101,4 +101,3 @@ fn enum_windows_win32() -> Result<Vec<WindowInfo>, String> {
         .unwrap())
 }
 
-use std::sync::Arc;

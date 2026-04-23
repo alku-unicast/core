@@ -1,7 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tauri::{AppHandle, Manager};
 use std::sync::Once;
 
+#[cfg(target_os = "windows")]
 static GST_SETUP_ONCE: Once = Once::new();
 
 /// Resolve the gst-launch-1.0 binary path using Tauri's resource resolver.
