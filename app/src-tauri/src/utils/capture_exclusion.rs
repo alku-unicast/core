@@ -18,6 +18,7 @@ pub fn exclude_from_capture(hwnd: isize) -> bool {
 }
 
 #[cfg(not(target_os = "windows"))]
+#[allow(dead_code)]
 pub fn exclude_from_capture(_hwnd: isize) -> bool {
     true
 }

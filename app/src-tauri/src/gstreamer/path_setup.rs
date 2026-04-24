@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
-use std::sync::Once;
+use std::sync::{Once, OnceLock};
 
 static GST_SETUP_ONCE: Once = Once::new();
 

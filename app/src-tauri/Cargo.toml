@@ -43,6 +43,12 @@ windows = { version = "0.57", features = [
   "Win32_Storage_FileSystem",
 ] }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2"
+objc_id = "0.1"
+core-graphics = "0.23"
+core-foundation = "0.9"
+
 [profile.release]
 panic = "abort"
 codegen-units = 1

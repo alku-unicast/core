@@ -18,7 +18,28 @@ pub async fn get_monitors() -> Result<Vec<MonitorInfo>, String> {
             .await
             .map_err(|e| e.to_string())?
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        use core_graphics::display::CGDisplay;
+        let mut results = Vec::new();
+        
+        let displays = CGDisplay::active_displays().map_err(|e| format!("Failed to get displays: {}", e))?;
+        for (i, display_id) in displays.iter().enumerate() {
+            let display = CGDisplay::new(*display_id);
+            let bounds = display.bounds();
+            let is_primary = display.is_main();
+            
+            results.push(MonitorInfo {
+                index: *display_id as u32,
+                name: format!("Display {} ({})", i + 1, if is_primary { "Main" } else { "External" }),
+                width: bounds.size.width as u32,
+                height: bounds.size.height as u32,
+                is_primary,
+            });
+        }
+        Ok(results)
+    }
+    #[cfg(target_os = "linux")]
     {
         // Fallback: single monitor
         Ok(vec![MonitorInfo {

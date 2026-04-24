@@ -18,7 +18,70 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
     }
     #[cfg(target_os = "macos")]
     {
-        Ok(vec![]) // CGWindowList — implemented separately if needed
+        use core_graphics::window::{
+            CGWindowListCopyWindowInfo, kCGWindowListOptionOnScreenOnly, 
+            kCGWindowListExcludeDesktopElements,
+        };
+        use core_foundation::array::CFArray;
+        use core_foundation::dictionary::CFDictionary;
+        use core_foundation::string::CFString;
+        use core_foundation::number::CFNumber;
+        use core_foundation::base::TCFType;
+
+        let mut windows = Vec::new();
+
+        unsafe {
+            let options = kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements;
+            let array_ref = CGWindowListCopyWindowInfo(options, core_graphics::window::kCGNullWindowID);
+            
+            if !array_ref.is_null() {
+                let array: CFArray<CFDictionary> = TCFType::wrap_under_get_rule(array_ref);
+                
+                for i in 0..array.len() {
+                    let dict = array.get(i).unwrap();
+                    
+                    // Filter for window layer 0 (regular windows)
+                    let layer_key = CFString::from_static_string("kCGWindowLayer");
+                    let layer = dict.find(layer_key.as_CFTypeRef() as *const _);
+                    if let Some(l) = layer {
+                        let layer_num: CFNumber = TCFType::wrap_under_get_rule(l as *const _);
+                        if let Some(ln) = layer_num.to_i64() {
+                            if ln != 0 { continue; }
+                        }
+                    }
+
+                    let id_key = CFString::from_static_string("kCGWindowNumber");
+                    let title_key = CFString::from_static_string("kCGWindowName");
+                    let owner_key = CFString::from_static_string("kCGWindowOwnerName");
+
+                    let id_raw = dict.find(id_key.as_CFTypeRef() as *const _);
+                    let title_raw = dict.find(title_key.as_CFTypeRef() as *const _);
+                    let owner_raw = dict.find(owner_key.as_CFTypeRef() as *const _);
+
+                    if let (Some(id_p), Some(owner_p)) = (id_raw, owner_raw) {
+                        let id_num: CFNumber = TCFType::wrap_under_get_rule(id_p as *const _);
+                        let owner_str: CFString = TCFType::wrap_under_get_rule(owner_p as *const _);
+                        
+                        let title = if let Some(t_p) = title_raw {
+                            let t_str: CFString = TCFType::wrap_under_get_rule(t_p as *const _);
+                            t_str.to_string()
+                        } else {
+                            String::new()
+                        };
+
+                        // Only include windows with titles or meaningful content
+                        if !title.trim().is_empty() {
+                            windows.push(WindowInfo {
+                                id: id_num.to_i64().unwrap_or(0) as u64,
+                                title: title,
+                                process_name: owner_str.to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        Ok(windows)
     }
     #[cfg(target_os = "linux")]
     {
@@ -101,4 +164,4 @@ fn enum_windows_win32() -> Result<Vec<WindowInfo>, String> {
         .unwrap())
 }
 
-use std::sync::Arc;
+

@@ -183,11 +183,11 @@ pub fn stop_stream_internal() -> bool {
     // 2. Kill GStreamer
     let mut guard = gst_handle().lock().unwrap();
     if let Some(mut child) = guard.take() {
-        let pid = child.id();
+        let _pid = child.id();
         #[cfg(target_os = "windows")]
         {
             let _ = std::process::Command::new("taskkill")
-                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .args(["/F", "/T", "/PID", &_pid.to_string()])
                 .output();
         }
         #[cfg(not(target_os = "windows"))]

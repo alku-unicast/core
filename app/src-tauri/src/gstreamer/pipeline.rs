@@ -96,8 +96,21 @@ fn build_video_src(config: &StreamConfig) -> String {
 
     #[cfg(target_os = "macos")]
     {
-        // avfvideosrc for full screen; no window mode on Mac (MVP)
-        "avfvideosrc capture-screen=true".to_string()
+        match config.stream_mode.as_str() {
+            "window" => {
+                if let Some(wid) = config.window_id {
+                    format!("screencapturekitsrc window-id={wid} show-cursor=false")
+                } else {
+                    "screencapturekitsrc show-cursor=false".to_string()
+                }
+            }
+            _ => {
+                if let Some(did) = config.monitor_index {
+                    format!("screencapturekitsrc display-id={did} show-cursor=false")
+                } else {
+                    "screencapturekitsrc show-cursor=false".to_string()
+                }
+            }
     }
 
     #[cfg(target_os = "linux")]
@@ -119,15 +132,18 @@ fn build_video_src(config: &StreamConfig) -> String {
 
 #[allow(unreachable_code)]
 fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
+    let _ = ip;
     if !config.audio_enabled {
         return String::new();
     }
 
-    // P9: macOS — disable audio in MVP (no reliable loopback without extra setup)
+    // P9: macOS — ScreenCaptureKit (SCK) for system audio loopback
     #[cfg(target_os = "macos")]
     {
-        log::info!("[pipeline] Audio disabled on macOS (P9)");
-        return String::new();
+        format!(
+            "screencapturekitsrc ! queue ! audioconvert ! audioresample ! \
+             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={ip} port=5002"
+        )
     }
 
     #[cfg(target_os = "windows")]
