@@ -1,7 +1,30 @@
 # UniCast Development Progress
 
+
+# UniCast Gelişim Raporu (Progress)
+
+## Mevcut Durum: Faz 4 (Stabilizasyon & Saha Testleri)
+
+### Son Yapılanlar (2026-04-25)
+1. **CI/CD Mimarisi Devrimi:**
+   - Inline JSON konfigürasyonundan dosya tabanlı (`tauri-resource-override.json`) konfigürasyona geçildi. macOS upload hataları bu sayede çözüldü.
+   - Windows build sürecinde `msiexec /a` komutu `Start-Process -Wait` ile senkron hale getirildi, binary eksikliği giderildi.
+2. **GStreamer Runtime Onarımı (Girişim 1):**
+   - Her yayında registry silme işlemi iptal edildi (Hız ve stabilite için).
+   - Tanı koyabilmek için `gst_debug.log` mekanizması eklendi.
+3. **Versiyon Senkronizasyonu:**
+   - GitHub tagleri ile `tauri.conf.json` arasındaki uyumsuzluk, build workflow'unda `${{ github.ref_name }}` kullanılarak giderildi.
+
+### Bekleyen En Büyük Engel
+- **Windows Runtime Crash:** "Fresh" makinelerde GStreamer hala gecikmeli çöküyor ve log dosyası üretmiyor.
+
+### Gelecek Adımlar
+1. GStreamer log dosyasının neden oluşmadığını bulmak (Yol yetkileri kontrolü).
+2. Junction (mklink) adımını bypass edip doğrudan yolu denemek.
+3. GStreamer eklenti tarayıcısının (`gst-plugin-scanner.exe`) manuel olarak tetiklenip test edilmesi.
+
 ## 📊 Project Status Summary
-**Current Phase:** Phase 3 Active - CI/CD & Release Stabilization  
+**Phase:** Phase 3 Active - CI/CD & Release Stabilization  
 **Build Status:** ✅ Windows/macOS/Linux CI/CD Pipeline Working | ⚠️ Release Binaries Unstable  
 **Key Metrics:** CI/CD pipeline cross-platform fixed, initial release testing in progress  
 **Latest Milestone:** Apr 22, 2026 - Successful cross-platform build, identified critical release-only bugs

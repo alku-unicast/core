@@ -12,6 +12,7 @@ jobs:
       contents: write
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - platform: 'windows-latest'
@@ -73,65 +74,50 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v5
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v6
 
-      - name: Download & Extract GStreamer (Windows)
+      - name: Download & Install GStreamer (Windows)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
         run: |
           curl -L ${{ matrix.gst_url }} -o gst.msi
-          New-Item -ItemType Directory -Force -Path gst_extract | Out-Null
-
-          # Start-Process -Wait ensures msiexec finishes before we continue (it's async otherwise)
+          
+          Write-Host "Installing GStreamer (Full) to force all plugins..."
           $msiPath = (Resolve-Path "gst.msi").Path
-          $targetPath = (Resolve-Path "gst_extract").Path
-          Write-Host "Extracting: $msiPath -> $targetPath"
-          $proc = Start-Process msiexec -ArgumentList "/a `"$msiPath`" /qn TARGETDIR=`"$targetPath`"" -Wait -NoNewWindow -PassThru
-          Write-Host "msiexec exit code: $($proc.ExitCode)"
-          Write-Host "--- Extraction tree (depth 4) ---"
-          Get-ChildItem -Path $targetPath -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object -First 50 -ExpandProperty FullName
-
-          New-Item -ItemType Directory -Force -Path app/src-tauri/gstreamer/windows | Out-Null
-
-          # Smart Search for the extracted GStreamer folder
-          $extractedRoot = $targetPath
-          $found = $false
-
-          # Known paths: msiexec /a creates gstreamer\1.0\msvc_x86_64\ relative to TARGETDIR
-          $possiblePaths = @(
-            "$extractedRoot\gstreamer\1.0\msvc_x86_64",
-            "$extractedRoot\gstreamer",
-            "$extractedRoot\PFiles\GStreamer",
-            "$extractedRoot\gstreamer-1.0"
-          )
-
-          foreach ($src in $possiblePaths) {
-            if ($src -and (Test-Path "$src\bin")) {
-              Write-Host "Found GStreamer binaries at: $src"
-              Copy-Item -Path "$src\*" -Destination "app/src-tauri/gstreamer/windows/" -Recurse -Force
-              $found = $true
-              break
-            }
-          }
-
-          # Fallback: find gst-launch-1.0.exe anywhere in extraction tree
-          if (!$found) {
-            $gstLaunch = Get-ChildItem -Path $extractedRoot -Filter "gst-launch-1.0.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($gstLaunch) {
-              $src = $gstLaunch.Directory.Parent.FullName
-              Write-Host "Recursive search found GStreamer root: $src"
-              Copy-Item -Path "$src\*" -Destination "app/src-tauri/gstreamer/windows/" -Recurse -Force
-              $found = $true
-            }
-          }
-
-          if (!$found) {
-              Write-Error "Could not find GStreamer bin directory in extraction"
+          # /i = install, ADDLOCAL=ALL = all features, INSTALLDIR = custom path
+          $proc = Start-Process msiexec -ArgumentList "/i `"$msiPath`" /qn /norestart ADDLOCAL=ALL INSTALLDIR=C:\gst_install" -Wait -NoNewWindow -PassThru
+          if ($proc.ExitCode -ne 0) {
+              Write-Error "MSI Installation failed with exit code $($proc.ExitCode)"
               exit 1
           }
 
+          # GStreamer MSI structure inside INSTALLDIR is usually \1.0\msvc_x86_64
+          $gstInstallRoot = "C:\gst_install\1.0\msvc_x86_64"
+          if (!(Test-Path $gstInstallRoot)) {
+              # Fallback if the MSI doesn't respect INSTALLDIR subfolder structure
+              $gstInstallRoot = "C:\gst_install"
+          }
+
+          if (!(Test-Path "$gstInstallRoot\bin\gst-launch-1.0.exe")) {
+              Write-Error "GStreamer binary not found at $gstInstallRoot\bin"
+              exit 1
+          }
+
+          $targetDir = "app/src-tauri/gstreamer/windows"
+          New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+          
+          Write-Host "Copying GStreamer files from $gstInstallRoot to project..."
+          Copy-Item -Path "$gstInstallRoot\*" -Destination "$targetDir\" -Recurse -Force
+
+          # VERIFICATION: Ensure the critical DLL is there
+          $dllPath = "$targetDir\lib\gstreamer-1.0\libgstd3d11.dll"
+          if (!(Test-Path $dllPath)) {
+              Write-Error "CRITICAL FAILURE: libgstd3d11.dll NOT FOUND in installation! Build aborted."
+              exit 1
+          }
+          Write-Host "Success: libgstd3d11.dll verified."
+
           # Source VC++ Runtime DLLs from System32 (Reliable in GitHub Runners)
-          $binDir = "app/src-tauri/gstreamer/windows/bin"
-          if (!(Test-Path $binDir)) { mkdir -p $binDir }
+          $binDir = "$targetDir/bin"
           Copy-Item "C:/Windows/System32/vcruntime140.dll" "$binDir/" -Force
           Copy-Item "C:/Windows/System32/msvcp140.dll" "$binDir/" -Force
           Copy-Item "C:/Windows/System32/vcruntime140_app.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
