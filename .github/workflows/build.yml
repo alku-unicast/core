@@ -124,11 +124,26 @@ jobs:
           $global:LASTEXITCODE = 0 
           
           # VERIFICATION: Ensure the critical DLL is there
+          Write-Host "Searching for any D3D related plugins..."
+          $d3dPlugins = Get-ChildItem -Path "$targetDir" -Filter "*d3d*.dll" -Recurse -ErrorAction SilentlyContinue
+          if ($d3dPlugins) {
+              Write-Host "Found D3D plugins:"
+              $d3dPlugins | ForEach-Object { Write-Host "- $($_.Name) at $($_.FullName)" }
+          } else {
+              Write-Host "WARNING: No D3D plugins found at all!"
+          }
+
           $dllSearch = Get-ChildItem -Path "$targetDir" -Filter "libgstd3d11.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           if (!$dllSearch) {
-              Write-Error "CRITICAL FAILURE: libgstd3d11.dll NOT FOUND in target directory!"
-              Write-Host "--- Listing plugins directory for debugging (Top 100) ---"
-              Get-ChildItem -Path "$targetDir\lib\gstreamer-1.0" | Select-Object -First 100 | Format-Table Name, Length
+              if (Test-Path "$targetDir\lib\gstreamer-1.0") {
+                  Write-Host "--- DEBUG: Listing files in lib/gstreamer-1.0 (Top 200) ---"
+                  Get-ChildItem -Path "$targetDir\lib\gstreamer-1.0" | Select-Object Name, Length -First 200 | Format-Table
+              } else {
+                  Write-Host "WARNING: Plugin directory NOT found at expected path! Listing targetDir tree (depth 3)..."
+                  Get-ChildItem -Path "$targetDir" -Recurse -Depth 3 | Select-Object FullName -First 100
+              }
+              
+              Write-Host "CRITICAL FAILURE: libgstd3d11.dll NOT FOUND in target directory!"
               exit 1
           }
           Write-Host "Success: libgstd3d11.dll verified at $($dllSearch.FullName)"
