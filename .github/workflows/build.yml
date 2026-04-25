@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     permissions:
@@ -193,11 +196,17 @@ jobs:
       # ============================================
       # Build
       # ============================================
-      - name: Write Tauri resource config (Windows/macOS)
+      - name: Create Dynamic Resource Config
         if: matrix.os != 'linux'
-        shell: bash
+        shell: pwsh
         run: |
-          echo '{"bundle":{"resources":["gstreamer/${{ matrix.gst_folder }}/**/*"]}}' > app/tauri-resource-override.json
+          $config = @{
+            bundle = @{
+              resources = @("${{ matrix.gst_resources }}")
+            }
+          }
+          # Create the file INSIDE the app directory where Tauri runs
+          $config | ConvertTo-Json | Out-File -FilePath "app/tauri-resource-override.json" -Encoding utf8
           echo "--- Tauri resource config ---"
           cat app/tauri-resource-override.json
 
