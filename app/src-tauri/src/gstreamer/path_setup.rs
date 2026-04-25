@@ -186,22 +186,23 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
         log::error!("[gst] Plugin scanner NOT FOUND at {:?}. Cross-platform plugins might fail to load!", scanner);
     }
 
-    let registry_path = app
+    let data_dir = app
         .path()
         .app_local_data_dir()
-        .unwrap_or_default()
-        .join("gstreamer_registry.bin");
+        .unwrap_or_default();
 
-    if registry_path.exists() {
-        if let Err(e) = std::fs::remove_file(&registry_path) {
-            log::warn!("[gst] Could not clear registry: {}", e);
-        } else {
-            log::info!("[gst] Registry cleared for fresh scan: {:?}", registry_path);
-        }
-    }
-
+    // Registry is version-keyed so GStreamer auto-invalidates it on upgrades.
+    // Do NOT delete it on every launch — that forces a slow full plugin re-scan
+    // every time gst-launch starts, which takes 2-3s and can crash mid-scan.
+    let registry_path = data_dir.join("gstreamer_registry_1.24.bin");
     if let Some(path_str) = registry_path.to_str() {
         std::env::set_var("GST_REGISTRY", path_str);
+    }
+
+    // Write gst-launch stderr to a rotated log file for post-crash diagnosis.
+    let debug_log = data_dir.join("gst_debug.log");
+    if let Some(path_str) = debug_log.to_str() {
+        std::env::set_var("GST_DEBUG_FILE", path_str);
     }
     
     std::env::set_var("GST_DEBUG", "2");

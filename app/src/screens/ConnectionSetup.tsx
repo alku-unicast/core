@@ -108,7 +108,7 @@ export function ConnectionSetup() {
 
         if (event.payload.reason === "error") {
           // Stay on connection screen so user can see the error and retry
-          resetStream("Akış beklenmedik şekilde durdu. GStreamer eklentilerini kontrol edin.");
+          resetStream("Akış beklenmedik şekilde durdu. GStreamer eklentisi eksik olabilir. AppData\\Local\\UniCast\\gst_debug.log dosyasını kontrol edin.");
         } else {
           reset();
           navigate("/", { replace: true });

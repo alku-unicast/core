@@ -117,9 +117,10 @@ pub async fn start_stream(
                 return Box::pin(start_stream(app, fallback_config)).await;
             } else {
                 return Err(format!(
-                    "GStreamer pipeline failed immediately (exit code: {:?}). d3d11screencapturesrc veya x264enc eklentisi bulunamıyor olabilir. GST_PLUGIN_PATH: {:?}",
+                    "GStreamer pipeline failed immediately (exit {:?}). GST_PLUGIN_PATH={:?}  Log: {:?}",
                     status.code(),
-                    std::env::var("GST_PLUGIN_PATH").unwrap_or_else(|_| "<not set>".to_string())
+                    std::env::var("GST_PLUGIN_PATH").unwrap_or_else(|_| "<not set>".to_string()),
+                    std::env::var("GST_DEBUG_FILE").unwrap_or_else(|_| "<not set>".to_string()),
                 ));
             }
         }
