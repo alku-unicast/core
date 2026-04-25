@@ -133,7 +133,7 @@ jobs:
               Write-Host "WARNING: No D3D plugins found at all!"
           }
 
-          $dllSearch = Get-ChildItem -Path "$targetDir" -Filter "libgstd3d11.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          $dllSearch = Get-ChildItem -Path "$targetDir" -Filter "gstd3d11.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           if (!$dllSearch) {
               if (Test-Path "$targetDir\lib\gstreamer-1.0") {
                   Write-Host "--- DEBUG: Listing files in lib/gstreamer-1.0 (Top 200) ---"
@@ -143,10 +143,10 @@ jobs:
                   Get-ChildItem -Path "$targetDir" -Recurse -Depth 3 | Select-Object FullName -First 100
               }
               
-              Write-Host "CRITICAL FAILURE: libgstd3d11.dll NOT FOUND in target directory!"
+              Write-Host "CRITICAL FAILURE: gstd3d11.dll NOT FOUND in target directory!"
               exit 1
           }
-          Write-Host "Success: libgstd3d11.dll verified at $($dllSearch.FullName)"
+          Write-Host "Success: gstd3d11.dll verified at $($dllSearch.FullName)"
 
           # Source VC++ Runtime DLLs from System32 (Reliable in GitHub Runners)
           $binDir = "$targetDir/bin"
