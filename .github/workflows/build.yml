@@ -90,31 +90,48 @@ jobs:
               exit 1
           }
 
-          # GStreamer MSI structure inside INSTALLDIR is usually \1.0\msvc_x86_64
-          $gstInstallRoot = "C:\gst_install\1.0\msvc_x86_64"
-          if (!(Test-Path $gstInstallRoot)) {
-              # Fallback if the MSI doesn't respect INSTALLDIR subfolder structure
-              $gstInstallRoot = "C:\gst_install"
+          # DETECTIVE WORK: Search for the real GStreamer root folder
+          Write-Host "Searching for GStreamer binaries in C:\gst_install and C:\gstreamer..."
+          $searchRoots = @("C:\gst_install", "C:\gstreamer")
+          $gstLaunch = $null
+          foreach ($root in $searchRoots) {
+              if (Test-Path $root) {
+                  $gstLaunch = Get-ChildItem -Path $root -Filter "gst-launch-1.0.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                  if ($gstLaunch) { break }
+              }
           }
 
-          if (!(Test-Path "$gstInstallRoot\bin\gst-launch-1.0.exe")) {
-              Write-Error "GStreamer binary not found at $gstInstallRoot\bin"
+          if (!$gstLaunch) {
+              Write-Error "CRITICAL: Could not find gst-launch-1.0.exe after setup."
               exit 1
           }
+          
+          $gstInstallRoot = $gstLaunch.Directory.Parent.FullName
+          Write-Host "Confirmed GStreamer Root: $gstInstallRoot"
 
           $targetDir = "app/src-tauri/gstreamer/windows"
           New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
           
-          Write-Host "Copying GStreamer files from $gstInstallRoot to project..."
-          Copy-Item -Path "$gstInstallRoot\*" -Destination "$targetDir\" -Recurse -Force
-
-          # VERIFICATION: Ensure the critical DLL is there
-          $dllPath = "$targetDir\lib\gstreamer-1.0\libgstd3d11.dll"
-          if (!(Test-Path $dllPath)) {
-              Write-Error "CRITICAL FAILURE: libgstd3d11.dll NOT FOUND in installation! Build aborted."
+          Write-Host "Copying GStreamer files using Robocopy..."
+          # robocopy exit codes: 0-7 are success (0=no files, 1=copied, 2+ = extra files/mismatch)
+          # 8 or higher is a real failure.
+          robocopy "$gstInstallRoot" "$targetDir" /E /MT:32 /R:3 /W:5 /NFL /NDL /NJH /NJS
+          if ($LASTEXITCODE -ge 8) {
+              Write-Error "Robocopy failed with exit code $LASTEXITCODE"
               exit 1
           }
-          Write-Host "Success: libgstd3d11.dll verified."
+          # Reset exit code for GitHub Actions
+          $global:LASTEXITCODE = 0 
+          
+          # VERIFICATION: Ensure the critical DLL is there
+          $dllSearch = Get-ChildItem -Path "$targetDir" -Filter "libgstd3d11.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (!$dllSearch) {
+              Write-Error "CRITICAL FAILURE: libgstd3d11.dll NOT FOUND in target directory!"
+              Write-Host "--- Listing plugins directory for debugging (Top 100) ---"
+              Get-ChildItem -Path "$targetDir\lib\gstreamer-1.0" | Select-Object -First 100 | Format-Table Name, Length
+              exit 1
+          }
+          Write-Host "Success: libgstd3d11.dll verified at $($dllSearch.FullName)"
 
           # Source VC++ Runtime DLLs from System32 (Reliable in GitHub Runners)
           $binDir = "$targetDir/bin"
