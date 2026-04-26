@@ -15,13 +15,34 @@
 3. **Versiyon Senkronizasyonu:**
    - GitHub tagleri ile `tauri.conf.json` arasındaki uyumsuzluk, build workflow'unda `${{ github.ref_name }}` kullanılarak giderildi.
 
-### Bekleyen En Büyük Engel
-- **Windows Runtime Crash:** "Fresh" makinelerde GStreamer hala gecikmeli çöküyor ve log dosyası üretmiyor.
+## 2026-04-25/26: CI/CD Stabilization & GStreamer Packaging
 
-### Gelecek Adımlar
-1. GStreamer log dosyasının neden oluşmadığını bulmak (Yol yetkileri kontrolü).
-2. Junction (mklink) adımını bypass edip doğrudan yolu denemek.
-3. GStreamer eklenti tarayıcısının (`gst-plugin-scanner.exe`) manuel olarak tetiklenip test edilmesi.
+### 1. GStreamer DLL Discovery
+- **Issue:** `libgstd3d11.dll` was missing in Windows builds.
+- **Cause:** `msiexec /a` (administrative install) was skipping optional "bad" plugins.
+- **Fix:** Switched to `msiexec /i` with `ADDLOCAL=ALL` and `INSTALLDIR`.
+- **Discovery:** Windows MSVC plugins do not use the `lib` prefix. The correct file is `gstd3d11.dll`. Verification steps updated.
+
+### 2. GitHub Release Reliability
+- **Issue:** 404/403 errors during artifact upload.
+- **Fix:** 
+  - Added `max-parallel: 1` to prevent race conditions.
+  - Added explicit `permissions: contents: write` to the workflow.
+
+### 3. Tauri Resource Injection
+- **Issue:** `resource path '' doesn't exist` error in CI.
+- **Cause:** `matrix.gst_resources` was undefined for Windows/macOS, leading to an empty string in the dynamically generated `tauri-resource-override.json`.
+- **Status:** Fixing matrix variables to point to `gstreamer/windows/**/*` and `gstreamer/macos/silicon/**/*`.
+
+### 4. Next Steps
+- [ ] Push finalized `build.yml` with correct matrix variables.
+- [ ] Verify full build on Windows and macOS.
+- [ ] Test the resulting installer on a fresh Windows machine.
+- **CI/CD:** GitHub Actions üzerinden otomatik Release oluşturma başarıyla tamamlandı.
+- **Testing:** Oluşturulan `.exe` dosyası ile başka bilgisayarda testler yapıldı.
+- **Bug Discovery:** 
+    - Release build'lerde GStreamer bağlantı sorunu (muhtemelen DLL/Redist eksikliği).
+    - Streaming Bar'ın hem dev hem release modunda bazen görünmemesi.
 
 ## 📊 Project Status Summary
 **Phase:** Phase 3 Active - CI/CD & Release Stabilization  
