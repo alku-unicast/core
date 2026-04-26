@@ -2,10 +2,6 @@ use std::path::Path;
 #[cfg(target_os = "windows")]
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
-use std::sync::Once;
-
-#[cfg(target_os = "windows")]
-static GST_SETUP_ONCE: Once = Once::new();
 
 /// Resolve the gst-launch-1.0 binary path using Tauri's resource resolver.
 pub fn get_gst_launch(app: &AppHandle) -> String {
@@ -17,30 +13,29 @@ pub fn get_gst_launch(app: &AppHandle) -> String {
         _ => "windows",
     };
 
-    let gst_root = app.path().resource_dir()
-        .unwrap_or_default()
-        .join("gstreamer")
-        .join(platform_subfolder);
+    let resource_dir = app.path().resource_dir().unwrap_or_default();
+    let gst_root = resource_dir.join("gstreamer").join(platform_subfolder);
+    
+    log::info!("[gst] Resource Dir: {:?}", resource_dir);
+    log::info!("[gst] Looking for GStreamer at: {:?}", gst_root);
 
     #[cfg(target_os = "windows")]
     {
         if gst_root.exists() {
-            GST_SETUP_ONCE.call_once(|| {
-                if let Err(e) = setup_gstreamer_junction(app, &gst_root) {
-                    log::error!("[gst] Junction setup failed: {}", e);
-                }
+            // Use Windows Short Path (8.3) to avoid space issues without needing Admin for junctions
+            let final_path = get_short_path(&gst_root).unwrap_or_else(|e| {
+                log::warn!("[gst] Short path resolution failed: {}. Using original path.", e);
+                gst_root.clone()
             });
 
-            let drive_prefix = get_drive_prefix(&gst_root);
-            let pid = std::process::id();
-            let junction_path = PathBuf::from(format!("{}\\UCGst_{}", drive_prefix, pid));
+            log::info!("[gst] Final GStreamer path (Windows): {:?}", final_path);
+            setup_gstreamer_env(app, &final_path);
             
-            let bin_path = junction_path.join("bin").join("gst-launch-1.0.exe");
-            setup_gstreamer_env(app, &junction_path);
+            let bin_path = final_path.join("bin").join("gst-launch-1.0.exe");
             return bin_path.to_string_lossy().to_string();
         }
 
-        log::warn!("[gst] Bundled GStreamer not found at {:?}, falling back to system PATH", gst_root);
+        log::warn!("[gst] Bundled GStreamer NOT FOUND at {:?}, falling back to system PATH", gst_root);
         "gst-launch-1.0.exe".to_string()
     }
 
@@ -57,54 +52,45 @@ pub fn get_gst_launch(app: &AppHandle) -> String {
     }
 }
 
+/// Windows only: Converts a long path with spaces to a short 8.3 path (e.g. C:\Users\JOHN~1\...)
 #[cfg(target_os = "windows")]
-fn get_drive_prefix(path: &Path) -> String {
-    let root_str = path.to_string_lossy();
-    if root_str.starts_with("\\\\?\\") {
-        root_str[4..6].to_string()
-    } else if root_str.len() >= 2 && &root_str[1..2] == ":" {
-        root_str[0..2].to_string()
-    } else {
-        "C:".to_string()
-    }
-}
+fn get_short_path(path: &Path) -> Result<PathBuf, String> {
+    use std::os::windows::ffi::OsStrExt;
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+    use windows::Win32::Storage::FileSystem::GetShortPathNameW;
+    use windows::core::{PCWSTR, PWSTR};
 
-/// Creates a directory junction at the root of the current drive to avoid spaces in paths.
-/// For example: D:\Okul Belgeleri\... -> D:\UC_Gst
-#[cfg(target_os = "windows")]
-fn setup_gstreamer_junction(_app: &AppHandle, gst_root: &Path) -> Result<PathBuf, String> {
-    let drive_prefix = get_drive_prefix(gst_root);
-    let pid = std::process::id();
-    let junction_path = PathBuf::from(format!("{}\\UCGst_{}", drive_prefix, pid));
-
-    if junction_path.exists() {
-        return Ok(junction_path);
-    }
-
-    let _ = std::process::Command::new("cmd")
-        .args(["/C", "rmdir", "/S", "/Q", &junction_path.to_string_lossy()])
-        .output();
-
-    let mut clean_target = gst_root.to_string_lossy().to_string();
-    if clean_target.starts_with("\\\\?\\") {
-        clean_target = clean_target[4..].to_string();
-    }
-
-    log::info!("[gst] Mapping GStreamer runtime to: {}", junction_path.display());
+    let wide_path: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let pcwstr_path = PCWSTR(wide_path.as_ptr());
     
-    let output = std::process::Command::new("cmd")
-        .args(["/C", "mklink", "/J", &junction_path.to_string_lossy(), &clean_target])
-        .output()
-        .map_err(|e| format!("Failed to execute mklink command: {}", e))?;
+    unsafe {
+        // First call: get the required buffer size
+        let buffer_size = GetShortPathNameW(
+            pcwstr_path,
+            PWSTR::null(),
+            0
+        );
 
-    if !output.status.success() {
-        let err = String::from_utf8_lossy(&output.stderr);
-        if !junction_path.exists() {
-            return Err(format!("mklink /J failed: {}", err.trim()));
+        if buffer_size == 0 {
+            return Err(format!("GetShortPathNameW size query failed (path exists? {})", path.exists()));
         }
-    }
 
-    Ok(junction_path)
+        // Second call: actually get the short path
+        let mut buffer = vec![0u16; buffer_size as usize];
+        let result = GetShortPathNameW(
+            pcwstr_path,
+            PWSTR(buffer.as_mut_ptr()),
+            buffer_size
+        );
+
+        if result == 0 {
+            return Err("GetShortPathNameW execution failed".to_string());
+        }
+
+        let short_os_str = OsString::from_wide(&buffer[..result as usize]);
+        Ok(PathBuf::from(short_os_str))
+    }
 }
 
 fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
@@ -194,9 +180,12 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
     // Registry is version-keyed so GStreamer auto-invalidates it on upgrades.
     // Do NOT delete it on every launch — that forces a slow full plugin re-scan
     // every time gst-launch starts, which takes 2-3s and can crash mid-scan.
-    let registry_path = data_dir.join("gstreamer_registry_1.24.bin");
+    // Use a unique registry filename to force a fresh scan after our path fixes.
+    // Stale registries from failed junction attempts might be empty.
+    let registry_path = data_dir.join("gstreamer_registry_v1.bin");
     if let Some(path_str) = registry_path.to_str() {
         std::env::set_var("GST_REGISTRY", path_str);
+        log::info!("[gst] Using registry at: {}", path_str);
     }
 
     // Write gst-launch stderr to a rotated log file for post-crash diagnosis.
@@ -205,7 +194,7 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
         std::env::set_var("GST_DEBUG_FILE", path_str);
     }
     
-    std::env::set_var("GST_DEBUG", "2");
+    std::env::set_var("GST_DEBUG", "5");
     log::info!("[gst] Environment setup complete for platform root: {:?}", gst_root);
 }
 
@@ -219,21 +208,19 @@ pub fn get_gst_bin_dir(app: &AppHandle) -> String {
         _ => "windows",
     };
 
-    let gst_root = app.path().resource_dir()
-        .unwrap_or_default()
-        .join("gstreamer")
-        .join(platform_subfolder);
+    let resource_dir = app.path().resource_dir().unwrap_or_default();
+    let gst_root = resource_dir.join("gstreamer").join(platform_subfolder);
 
     #[cfg(target_os = "windows")]
     {
         if gst_root.exists() {
-            let drive_prefix = get_drive_prefix(&gst_root);
-            let pid = std::process::id();
-            format!("{}\\UCGst_{}\\bin", drive_prefix, pid)
-        } else {
-            // Bundled GStreamer not found; system GStreamer via PATH doesn't need a special CWD
-            std::env::temp_dir().to_string_lossy().to_string()
+            let final_path = get_short_path(&gst_root).unwrap_or_else(|e| {
+                log::warn!("[gst] Short path resolution (bin_dir) failed: {}. Using original path.", e);
+                gst_root.clone()
+            });
+            return final_path.join("bin").to_string_lossy().to_string();
         }
+        std::env::temp_dir().to_string_lossy().to_string()
     }
 
     #[cfg(not(target_os = "windows"))]
