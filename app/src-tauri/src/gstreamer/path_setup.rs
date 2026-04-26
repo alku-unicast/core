@@ -59,29 +59,27 @@ fn get_short_path(path: &Path) -> Result<PathBuf, String> {
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
     use windows::Win32::Storage::FileSystem::GetShortPathNameW;
-    use windows::core::{PCWSTR, PWSTR};
+    use windows::core::PCWSTR;
 
     let wide_path: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
     let pcwstr_path = PCWSTR(wide_path.as_ptr());
     
     unsafe {
-        // First call: get the required buffer size
+        // First call: get the required buffer size by passing None
         let buffer_size = GetShortPathNameW(
             pcwstr_path,
-            PWSTR::null(),
-            0
+            None
         );
 
         if buffer_size == 0 {
             return Err(format!("GetShortPathNameW size query failed (path exists? {})", path.exists()));
         }
 
-        // Second call: actually get the short path
+        // Second call: actually get the short path by passing Some(&mut buffer)
         let mut buffer = vec![0u16; buffer_size as usize];
         let result = GetShortPathNameW(
             pcwstr_path,
-            PWSTR(buffer.as_mut_ptr()),
-            buffer_size
+            Some(&mut buffer)
         );
 
         if result == 0 {
@@ -180,9 +178,9 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
     // Registry is version-keyed so GStreamer auto-invalidates it on upgrades.
     // Do NOT delete it on every launch — that forces a slow full plugin re-scan
     // every time gst-launch starts, which takes 2-3s and can crash mid-scan.
-    // Use a unique registry filename to force a fresh scan after our path fixes.
-    // Stale registries from failed junction attempts might be empty.
-    let registry_path = data_dir.join("gstreamer_registry_v1.bin");
+    // Use a versioned registry filename to force a fresh scan for this build.
+    // If the registry was previously empty/stale, this ensures a re-scan.
+    let registry_path = data_dir.join("gstreamer_registry_1_24_13.bin");
     if let Some(path_str) = registry_path.to_str() {
         std::env::set_var("GST_REGISTRY", path_str);
         log::info!("[gst] Using registry at: {}", path_str);
@@ -194,7 +192,8 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
         std::env::set_var("GST_DEBUG_FILE", path_str);
     }
     
-    std::env::set_var("GST_DEBUG", "5");
+    // Level 3 (INFO) is sufficient for plugin scanning diagnostics without bloating the disk.
+    std::env::set_var("GST_DEBUG", "3");
     log::info!("[gst] Environment setup complete for platform root: {:?}", gst_root);
 }
 
