@@ -256,8 +256,18 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
     {
         let current_path = std::env::var("PATH").unwrap_or_default();
         cmd.env("PATH", format!("{};{}", bin_dir, current_path));
-        cmd.env("GST_PLUGIN_PATH", plugins_path.to_string_lossy().to_string());
-        cmd.env("GST_REGISTRY", app.path().app_local_data_dir().unwrap_or_default().join("gst_inspect_reg.bin").to_string_lossy().to_string());
+        
+        let safe_plugins_path = get_short_path(&plugins_path)
+            .unwrap_or(plugins_path)
+            .to_string_lossy()
+            .to_string();
+            
+        let reg_path = std::env::var("GST_REGISTRY").unwrap_or_else(|_| {
+            app.path().app_local_data_dir().unwrap_or_default().join("gstreamer_registry_1_24_13.bin").to_string_lossy().to_string()
+        });
+
+        cmd.env("GST_PLUGIN_PATH", safe_plugins_path);
+        cmd.env("GST_REGISTRY", reg_path);
     }
 
     let output = cmd.arg(name).output();

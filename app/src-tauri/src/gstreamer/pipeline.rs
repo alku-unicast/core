@@ -1,4 +1,5 @@
 use tauri::AppHandle;
+use crate::commands::stream::StreamConfig;
 use crate::gstreamer::path_setup;
 
 // ── Encoder-specific GStreamer parameters ─────────────────────────────────
