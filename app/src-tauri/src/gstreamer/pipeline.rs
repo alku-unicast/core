@@ -125,6 +125,7 @@ fn build_windows_video_src(app: &AppHandle, config: &StreamConfig) -> (String, b
     (src, is_d3d11)
 }
 
+#[cfg(not(target_os = "windows"))]
 #[allow(unused_variables)]
 fn build_video_src(config: &StreamConfig) -> String {
 
