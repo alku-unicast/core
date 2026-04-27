@@ -185,9 +185,17 @@ macOS: Framework path expansion
     - **Fallback Working:** `gstwinscreencap.dll` is working perfectly, providing `dx9screencapsrc` and `gdiscreencapsrc`.
 - **Root Cause Hypothesis:** `gstd3d11.dll` likely requires specific VC++ 2022 Redistributable extensions or hardware features (Desktop Duplication API) that are absent on the test machine.
 
+### Apr 27: Intelligent Fallback & Dependency Injection
+- **Smart Pipeline Fallback:** Pipeline now intelligently tries `D3D11 -> DX9 -> GDI` using runtime discovery (`gst-inspect`).
+- **Property Bug Fixes:** Corrected GStreamer property mismatches (`monitor` instead of `monitor-index` for DX9/GDI, `cursor` instead of `show-cursor`).
+- **UX Warning Logs:** Added explicit logs when a user requests "Window Capture" but the system falls back to a source that only supports "Monitor Capture" (DX9/GDI).
+- **Startup Optimization:** Unified the GStreamer registry path. Both `gst-inspect` and `gst-launch` now use the same `gstreamer_registry_1_24_13.bin`, eliminating duplicate scanning and reducing first-launch delay by ~3 seconds.
+- **Root Cause Fix Attempt (CI/CD):** Updated `build.yml` (cache `v7`) to explicitly bundle `vcruntime140_1.dll`, `msvcp140_1.dll`, and `d3dcompiler_47.dll` to attempt to force D3D11 plugin loading on fresh machines.
+- **Rust Compile Fixes:** Fixed `StreamConfig` import dropping during refactoring and correctly gated `build_video_src` to resolve `E0308` on Windows.
+
 ### UI & Pipeline Status
 - **Issue:** "GStreamer eklentileri kontrol edin" error on fresh machines due to missing D3D11 plugins.
-- **Solution (Apr 26):** Implemented **Intelligent Fallback Mechanism** in `pipeline.rs`.
+- **Solution (Apr 26-27):** Implemented **Intelligent Fallback Mechanism** in `pipeline.rs`.
     - 🔍 **Discovery:** Added `is_element_available` using `gst-inspect-1.0.exe`.
     - 🛡️ **Resilience:** Pipeline now tries D3D11 -> DX9 -> GDI in order.
     - ⚙️ **Optimization:** Automatically removes `d3d11download` when using DX9/GDI sources.
