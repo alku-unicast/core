@@ -111,6 +111,7 @@ fn build_video_src(config: &StreamConfig) -> String {
                     "screencapturekitsrc show-cursor=false".to_string()
                 }
             }
+        }
     }
 
     #[cfg(target_os = "linux")]
