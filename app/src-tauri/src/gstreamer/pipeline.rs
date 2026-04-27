@@ -107,11 +107,17 @@ fn build_windows_video_src(app: &AppHandle, config: &StreamConfig) -> (String, b
             // dx9screencapsrc uses 'monitor' instead of 'monitor-index'
             // and 'cursor' instead of 'show-cursor'.
             // It does not support window-handle capture, so we fall back to monitor capture.
+            if config.stream_mode == "window" {
+                log::warn!("[gst] D3D11 not available. Falling back to dx9screencapsrc (monitor={idx}). Window capture is NOT supported in DX9 mode.");
+            }
             format!("{} monitor={idx} cursor=false", best_element)
         },
         _ => {
             // gdiscreencapsrc (fallback) uses 'monitor' and 'cursor'
             // It also does not support window-handle capture.
+            if config.stream_mode == "window" {
+                log::warn!("[gst] D3D11 and DX9 not available. Falling back to gdiscreencapsrc (monitor={idx}). Window capture is NOT supported in GDI mode.");
+            }
             format!("{} monitor={idx} cursor=false", best_element)
         }
     };
