@@ -81,7 +81,7 @@ pub async fn start_stream(
 
     let gst_launch = get_gst_launch(&app);
     let bin_dir = crate::gstreamer::path_setup::get_gst_bin_dir(&app);
-    let pipeline = build_pipeline(&config);
+    let pipeline = build_pipeline(&app, &config);
 
     println!("[stream] gst_launch path: {}", gst_launch);
     println!("[stream] bin_dir (CWD): {}", bin_dir);

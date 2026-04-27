@@ -1,4 +1,5 @@
-use crate::commands::stream::StreamConfig;
+use tauri::AppHandle;
+use crate::gstreamer::path_setup;
 
 // ── Encoder-specific GStreamer parameters ─────────────────────────────────
 // Each hardware encoder has different property names for zero-latency settings.
@@ -14,7 +15,7 @@ fn encoder_params(encoder: &str) -> &'static str {
     }
 }
 
-pub fn build_pipeline(config: &StreamConfig) -> String {
+pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
     let (width, height) = parse_resolution(&config.resolution);
     let ip = &config.target_ip;
     
@@ -37,11 +38,18 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
              config.quality_mode, encoder, ip, 5000, fps, bitrate);
 
     // ── Video source: platform + mode aware ──────────────────────────────────
+    #[cfg(target_os = "windows")]
+    let (video_src, is_d3d11) = build_windows_video_src(app, config);
+
+    #[cfg(not(target_os = "windows"))]
     let video_src = build_video_src(config);
 
     #[cfg(target_os = "windows")]
+    let download_part = if is_d3d11 { "! queue ! d3d11download" } else { "! queue" };
+
+    #[cfg(target_os = "windows")]
     let video_part = format!(
-        "{video_src} ! queue ! d3d11download ! videoconvert ! videoscale ! \
+        "{video_src} {download_part} ! videoconvert ! videoscale ! \
          video/x-raw,format=NV12,width={width},height={height},framerate={fps}/1 ! queue ! \
          {encoder} bitrate={bitrate} {} ! \
          rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000",
@@ -75,25 +83,43 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
 
 // ── Video source selection ────────────────────────────────────────────────────
 
+#[cfg(target_os = "windows")]
+fn build_windows_video_src(app: &AppHandle, config: &StreamConfig) -> (String, bool) {
+    let (best_element, is_d3d11) = path_setup::get_best_windows_src(app);
+    log::info!("[gst] Using Windows video source: {} (is_d3d11={})", best_element, is_d3d11);
+
+    let idx = config.monitor_index.unwrap_or(0);
+
+    let src = match best_element.as_str() {
+        "d3d11screencapturesrc" => {
+            if config.stream_mode == "window" {
+                if let Some(hwnd) = config.window_id {
+                    format!("{} window-handle={hwnd} show-cursor=false", best_element)
+                } else {
+                    format!("{} monitor-index={idx} show-cursor=false", best_element)
+                }
+            } else {
+                format!("{} monitor-index={idx} show-cursor=false", best_element)
+            }
+        },
+        "dx9screencapsrc" => {
+            // dx9screencapsrc uses 'monitor' instead of 'monitor-index'
+            // and 'cursor' instead of 'show-cursor'.
+            // It does not support window-handle capture, so we fall back to monitor capture.
+            format!("{} monitor={idx} cursor=false", best_element)
+        },
+        _ => {
+            // gdiscreencapsrc (fallback) uses 'monitor' and 'cursor'
+            // It also does not support window-handle capture.
+            format!("{} monitor={idx} cursor=false", best_element)
+        }
+    };
+
+    (src, is_d3d11)
+}
+
 #[allow(unused_variables)]
 fn build_video_src(config: &StreamConfig) -> String {
-    #[cfg(target_os = "windows")]
-    {
-                match config.stream_mode.as_str() {
-            "window" => {
-                if let Some(hwnd) = config.window_id {
-                    format!("d3d11screencapturesrc window-handle={hwnd} show-cursor=false")
-                } else {
-                    let idx = config.monitor_index.unwrap_or(0);
-                    format!("d3d11screencapturesrc monitor-index={idx} show-cursor=false")
-                }
-            }
-            _ => {
-                let idx = config.monitor_index.unwrap_or(0);
-                format!("d3d11screencapturesrc monitor-index={idx} show-cursor=false")
-            }
-        }
-    }
 
     #[cfg(target_os = "macos")]
     {

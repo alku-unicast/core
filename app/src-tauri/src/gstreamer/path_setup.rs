@@ -197,6 +197,77 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
     log::info!("[gst] Environment setup complete for platform root: {:?}", gst_root);
 }
 
+use std::sync::atomic::{AtomicU8, Ordering};
+
+// 0: Unknown, 1: D3D11, 2: DX9, 3: GDI
+static WIN_VIDEO_SRC_CACHE: AtomicU8 = AtomicU8::new(0);
+
+/// Checks which Windows video source is available and best for this system.
+/// It caches the result for performance.
+pub fn get_best_windows_src(app: &AppHandle) -> (String, bool) {
+    let cached = WIN_VIDEO_SRC_CACHE.load(Ordering::SeqCst);
+    
+    let mode = if cached == 0 {
+        let best = if is_element_available(app, "d3d11screencapturesrc") {
+            1 // D3D11
+        } else if is_element_available(app, "dx9screencapsrc") {
+            2 // DX9
+        } else {
+            3 // GDI
+        };
+        WIN_VIDEO_SRC_CACHE.store(best, Ordering::SeqCst);
+        best
+    } else {
+        cached
+    };
+
+    match mode {
+        1 => ("d3d11screencapturesrc".to_string(), true),
+        2 => ("dx9screencapsrc".to_string(), false),
+        _ => ("gdiscreencapsrc".to_string(), false),
+    }
+}
+
+fn is_element_available(app: &AppHandle, name: &str) -> bool {
+    let bin_dir = get_gst_bin_dir(app);
+    let exe_name = if cfg!(target_os = "windows") { "gst-inspect-1.0.exe" } else { "gst-inspect-1.0" };
+    let inspect_path = Path::new(&bin_dir).join(exe_name);
+
+    if !inspect_path.exists() {
+        return false;
+    }
+
+    let platform_subfolder = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", _) => "windows",
+        ("linux", _) => "linux",
+        ("macos", "aarch64") => "macos/silicon",
+        ("macos", _) => "macos/intel",
+        _ => "windows",
+    };
+
+    let resource_dir = app.path().resource_dir().unwrap_or_default();
+    let gst_root = resource_dir.join("gstreamer").join(platform_subfolder);
+    let plugins_path = gst_root.join("lib").join("gstreamer-1.0");
+
+    let mut cmd = std::process::Command::new(inspect_path);
+    
+    // Add bin to PATH for dependencies during inspection
+    #[cfg(target_os = "windows")]
+    {
+        let current_path = std::env::var("PATH").unwrap_or_default();
+        cmd.env("PATH", format!("{};{}", bin_dir, current_path));
+        cmd.env("GST_PLUGIN_PATH", plugins_path.to_string_lossy().to_string());
+        cmd.env("GST_REGISTRY", app.path().app_local_data_dir().unwrap_or_default().join("gst_inspect_reg.bin").to_string_lossy().to_string());
+    }
+
+    let output = cmd.arg(name).output();
+    
+    match output {
+        Ok(out) => out.status.success(),
+        Err(_) => false,
+    }
+}
+
 /// Helper to get the bin dir for setting CWD during execution
 pub fn get_gst_bin_dir(app: &AppHandle) -> String {
     let platform_subfolder = match (std::env::consts::OS, std::env::consts::ARCH) {

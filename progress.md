@@ -177,6 +177,31 @@ macOS: Framework path expansion
 [ ] i18n (TR/EN locales)
 ```
 
+### Apr 26: GStreamer Path & Plugin Finalization
+- **Compilation Fix:** Resolved `GetShortPathNameW` signature mismatch for `windows` crate v0.57.0 (switched to 2-argument idiomatic Rust call).
+- **Registry & Debug:** Forced a fresh plugin scan via `gstreamer_registry_1_24_13.bin` and enabled `GST_DEBUG=3` for diagnostics.
+- **Critical Finding (Fresh Windows):** 
+    - `gstd3d11.dll` exists in the bundle but **fails to register** its elements (`d3d11screencapturesrc` is missing).
+    - **Fallback Working:** `gstwinscreencap.dll` is working perfectly, providing `dx9screencapsrc` and `gdiscreencapsrc`.
+- **Root Cause Hypothesis:** `gstd3d11.dll` likely requires specific VC++ 2022 Redistributable extensions or hardware features (Desktop Duplication API) that are absent on the test machine.
+
+### UI & Pipeline Status
+- **Issue:** "GStreamer eklentileri kontrol edin" error on fresh machines due to missing D3D11 plugins.
+- **Solution (Apr 26):** Implemented **Intelligent Fallback Mechanism** in `pipeline.rs`.
+    - 🔍 **Discovery:** Added `is_element_available` using `gst-inspect-1.0.exe`.
+    - 🛡️ **Resilience:** Pipeline now tries D3D11 -> DX9 -> GDI in order.
+    - ⚙️ **Optimization:** Automatically removes `d3d11download` when using DX9/GDI sources.
+
+---
+
+## 📊 Project Status Summary
+**Phase:** Phase 4 Active - Stabilization & Fallback Logic  
+**Build Status:** ✅ Cross-platform CI/CD Fixed | ✅ Intelligent GStreamer Fallback Implemented  
+**Key Metrics:** Bundle size optimized, Registry reset working, Smart DX9/GDI fallback active.  
+**Latest Milestone:** Apr 26, 2026 - Stabilized Windows release via dynamic GStreamer plugin discovery.
+
+---
+
 ## 🛠️ Technical Decisions (ADR Log)
 
 | Decision | Rationale | Status |
@@ -186,7 +211,7 @@ macOS: Framework path expansion
 | **Directory Junctions** | Solves Windows path issues | ✅ Production |
 | **GPU-RAM Bridge** | Hybrid NVIDIA/AMD stability | ✅ Stable |
 | **Firebase Real-time** | Pi status sync | ✅ Live |
+| **Intelligent Fallback** | Handles missing plugins (D3D11/DX9) | ✅ Implemented |
 
-**Last Updated:** April 21, 2026  
-**Total Sessions:** 24 | **Stability:** Production Ready
-
+**Last Updated:** April 26, 2026  
+**Total Sessions:** 25 | **Stability:** Field Test Ready

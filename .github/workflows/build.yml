@@ -80,7 +80,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v6
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v7
 
       - name: Download & Install GStreamer (Windows)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
@@ -157,8 +157,12 @@ jobs:
           # Source VC++ Runtime DLLs from System32 (Reliable in GitHub Runners)
           $binDir = "$targetDir/bin"
           Copy-Item "C:/Windows/System32/vcruntime140.dll" "$binDir/" -Force
+          Copy-Item "C:/Windows/System32/vcruntime140_1.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
           Copy-Item "C:/Windows/System32/msvcp140.dll" "$binDir/" -Force
+          Copy-Item "C:/Windows/System32/msvcp140_1.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:/Windows/System32/msvcp140_2.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
           Copy-Item "C:/Windows/System32/vcruntime140_app.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:/Windows/System32/d3dcompiler_47.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
 
       # ============================================
       # macOS: GStreamer PKG
