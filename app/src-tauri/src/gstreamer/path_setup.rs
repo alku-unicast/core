@@ -223,21 +223,25 @@ pub fn get_best_windows_src(app: &AppHandle) -> (String, bool) {
     let cached = WIN_VIDEO_SRC_CACHE.load(Ordering::SeqCst);
     
     let mode = if cached == 0 {
-        // Both d3d11screencapturesrc AND d3d11download must be available.
-        // d3d11download can fail independently if the HLSL compiler (d3dcompiler_47.dll)
-        // is missing or version-mismatched, even when the capture element exists.
-        let d3d11_ok = is_element_available(app, "d3d11screencapturesrc")
-            && is_element_available(app, "d3d11download");
+        let has_src = is_element_available(app, "d3d11screencapturesrc");
+        let has_down = is_element_available(app, "d3d11download");
+        
+        let d3d11_ok = has_src && has_down;
 
         let best = if d3d11_ok {
             log::info!("[gst] D3D11 pipeline fully available (src + download).");
             1 // D3D11
-        } else if is_element_available(app, "dx9screencapsrc") {
-            log::info!("[gst] D3D11 not fully available. Falling back to DX9.");
-            2 // DX9
         } else {
-            log::warn!("[gst] DX9 not available either. Falling back to GDI.");
-            3 // GDI
+            if !has_src { log::warn!("[gst] D3D11 source element NOT available."); }
+            if !has_down { log::warn!("[gst] D3D11 download element NOT available."); }
+
+            if is_element_available(app, "dx9screencapsrc") {
+                log::info!("[gst] Falling back to DX9.");
+                2 // DX9
+            } else {
+                log::warn!("[gst] DX9 not available. Falling back to GDI.");
+                3 // GDI
+            }
         };
         WIN_VIDEO_SRC_CACHE.store(best, Ordering::SeqCst);
         best

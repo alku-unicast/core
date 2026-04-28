@@ -188,8 +188,8 @@ fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
         let device_arg = config
             .audio_device_id
             .as_ref()
-            .filter(|id| !id.is_empty())
-            .map(|id| format!(" device={}", id))
+            .filter(|id| !id.is_empty() && id.starts_with('{'))
+            .map(|id| format!(" device=\"{}\"", id))
             .unwrap_or_default();
 
         format!(
