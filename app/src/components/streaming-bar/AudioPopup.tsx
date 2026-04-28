@@ -35,15 +35,15 @@ export function AudioPopup({
   const pct = Math.round(isMuted ? 0 : volume * 100);
 
   return (
-    // Positioned above the audio button
+    // Positioned above the audio button - updated for 80px window height
     <div
       ref={popupRef}
       className="
-        absolute bottom-[calc(100%+8px)] right-0
-        flex flex-col items-center gap-2
-        px-3 py-3 rounded-xl
+        absolute bottom-[calc(100%+8px)] right-[-12px]
+        flex items-center gap-3
+        px-3 py-2 rounded-xl
         border shadow-2xl z-50
-        w-14
+        w-[180px]
       "
       style={{
         background:   "var(--bar-bg)",
@@ -57,13 +57,26 @@ export function AudioPopup({
       // Prevent drag from interfering
       data-no-drag="true"
     >
-      {/* Volume % label */}
-      <span className="text-[10px] font-semibold tabular-nums opacity-80">
-        {pct}%
-      </span>
+      {/* Mute toggle */}
+      <button
+        id="btn-popup-mute"
+        onClick={onMuteToggle}
+        className="
+          w-8 h-8 flex items-center justify-center rounded-lg
+          transition-colors duration-150
+          hover:bg-white/20 shrink-0
+        "
+        style={{
+          background: isMuted ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.1)",
+          color:      isMuted ? "#ef4444" : "var(--bar-text)",
+        }}
+        title={isMuted ? t("streaming_bar.unmute") : t("streaming_bar.mute")}
+      >
+        {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+      </button>
 
-      {/* Vertical slider — rotated range input */}
-      <div className="relative flex items-center justify-center p-0" style={{ height: 80, width: 28 }}>
+      {/* Horizontal slider */}
+      <div className="flex-1 relative flex items-center h-4">
         <input
           id="bar-volume-slider"
           type="range"
@@ -75,12 +88,9 @@ export function AudioPopup({
             const v = Number(e.target.value) / 100;
             onVolumeChange(v);
           }}
-          className="appearance-none cursor-pointer absolute"
+          className="appearance-none cursor-pointer w-full"
           style={{
-            transform: "rotate(-90deg)",
-            transformOrigin: "center",
-            width: 80,  // The visual height when rotated
-            height: 4,  // The visual width when rotated
+            height: 4,
             accentColor: "var(--bar-text)",
             background: "rgba(255,255,255,0.2)",
             borderRadius: 4,
@@ -89,23 +99,10 @@ export function AudioPopup({
         />
       </div>
 
-      {/* Mute toggle */}
-      <button
-        id="btn-popup-mute"
-        onClick={onMuteToggle}
-        className="
-          w-8 h-8 flex items-center justify-center rounded-lg
-          transition-colors duration-150
-          hover:bg-white/20
-        "
-        style={{
-          background: isMuted ? "rgba(239,68,68,0.25)" : "rgba(255,255,255,0.1)",
-          color:      isMuted ? "#ef4444" : "var(--bar-text)",
-        }}
-        title={isMuted ? t("streaming_bar.unmute") : t("streaming_bar.mute")}
-      >
-        {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-      </button>
+      {/* Volume % label */}
+      <span className="text-[10px] font-semibold tabular-nums opacity-80 min-w-[28px] text-right">
+        {pct}%
+      </span>
     </div>
   );
 }

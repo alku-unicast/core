@@ -140,6 +140,13 @@ jobs:
           }
 
           # Verify the DX9/GDI fallback plugin is present (our working capture source).
+          $d3d11Dll = Get-ChildItem -Path "$targetDir" -Filter "gstd3d11.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($d3d11Dll) {
+              Write-Host "  [OK] gstd3d11.dll (D3D11 primary) verified at $($d3d11Dll.FullName)"
+          } else {
+              Write-Host "  [WARNING] gstd3d11.dll NOT found. D3D11 capture will not be available."
+          }
+
           $dllSearch = Get-ChildItem -Path "$targetDir" -Filter "gstwinscreencap.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           if (!$dllSearch) {
               Write-Host "WARNING: gstwinscreencap.dll (DX9/GDI fallback) NOT found - listing plugin dir:"
@@ -151,39 +158,31 @@ jobs:
           }
           Write-Host "Success: gstwinscreencap.dll verified at $($dllSearch.FullName)"
 
-          # ── Surgical D3D11 removal ──────────────────────────────────────────────
-          # gstd3d11-1.0-0.dll and d3dcompiler_47.dll in the bundle have an ABI
-          # incompatibility: gstd3d11-1.0-0.dll imports _std_parallel_algorithms_hw_threads
-          # from d3dcompiler_47.dll, which that DLL does not export on older machines.
-          # This causes a Windows popup before any stream starts.
-          # Since D3D11 is not available on the target hardware, removing these DLLs
-          # is safe: is_element_available() will return false and DX9 will be used.
+          # ── VC++ Runtime DLL Diagnostics & Copy ────────────────────────────────
+          # Copy from GitHub runner's System32 to ensure the app runs on clean machines.
           $binDir = "$targetDir/bin"
-          $d3d11BinDll = Join-Path $binDir "gstd3d11-1.0-0.dll"
-          if (Test-Path $d3d11BinDll) { Remove-Item $d3d11BinDll -Force; Write-Host "Removed gstd3d11-1.0-0.dll from bin/ (popup prevention)." }
+          $dlls = @(
+              "vcruntime140.dll", 
+              "vcruntime140_1.dll", 
+              "msvcp140.dll", 
+              "msvcp140_1.dll", 
+              "msvcp140_2.dll", 
+              "vcruntime140_app.dll", 
+              "concrt140.dll"
+          )
 
-          $d3d12BinDll = Join-Path $binDir "gstd3d12-1.0-0.dll"
-          if (Test-Path $d3d12BinDll) { Remove-Item $d3d12BinDll -Force; Write-Host "Removed gstd3d12-1.0-0.dll from bin/." }
-
-          $compilerDll = Join-Path $binDir "d3dcompiler_47.dll"
-          if (Test-Path $compilerDll) { Remove-Item $compilerDll -Force; Write-Host "Removed d3dcompiler_47.dll from bin/ (ABI mismatch prevention)." }
-
-          # Remove D3D11/D3D12 plugins from lib so GStreamer never scans them.
-          $pluginDir = "$targetDir/lib/gstreamer-1.0"
-          @("gstd3d11.dll", "gstd3d12.dll") | ForEach-Object {
-              $p = Join-Path $pluginDir $_
-              if (Test-Path $p) { Remove-Item $p -Force; Write-Host "Removed $_ from plugin dir." }
+          Write-Host "Checking VC++ Runtime DLLs on runner..."
+          foreach ($dll in $dlls) {
+              $sourcePath = "C:/Windows/System32/$dll"
+              if (Test-Path $sourcePath) {
+                  $size = (Get-Item $sourcePath).Length
+                  Write-Host "  [OK] Found $dll ($size bytes), copying to bin/..."
+                  Copy-Item $sourcePath "$binDir/" -Force
+              } else {
+                  Write-Host "  [MISSING] $dll NOT FOUND on runner System32!"
+              }
           }
 
-          # ── VC++ Runtime DLLs ──────────────────────────────────────────────────
-          # Copy from GitHub runner's System32 to ensure the app runs on clean machines.
-          Copy-Item "C:/Windows/System32/vcruntime140.dll" "$binDir/" -Force
-          Copy-Item "C:/Windows/System32/vcruntime140_1.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
-          Copy-Item "C:/Windows/System32/msvcp140.dll" "$binDir/" -Force
-          Copy-Item "C:/Windows/System32/msvcp140_1.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
-          Copy-Item "C:/Windows/System32/msvcp140_2.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
-          Copy-Item "C:/Windows/System32/vcruntime140_app.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
-          Copy-Item "C:/Windows/System32/concrt140.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
 
       # ============================================
       # macOS: GStreamer PKG

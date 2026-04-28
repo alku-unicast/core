@@ -194,6 +194,21 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
     
     // Level 3 (INFO) is sufficient for plugin scanning diagnostics without bloating the disk.
     std::env::set_var("GST_DEBUG", "3");
+    
+    // Diagnostic: Check for bundled VC++ DLLs
+    #[cfg(target_os = "windows")]
+    {
+        let dlls = ["vcruntime140_1.dll", "concrt140.dll", "msvcp140_1.dll"];
+        for dll in dlls {
+            let p = bin.join(dll);
+            if p.exists() {
+                log::info!("[gst] Bundled DLL found: {}", dll);
+            } else {
+                log::warn!("[gst] Bundled DLL MISSING: {}", dll);
+            }
+        }
+    }
+
     log::info!("[gst] Environment setup complete for platform root: {:?}", gst_root);
 }
 
