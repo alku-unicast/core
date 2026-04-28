@@ -80,7 +80,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v7
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v8
 
       - name: Download & Install GStreamer (Windows)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
@@ -139,33 +139,51 @@ jobs:
               Write-Host "WARNING: No D3D plugins found at all!"
           }
 
-          $dllSearch = Get-ChildItem -Path "$targetDir" -Filter "gstd3d11.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          # Verify the DX9/GDI fallback plugin is present (our working capture source).
+          $dllSearch = Get-ChildItem -Path "$targetDir" -Filter "gstwinscreencap.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           if (!$dllSearch) {
+              Write-Host "WARNING: gstwinscreencap.dll (DX9/GDI fallback) NOT found - listing plugin dir:"
               if (Test-Path "$targetDir\lib\gstreamer-1.0") {
-                  Write-Host "--- DEBUG: Listing files in lib/gstreamer-1.0 (Top 200) ---"
-                  Get-ChildItem -Path "$targetDir\lib\gstreamer-1.0" | Select-Object Name, Length -First 200 | Format-Table
-              } else {
-                  Write-Host "WARNING: Plugin directory NOT found at expected path! Listing targetDir tree (depth 3)..."
-                  Get-ChildItem -Path "$targetDir" -Recurse -Depth 3 | Select-Object FullName -First 100
+                  Get-ChildItem -Path "$targetDir\lib\gstreamer-1.0" | Select-Object Name, Length -First 50 | Format-Table
               }
-              
-              Write-Host "CRITICAL FAILURE: gstd3d11.dll NOT FOUND in target directory!"
+              Write-Error "CRITICAL FAILURE: gstwinscreencap.dll NOT FOUND. DX9/GDI capture will not work."
               exit 1
           }
-          Write-Host "Success: gstd3d11.dll verified at $($dllSearch.FullName)"
+          Write-Host "Success: gstwinscreencap.dll verified at $($dllSearch.FullName)"
 
-          # Source VC++ Runtime DLLs from System32 (Reliable in GitHub Runners).
-          # NOTE: d3dcompiler_47.dll is intentionally NOT copied from System32.
-          # The GStreamer bundle ships its own compatible version.
-          # Overriding it with the runner's newer version causes an ABI mismatch
-          # ('std_parallel_algorithms_hw_threads' entry point not found) on the end-user machine.
+          # ── Surgical D3D11 removal ──────────────────────────────────────────────
+          # gstd3d11-1.0-0.dll and d3dcompiler_47.dll in the bundle have an ABI
+          # incompatibility: gstd3d11-1.0-0.dll imports _std_parallel_algorithms_hw_threads
+          # from d3dcompiler_47.dll, which that DLL does not export on older machines.
+          # This causes a Windows popup before any stream starts.
+          # Since D3D11 is not available on the target hardware, removing these DLLs
+          # is safe: is_element_available() will return false and DX9 will be used.
           $binDir = "$targetDir/bin"
+          $d3d11BinDll = Join-Path $binDir "gstd3d11-1.0-0.dll"
+          if (Test-Path $d3d11BinDll) { Remove-Item $d3d11BinDll -Force; Write-Host "Removed gstd3d11-1.0-0.dll from bin/ (popup prevention)." }
+
+          $d3d12BinDll = Join-Path $binDir "gstd3d12-1.0-0.dll"
+          if (Test-Path $d3d12BinDll) { Remove-Item $d3d12BinDll -Force; Write-Host "Removed gstd3d12-1.0-0.dll from bin/." }
+
+          $compilerDll = Join-Path $binDir "d3dcompiler_47.dll"
+          if (Test-Path $compilerDll) { Remove-Item $compilerDll -Force; Write-Host "Removed d3dcompiler_47.dll from bin/ (ABI mismatch prevention)." }
+
+          # Remove D3D11/D3D12 plugins from lib so GStreamer never scans them.
+          $pluginDir = "$targetDir/lib/gstreamer-1.0"
+          @("gstd3d11.dll", "gstd3d12.dll") | ForEach-Object {
+              $p = Join-Path $pluginDir $_
+              if (Test-Path $p) { Remove-Item $p -Force; Write-Host "Removed $_ from plugin dir." }
+          }
+
+          # ── VC++ Runtime DLLs ──────────────────────────────────────────────────
+          # Copy from GitHub runner's System32 to ensure the app runs on clean machines.
           Copy-Item "C:/Windows/System32/vcruntime140.dll" "$binDir/" -Force
           Copy-Item "C:/Windows/System32/vcruntime140_1.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
           Copy-Item "C:/Windows/System32/msvcp140.dll" "$binDir/" -Force
           Copy-Item "C:/Windows/System32/msvcp140_1.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
           Copy-Item "C:/Windows/System32/msvcp140_2.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
           Copy-Item "C:/Windows/System32/vcruntime140_app.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
+          Copy-Item "C:/Windows/System32/concrt140.dll" "$binDir/" -Force -ErrorAction SilentlyContinue
 
       # ============================================
       # macOS: GStreamer PKG
