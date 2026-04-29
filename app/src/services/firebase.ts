@@ -16,25 +16,53 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Database;
-let initialized = false;
+let initPromise: Promise<void> | null = null;
+let initComplete = false;
 
 export async function initFirebase(): Promise<void> {
-  if (initialized) return;
+  // If already started, wait for it
+  if (initPromise) return initPromise;
 
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getDatabase(app);
+  initPromise = (async () => {
+    try {
+      console.log("[Firebase] Initializing app...");
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getDatabase(app);
 
-  await signInAnonymously(auth);
-  initialized = true;
+      console.log("[Firebase] Attempting anonymous sign-in (5s timeout)...");
+
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Firebase auth timeout (5s)")), 5000)
+      );
+
+      try {
+        await Promise.race([signInAnonymously(auth), timeout]);
+        console.log("[Firebase] Anonymous sign-in successful.");
+      } catch (e) {
+        console.warn("[Firebase] Auth failed or timed out, but proceeding anyway:", e);
+      }
+
+      initComplete = true;
+    } catch (e) {
+      console.error("[Firebase] Critical init error:", e);
+      initComplete = true;
+    }
+  })();
+
+  return initPromise;
 }
 
-export function getFirebaseDB(): Database {
-  if (!db) throw new Error("Firebase not initialized. Call initFirebase() first.");
+export function isFirebaseReady(): boolean {
+  return initComplete;
+}
+
+export function getFirebaseDB(): Database | null {
+  if (!initComplete || !db) return null;
   return db;
 }
 
-export function getFirebaseAuth(): Auth {
-  if (!auth) throw new Error("Firebase not initialized. Call initFirebase() first.");
+export function getFirebaseAuth(): Auth | null {
+  if (!initComplete || !auth) return null;
   return auth;
 }

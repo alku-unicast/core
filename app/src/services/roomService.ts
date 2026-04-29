@@ -39,14 +39,33 @@ let unsubscribed = false;
  * Returns a cleanup function to stop listening.
  */
 export function startRoomListener(): () => void {
-  const db = getFirebaseDB();
-  roomsRef = ref(db, "rooms");
+  const { setRooms, setLoading, setError } = useRoomStore.getState();
   unsubscribed = false;
 
-  const { setRooms, setLoading, setError } = useRoomStore.getState();
+  try {
+    const db = getFirebaseDB();
+    if (!db) {
+      console.warn("[roomService] Firebase not ready, showing mock room only");
+      setError("Bağlantı kurulamadı, manuel IP ile bağlanabilirsiniz.");
+      const mockRooms: Record<string, Room> = {
+        "oda-mock": {
+          id: "oda-mock",
+          label: "Test Odası (Offline)",
+          floor: "0",
+          ip: "127.0.0.1",
+          status: "idle",
+          lastSeen: Date.now(),
+        }
+      };
+      setRooms(mockRooms);
+      setLoading(false);
+      return () => {};
+    }
 
-  onValue(
-    roomsRef,
+    roomsRef = ref(db, "rooms");
+
+    onValue(
+      roomsRef,
     (snapshot) => {
       if (unsubscribed) return;
 
@@ -90,12 +109,28 @@ export function startRoomListener(): () => void {
       setError(null);
     },
     (error) => {
-      if (unsubscribed) return;
-      console.error("[roomService] Firebase listener error:", error);
       useRoomStore.getState().setError("Firebase connection error");
       useRoomStore.getState().setLoading(false);
     }
   );
+} catch (e) {
+    console.error("[roomService] Failed to start listener:", e);
+    setError("Firebase connection failed. Check your network.");
+    setLoading(false);
+    
+    // Inject mock room even if listener fails, so user can test GStreamer
+    const mockRooms: Record<string, Room> = {
+      "oda-mock": {
+        id: "oda-mock",
+        label: "Lokal Test Odası (Offline)",
+        floor: "0",
+        ip: "127.0.0.1",
+        status: "idle",
+        lastSeen: Date.now(),
+      }
+    };
+    setRooms(mockRooms);
+  }
 
   return () => {
     unsubscribed = true;

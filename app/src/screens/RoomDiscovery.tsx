@@ -27,13 +27,18 @@ export function RoomDiscovery() {
   useEffect(() => {
     let stopListener: (() => void) | null = null;
 
+    // Start listener immediately (it will wait for Firebase inside its own logic)
+    // or handle the case where DB is not yet available.
+    // However, initFirebase now resolves quickly or times out.
     initFirebase()
       .then(() => {
-        stopListener = startRoomListener();
+        console.log("[RoomDiscovery] Firebase init finished.");
       })
       .catch((e) => {
         console.error("[RoomDiscovery] Firebase init failed:", e);
       });
+
+    stopListener = startRoomListener();
 
     return () => {
       stopListener?.();
