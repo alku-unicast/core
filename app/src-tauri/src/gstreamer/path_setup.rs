@@ -257,6 +257,22 @@ pub fn get_best_windows_src(app: &AppHandle) -> (String, bool) {
 /// Checks which Linux video source is available.
 #[cfg(target_os = "linux")]
 pub fn get_best_linux_src(app: &AppHandle) -> String {
+    // AppImage environment fix:
+    // AppImages often set GST_PLUGIN_PATH to an internal directory.
+    // If we haven't bundled plugins, this hides system plugins.
+    if std::env::var("APPDIR").is_ok() {
+        if let Ok(plugin_path) = std::env::var("GST_PLUGIN_PATH") {
+            // If the path doesn't exist or is empty, clear it to let GStreamer use system paths
+            let path = std::path::Path::new(&plugin_path);
+            let is_empty = !path.exists() || std::fs::read_dir(path).map(|mut d| d.next().is_none()).unwrap_or(true);
+            
+            if is_empty {
+                log::info!("[gst] AppImage GST_PLUGIN_PATH is empty, clearing it to use system plugins.");
+                std::env::remove_var("GST_PLUGIN_PATH");
+            }
+        }
+    }
+
     let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
     
     // Priority 1: If on Wayland, always prefer pipewiresrc
@@ -314,28 +330,38 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
     // Add bin and plugin paths to env for inspection
     if gst_root.exists() {
         let plugins_path = gst_root.join("lib").join("gstreamer-1.0");
+        
+        // Only override GST_PLUGIN_PATH if the bundled directory actually contains something.
+        // This prevents hiding system plugins when an empty placeholder directory exists in AppImage.
+        let has_bundled_plugins = plugins_path.exists() && 
+            std::fs::read_dir(&plugins_path).map(|mut d| d.next().is_some()).unwrap_or(false);
 
-        #[cfg(target_os = "windows")]
-        {
-            let current_path = std::env::var("PATH").unwrap_or_default();
-            cmd.env("PATH", format!("{};{}", bin_dir, current_path));
-            
-            let safe_plugins_path = get_short_path(&plugins_path)
-                .unwrap_or(plugins_path)
-                .to_string_lossy()
-                .to_string();
+        if has_bundled_plugins {
+            #[cfg(target_os = "windows")]
+            {
+                let current_path = std::env::var("PATH").unwrap_or_default();
+                cmd.env("PATH", format!("{};{}", bin_dir, current_path));
                 
-            let reg_path = std::env::var("GST_REGISTRY").unwrap_or_else(|_| {
-                app.path().app_local_data_dir().unwrap_or_default().join("gstreamer_registry_1_24_13.bin").to_string_lossy().to_string()
-            });
+                let safe_plugins_path = get_short_path(&plugins_path)
+                    .unwrap_or(plugins_path)
+                    .to_string_lossy()
+                    .to_string();
+                    
+                let reg_path = std::env::var("GST_REGISTRY").unwrap_or_else(|_| {
+                    app.path().app_local_data_dir().unwrap_or_default().join("gstreamer_registry_1_24_13.bin").to_string_lossy().to_string()
+                });
 
-            cmd.env("GST_PLUGIN_PATH", safe_plugins_path);
-            cmd.env("GST_REGISTRY", reg_path);
-        }
+                cmd.env("GST_PLUGIN_PATH", safe_plugins_path);
+                cmd.env("GST_REGISTRY", reg_path);
+            }
 
-        #[cfg(not(target_os = "windows"))]
-        {
-            cmd.env("GST_PLUGIN_PATH", plugins_path.to_string_lossy().to_string());
+            #[cfg(not(target_os = "windows"))]
+            {
+                log::info!("[gst] Found bundled Linux plugins, setting GST_PLUGIN_PATH.");
+                cmd.env("GST_PLUGIN_PATH", plugins_path.to_string_lossy().to_string());
+            }
+        } else {
+            log::info!("[gst] Bundled plugins dir is empty or missing, relying on system GStreamer.");
         }
     }
 
