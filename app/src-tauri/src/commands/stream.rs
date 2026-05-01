@@ -106,14 +106,24 @@ pub async fn start_stream(
     {
         cmd.args(pipeline.split_whitespace());
         
-        // Linux AppImage environment sanitization
+        // Linux AppImage environment restoration
         #[cfg(target_os = "linux")]
         if std::env::var("APPDIR").is_ok() {
-            log::info!("[stream] AppImage detected, deep cleaning environment (GST & LD_LIBRARY_PATH).");
-            cmd.env_remove("GST_PLUGIN_PATH");
-            cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
-            cmd.env_remove("GST_REGISTRY");
-            cmd.env_remove("LD_LIBRARY_PATH");
+            log::info!("[stream] AppImage detected, restoring original environment variables.");
+            
+            if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
+                cmd.env("LD_LIBRARY_PATH", orig_ld);
+            } else {
+                cmd.env_remove("LD_LIBRARY_PATH");
+            }
+
+            if let Ok(orig_gst) = std::env::var("GST_PLUGIN_PATH_ORIG") {
+                cmd.env("GST_PLUGIN_PATH", orig_gst);
+            } else {
+                cmd.env_remove("GST_PLUGIN_PATH");
+                cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
+                cmd.env_remove("GST_REGISTRY");
+            }
         }
     }
 

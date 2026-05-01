@@ -325,17 +325,25 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
 
     let mut cmd = std::process::Command::new(inspect_path);
 
-    // Deep clean for Linux AppImage
+    // Deep clean / Restore for Linux AppImage
     #[cfg(target_os = "linux")]
-    if std::env::var("APPDIR").is_ok() {
-        // If we're not bundling GST, clear all GST and LD vars to use system ones
-        if !gst_root.exists() {
+    if std::env::var("APPDIR").is_ok() && !gst_root.exists() {
+        // Restore original LD_LIBRARY_PATH if AppImage backed it up
+        if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
+            cmd.env("LD_LIBRARY_PATH", orig_ld);
+        } else {
+            cmd.env_remove("LD_LIBRARY_PATH");
+        }
+
+        // Restore original GST_PLUGIN_PATH if AppImage backed it up
+        if let Ok(orig_gst) = std::env::var("GST_PLUGIN_PATH_ORIG") {
+            cmd.env("GST_PLUGIN_PATH", orig_gst);
+        } else {
             cmd.env_remove("GST_PLUGIN_PATH");
             cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
             cmd.env_remove("GST_REGISTRY");
-            cmd.env_remove("LD_LIBRARY_PATH");
-            log::info!("[gst] Deep cleaning environment for gst-inspect-1.0");
         }
+        log::info!("[gst] Restored original environment for gst-inspect-1.0");
     }
     
     // Add bin and plugin paths to env for inspection
