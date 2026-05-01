@@ -355,9 +355,10 @@ macOS: Framework path expansion
 - **Infinite Loading Fix:** Added a mandatory 8s safety timeout to `RoomDiscovery.tsx`. If Firebase/rooms fail to load within 8s, the loader is force-stopped to allow "Manual IP" connection.
 - **Persistent Manual IP:** Updated `RoomGrid.tsx` to display the "Manual Connection" UI even during the loading state, ensuring users are never locked out of the app due to network latency.
 
-#### **2. Linux AppImage "Deep Clean" Environment**
-- **Library/Plugin Conflict Resolution:** Identified a critical issue where AppImage's internal `LD_LIBRARY_PATH` and `GST_PLUGIN_PATH` were hiding system GStreamer plugins (like `ximagesrc`).
-- **Environment Sanitization:** Implemented aggressive environment cleaning in `path_setup.rs` and `stream.rs`. The app now unsets AppImage-specific variables before spawning GStreamer processes, allowing them to correctly load system-wide plugins.
+#### **2. Linux AppImage "Environment Restoration"**
+- **The Discovery:** Found that AppImage saves original terminal environment variables in `_ORIG` suffixes (e.g., `LD_LIBRARY_PATH_ORIG`).
+- **Restoration Logic:** Instead of just clearing variables, the app now actively restores `LD_LIBRARY_PATH` and `GST_PLUGIN_PATH` from these backups before spawning child processes. This ensures the system GStreamer can find its own libraries and plugins even when running inside a bundled AppImage.
+- **Resilience:** This approach is more robust across different Linux distributions as it relies on the user's working terminal environment rather than guessing system paths.
 - **Emergency Fallback:** Refined `get_best_linux_src` with a mandatory fallback. Even if element detection fails, the app now trusts the `XDG_SESSION_TYPE` to force the correct capture source (`ximagesrc` for X11, `pipewiresrc` for Wayland).
 
 #### **3. CI/CD Optimization**
