@@ -1,5 +1,6 @@
 use tauri::AppHandle;
 use crate::commands::stream::StreamConfig;
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 use crate::gstreamer::path_setup;
 
 // ── Encoder-specific GStreamer parameters ─────────────────────────────────
@@ -43,7 +44,7 @@ pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
     let (video_src, is_d3d11) = build_windows_video_src(app, config);
 
     #[cfg(not(target_os = "windows"))]
-    let video_src = build_video_src(config);
+    let video_src = build_video_src(app, config);
 
     #[cfg(target_os = "windows")]
     let download_part = if is_d3d11 { "! queue ! d3d11download" } else { "! queue" };
@@ -126,8 +127,7 @@ fn build_windows_video_src(app: &AppHandle, config: &StreamConfig) -> (String, b
 }
 
 #[cfg(not(target_os = "windows"))]
-#[allow(unused_variables)]
-fn build_video_src(config: &StreamConfig) -> String {
+fn build_video_src(_app: &AppHandle, _config: &StreamConfig) -> String {
 
     #[cfg(target_os = "macos")]
     {
@@ -137,31 +137,32 @@ fn build_video_src(config: &StreamConfig) -> String {
 
     #[cfg(target_os = "linux")]
     {
+        let best_element = path_setup::get_best_linux_src(_app);
         let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
         
-        match config.stream_mode.as_str() {
+        match _config.stream_mode.as_str() {
             "window" => {
-                if let Some(wid) = config.window_id {
-                    if is_wayland {
+                if let Some(wid) = _config.window_id {
+                    if is_wayland || best_element == "pipewiresrc" {
                         // Wayland window isolation prevents simple XID capture. Fallback to full screen picker.
-                        log::warn!("[gst] Wayland window capture is experimental; falling back to full-screen (portal choice)");
-                        "pipewiresrc ! videoconvert".to_string()
+                        log::warn!("[gst] Wayland/Pipewire window capture is experimental; falling back to full-screen (portal choice)");
+                        format!("{best_element} ! videoconvert")
                     } else {
-                        format!("ximagesrc xid={wid} use-damage=false")
+                        format!("{best_element} xid={wid} use-damage=false")
                     }
                 } else {
-                    if is_wayland {
-                        "pipewiresrc ! videoconvert".to_string()
+                    if is_wayland || best_element == "pipewiresrc" {
+                        format!("{best_element} ! videoconvert")
                     } else {
-                        "ximagesrc use-damage=false".to_string()
+                        format!("{best_element} use-damage=false")
                     }
                 }
             }
             _ => {
-                if is_wayland {
-                    "pipewiresrc ! videoconvert".to_string()
+                if is_wayland || best_element == "pipewiresrc" {
+                    format!("{best_element} ! videoconvert")
                 } else {
-                    "ximagesrc use-damage=false".to_string()
+                    format!("{best_element} use-damage=false")
                 }
             }
         }

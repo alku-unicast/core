@@ -26,21 +26,27 @@ export function RoomDiscovery() {
   // Initialize Firebase + start room listener once on mount
   useEffect(() => {
     let stopListener: (() => void) | null = null;
+    let isMounted = true;
 
-    // Start listener immediately (it will wait for Firebase inside its own logic)
-    // or handle the case where DB is not yet available.
-    // However, initFirebase now resolves quickly or times out.
+    // We must await initFirebase (which has a 5s timeout) 
+    // to ensure the DB is ready before starting the listener.
+    // If it fails or times out, the listener will handle the fallback.
     initFirebase()
       .then(() => {
         console.log("[RoomDiscovery] Firebase init finished.");
+        if (isMounted) {
+          stopListener = startRoomListener();
+        }
       })
       .catch((e) => {
         console.error("[RoomDiscovery] Firebase init failed:", e);
+        if (isMounted) {
+          stopListener = startRoomListener();
+        }
       });
 
-    stopListener = startRoomListener();
-
     return () => {
+      isMounted = false;
       stopListener?.();
     };
   }, []);

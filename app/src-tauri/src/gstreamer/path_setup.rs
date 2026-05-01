@@ -1,7 +1,7 @@
-use std::path::Path;
-#[cfg(target_os = "windows")]
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
+#[cfg(target_os = "windows")]
+use std::sync::atomic::{AtomicU8, Ordering};
 
 /// Resolve the gst-launch-1.0 binary path using Tauri's resource resolver.
 pub fn get_gst_launch(app: &AppHandle) -> String {
@@ -212,13 +212,11 @@ fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
     log::info!("[gst] Environment setup complete for platform root: {:?}", gst_root);
 }
 
-use std::sync::atomic::{AtomicU8, Ordering};
-
-// 0: Unknown, 1: D3D11, 2: DX9, 3: GDI
+#[cfg(target_os = "windows")]
 static WIN_VIDEO_SRC_CACHE: AtomicU8 = AtomicU8::new(0);
 
 /// Checks which Windows video source is available and best for this system.
-/// It caches the result for performance.
+#[cfg(target_os = "windows")]
 pub fn get_best_windows_src(app: &AppHandle) -> (String, bool) {
     let cached = WIN_VIDEO_SRC_CACHE.load(Ordering::SeqCst);
     
@@ -256,15 +254,32 @@ pub fn get_best_windows_src(app: &AppHandle) -> (String, bool) {
     }
 }
 
-fn is_element_available(app: &AppHandle, name: &str) -> bool {
-    let bin_dir = get_gst_bin_dir(app);
-    let exe_name = if cfg!(target_os = "windows") { "gst-inspect-1.0.exe" } else { "gst-inspect-1.0" };
-    let inspect_path = Path::new(&bin_dir).join(exe_name);
-
-    if !inspect_path.exists() {
-        return false;
+/// Checks which Linux video source is available.
+#[cfg(target_os = "linux")]
+pub fn get_best_linux_src(app: &AppHandle) -> String {
+    let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
+    
+    // Priority 1: If on Wayland, always prefer pipewiresrc
+    if is_wayland && is_element_available(app, "pipewiresrc") {
+        log::info!("[gst] Wayland detected, using pipewiresrc for capture.");
+        return "pipewiresrc".to_string();
     }
 
+    // Priority 2: Standard X11 capture
+    if is_element_available(app, "ximagesrc") {
+        log::info!("[gst] Using ximagesrc for Linux screen capture.");
+        "ximagesrc".to_string()
+    } else if is_element_available(app, "pipewiresrc") {
+        log::info!("[gst] Falling back to pipewiresrc.");
+        "pipewiresrc".to_string()
+    } else {
+        log::error!("[gst] NO SCREEN CAPTURE ELEMENT FOUND! Please install gstreamer1.0-plugins-good and gstreamer1.0-x.");
+        "ximagesrc".to_string() // Fallback anyway
+    }
+}
+
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+fn is_element_available(app: &AppHandle, name: &str) -> bool {
     let platform_subfolder = match (std::env::consts::OS, std::env::consts::ARCH) {
         ("windows", _) => "windows",
         ("linux", _) => "linux",
@@ -275,27 +290,53 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
 
     let resource_dir = app.path().resource_dir().unwrap_or_default();
     let gst_root = resource_dir.join("gstreamer").join(platform_subfolder);
-    let plugins_path = gst_root.join("lib").join("gstreamer-1.0");
+    let bin_dir = get_gst_bin_dir(app);
+    let exe_name = if cfg!(target_os = "windows") { "gst-inspect-1.0.exe" } else { "gst-inspect-1.0" };
+    
+    let inspect_path = if gst_root.exists() {
+        Path::new(&bin_dir).join(exe_name)
+    } else {
+        std::path::PathBuf::from(exe_name)
+    };
+
+    if !gst_root.exists() {
+        // If no bundled GStreamer, check if it's in the system PATH
+        let output = std::process::Command::new(exe_name).arg("--version").output();
+        if output.is_err() {
+            return false;
+        }
+    } else if !inspect_path.exists() {
+        return false;
+    }
 
     let mut cmd = std::process::Command::new(inspect_path);
     
-    // Add bin to PATH for dependencies during inspection
-    #[cfg(target_os = "windows")]
-    {
-        let current_path = std::env::var("PATH").unwrap_or_default();
-        cmd.env("PATH", format!("{};{}", bin_dir, current_path));
-        
-        let safe_plugins_path = get_short_path(&plugins_path)
-            .unwrap_or(plugins_path)
-            .to_string_lossy()
-            .to_string();
-            
-        let reg_path = std::env::var("GST_REGISTRY").unwrap_or_else(|_| {
-            app.path().app_local_data_dir().unwrap_or_default().join("gstreamer_registry_1_24_13.bin").to_string_lossy().to_string()
-        });
+    // Add bin and plugin paths to env for inspection
+    if gst_root.exists() {
+        let plugins_path = gst_root.join("lib").join("gstreamer-1.0");
 
-        cmd.env("GST_PLUGIN_PATH", safe_plugins_path);
-        cmd.env("GST_REGISTRY", reg_path);
+        #[cfg(target_os = "windows")]
+        {
+            let current_path = std::env::var("PATH").unwrap_or_default();
+            cmd.env("PATH", format!("{};{}", bin_dir, current_path));
+            
+            let safe_plugins_path = get_short_path(&plugins_path)
+                .unwrap_or(plugins_path)
+                .to_string_lossy()
+                .to_string();
+                
+            let reg_path = std::env::var("GST_REGISTRY").unwrap_or_else(|_| {
+                app.path().app_local_data_dir().unwrap_or_default().join("gstreamer_registry_1_24_13.bin").to_string_lossy().to_string()
+            });
+
+            cmd.env("GST_PLUGIN_PATH", safe_plugins_path);
+            cmd.env("GST_REGISTRY", reg_path);
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            cmd.env("GST_PLUGIN_PATH", plugins_path.to_string_lossy().to_string());
+        }
     }
 
     let output = cmd.arg(name).output();

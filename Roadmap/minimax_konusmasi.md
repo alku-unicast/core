@@ -1325,3 +1325,911 @@ o da şunu dedi: "CI/CD'e Eklenecek DLL'ler
   - Seçenek 3: Microsoft'un resmi sitesinden indir
 
   Sen hangisini tercih edersin?"
+
+*******************
+BURADAN SONRASI GÜNCEL
+*******************
+
+yine ses çalışmadı şu log dosyası: "0:00:01.996541600  4476 000001F3DC00A360 WARN             d3d11device gstd3d11device.cpp:1275:gst_d3d11_device_get_video_device_handle: D3D11 call failed: 0x80004002, Böyle bir arabirim desteklenmiyor
+0:00:02.061701200  4476 000001F3DC22AD00 FIXME                default gstutils.c:4090:gst_element_decorate_stream_id_internal:<wasapi2src0> Creating random stream-id, consider implementing a deterministic way of creating a stream-id
+0:00:02.090876500  4476 000001F3DC22AD80 FIXME                default gstutils.c:4090:gst_element_decorate_stream_id_internal:<d3d11screencapturesrc0> Creating random stream-id, consider implementing a deterministic way of creating a stream-id
+uld not set value on item: format-version
+0:00:00.328590300  9760 000002932D81CF30 WARN                 default ges-meta-container.c:237:_set_value:<GESAsset@0000029331D586C0> Could not set value on item: format-version
+0:00:00.329674000  9760 000002932D81CF30 WARN               structure gststructure.c:2371:priv_gst_structure_parse_fields: Failed to find delimiter, r=mimetype
+0:00:00.368545100  9760 000002932D81CF30 WARN                 default gstjackloader.c:187:gst_jack_load_library: Could not open library libjack64.dll, 'libjack64.dll': Belirtilen modül bulunamadı.
+0:00:00.368586500  9760 000002932D81CF30 WARN                 default gstjack.c:108:plugin_init: Failed to load jack library
+0:00:00.373118900  9760 000002932D81CF30 WARN                  ladspa gstladspa.c:509:plugin_init:<plugin113> no LADSPA plugins found, check LADSPA_PATH
+0:00:01.023347200  9760 000002932D81CF30 WARN             mftransform gstmftransform.cpp:1223:gst_mf_transform_set_output_type: MediaFoundation call failed: 0xc00d36b4, Medya türü için belirtilen veri geçersiz, tutarsız veya bu nesne tarafından desteklenmiyor.
+0:00:01.039025200  9760 0000029331D0D580 WARN             mftransform gstmftransform.cpp:513:gst_mf_transform_thread_func:<mftransform3> No available device at index 0
+0:00:01.062340500  9760 0000029331D0D5C0 WARN             mftransform gstmftransform.cpp:513:gst_mf_transform_thread_func:<mftransform4> No available device at index 0
+0:00:01.093212200  9760 0000029331D0D540 WARN             mftransform gstmftransform.cpp:513:gst_mf_transform_thread_func:<mftransform7> No available device at index 1
+0:00:01.101521500  9760 0000029331D0D4C0 WARN             mftransform gstmftransform.cpp:513:gst_mf_transform_thread_func:<mftransform9> No available device at index 1
+0:00:01.107433900  9760 0000029331D0D4C0 WARN             mftransform gstmftransform.cpp:920:gst_mf_transform_open_internal: MediaFoundation call failed: 0x80004002, Böyle bir arabirim desteklenmiyor
+0:00:01.107478200  9760 0000029331D0D4C0 WARN             mftransform gstmftransform.cpp:921:gst_mf_transform_open_internal:<mftransform10> ICodecAPI is unavailable
+0:00:01.111558900  9760 0000029331D0D500 WARN             mftransform gstmftransform.cpp:920:gst_mf_transform_open_internal: MediaFoundation call failed: 0x80004002, Böyle bir arabirim desteklenmiyor
+0:00:01.111631600  9760 0000029331D0D500 WARN             mftransform gstmftransform.cpp:921:gst_mf_transform_open_internal:<mftransform11> ICodecAPI is unavailable
+0:00:01.134654300  9760 000002932D81CF30 WARN              cudaloader gstcudaloader.cpp:233:gst_cuda_load_library_once_func: Could not open library nvcuda.dll, 'nvcuda.dll': Belirtilen modül bulunamadı.
+",
+
+şu cd log'u: "2s
+5s
+6s
+Run actions/setup-node@v4
+Attempt to resolve LTS alias from manifest...
+Found in cache @ C:\hostedtoolcache\windows\node\24.14.1\x64
+Environment details
+19s
+Run dtolnay/rust-toolchain@stable
+Run : parse toolchain version
+Run : construct rustup command line
+Run : set $CARGO_HOME
+Run : install rustup if needed on windows
+Run rustup toolchain install stable --profile minimal --no-self-update
+info: syncing channel updates for stable-x86_64-pc-windows-msvc
+info: latest update on 2026-04-16 for version 1.95.0 (59807616e 2026-04-14)
+info: removing previous version of component clippy
+info: removing previous version of component rustfmt
+info: removing previous version of component rust-std for target x86_64-pc-windows-gnu
+info: removing previous version of component rust-std for target i686-pc-windows-msvc
+info: removing previous version of component cargo
+info: removing previous version of component rust-std
+info: removing previous version of component rustc
+info: downloading 7 components
+
+  stable-x86_64-pc-windows-msvc updated - rustc 1.95.0 (59807616e 2026-04-14) (from rustc 1.94.1 (e408947bf 2026-03-25))
+
+Run rustup default stable
+info: using existing install for stable-x86_64-pc-windows-msvc
+info: default toolchain set to stable-x86_64-pc-windows-msvc
+
+  stable-x86_64-pc-windows-msvc unchanged - rustc 1.95.0 (59807616e 2026-04-14)
+
+Run : create cachekey
+Run : disable incremental compilation
+Run : enable colors in Cargo output
+Run : enable Cargo sparse registry
+Run : work around spurious network errors in curl 8.0
+Run rustc +stable --version --verbose
+rustc 1.95.0 (59807616e 2026-04-14)
+binary: rustc
+commit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860
+commit-date: 2026-04-14
+host: x86_64-pc-windows-msvc
+release: 1.95.0
+LLVM version: 22.1.2
+0s
+1s
+Run actions/cache@v4
+Cache not found for input keys: windows-x86_64-gst-1.24.13-v10
+15s
+Run curl -L https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/gstreamer-1.0-msvc-x86_64-1.24.13.msi -o gst.msi
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+ 81 97.6M   81 79.7M    0     0  73.7M      0  0:00:01  0:00:01 --:--:-- 73.8M
+100 97.6M  100 97.6M    0     0  78.5M      0  0:00:01  0:00:01 --:--:-- 78.7M
+Installing GStreamer (Full) to force all plugins...
+Searching for GStreamer binaries in C:\gst_install and C:\gstreamer...
+Confirmed GStreamer Root: C:\gst_install\1.0\msvc_x86_64
+Copying GStreamer files using Robocopy...
+
+Searching for any D3D related plugins...
+Found D3D plugins:
+- gstd3d11-1.0-0.dll at D:\a\core\core\app\src-tauri\gstreamer\windows\bin\gstd3d11-1.0-0.dll
+- gstd3d.dll at D:\a\core\core\app\src-tauri\gstreamer\windows\lib\gstreamer-1.0\gstd3d.dll
+- gstd3d11.dll at D:\a\core\core\app\src-tauri\gstreamer\windows\lib\gstreamer-1.0\gstd3d11.dll
+- gstd3d12.dll at D:\a\core\core\app\src-tauri\gstreamer\windows\lib\gstreamer-1.0\gstd3d12.dll
+- gstid3demux.dll at D:\a\core\core\app\src-tauri\gstreamer\windows\lib\gstreamer-1.0\gstid3demux.dll
+  [OK] gstd3d11.dll (D3D11 primary) verified at D:\a\core\core\app\src-tauri\gstreamer\windows\lib\gstreamer-1.0\gstd3d11.dll
+Success: gstwinscreencap.dll verified at D:\a\core\core\app\src-tauri\gstreamer\windows\lib\gstreamer-1.0\gstwinscreencap.dll
+Checking VC++ Runtime DLLs on runner...
+  [OK] Found vcruntime140.dll (123472 bytes), copying to bin/...
+  [OK] Found vcruntime140_1.dll (47264 bytes), copying to bin/...
+  [OK] Found msvcp140.dll (553552 bytes), copying to bin/...
+  [OK] Found msvcp140_1.dll (35488 bytes), copying to bin/...
+  [OK] Found msvcp140_2.dll (278608 bytes), copying to bin/...
+  [MISSING] vcruntime140_app.dll NOT FOUND on runner System32!
+  [OK] Found concrt140.dll (321696 bytes), copying to bin/...
+0s
+1s
+Run $config = @{
+--- Tauri resource config ---
+{
+  "bundle": {
+    "resources": [
+      "gstreamer/windows/**/*"
+    ]
+  }
+}
+1m 56s
+Run npm install
+
+added 239 packages, and audited 240 packages in 2m
+
+31 packages are looking for funding
+  run `npm fund` for details
+
+14 vulnerabilities (12 moderate, 1 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> unicast@0.1.0 build
+> tsc && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1587 modules transformed.
+rendering chunks...
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) D:/a/core/core/app/src/stores/settingsStore.ts is dynamically imported by D:/a/core/core/app/src/stores/connectionStore.ts but also statically imported by D:/a/core/core/app/src/App.tsx, D:/a/core/core/app/src/components/layout/StatusSummary.tsx, D:/a/core/core/app/src/components/layout/TopBar.tsx, D:/a/core/core/app/src/components/rooms/FavoritesSection.tsx, D:/a/core/core/app/src/components/rooms/RoomCard.tsx, D:/a/core/core/app/src/components/settings/SettingsModal.tsx, D:/a/core/core/app/src/screens/ConnectionSetup.tsx, D:/a/core/core/app/src/screens/StreamingBarApp.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                 0.48 kB │ gzip:   0.32 kB
+dist/assets/alku-yatay-logo-rgb-Nw-9q1yj.png  312.69 kB
+dist/assets/UniCast-Bni9Je0s.png              354.63 kB
+dist/assets/index-BfUpQCyF.css                 24.13 kB │ gzip:   5.50 kB
+dist/assets/volume-2-CXHJQ7MD.js                0.44 kB │ gzip:   0.32 kB
+dist/assets/square-DiDR-cZQ.js                  1.07 kB │ gzip:   0.42 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+dist/assets/event-CnyWr2tN.js                   1.33 kB │ gzip:   0.66 kB
+dist/assets/systemStore-BMXaYRbq.js             1.91 kB │ gzip:   0.68 kB
+dist/assets/core-DhEqZVGG.js                    2.44 kB │ gzip:   0.98 kB
+dist/assets/StreamingBarApp-BxjY6Wwv.js         8.09 kB │ gzip:   3.04 kB
+dist/assets/SettingsModal-C-hVc9RG.js          16.33 kB │ gzip:   4.72 kB
+dist/assets/webviewWindow-Dwy5goXe.js          17.58 kB │ gzip:   3.77 kB
+dist/assets/ConnectionSetup-DyJPjAYS.js        30.56 kB │ gzip:  10.17 kB
+dist/assets/index-DCz3orc4.js                 577.89 kB │ gzip: 150.57 kB
+✓ built in 4.17s
+11m 29s
+Run tauri-apps/tauri-action@v0
+Couldn't parse --config flag as inline JSON. This is not an error if it's a file path. Source: "Unexpected token 'a', "tauri-resou"... is not valid JSON"
+running npm [
+  'run',
+  'tauri',
+  'build',
+  '--',
+  '--config',
+  'tauri-resource-override.json'
+]
+
+> unicast@0.1.0 tauri
+> tauri build --config tauri-resource-override.json
+
+        Info Looking up installed tauri packages to check mismatched versions...
+        Warn The bundle identifier "com.unicast.app" set in `"tauri.conf.json" identifier` ends with `.app`. This is not recommended because it conflicts with the application bundle extension on macOS.
+     Running beforeBuildCommand `npm run build`
+
+> unicast@0.1.0 build
+> tsc && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1587 modules transformed.
+rendering chunks...
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) D:/a/core/core/app/src/stores/settingsStore.ts is dynamically imported by D:/a/core/core/app/src/stores/connectionStore.ts but also statically imported by D:/a/core/core/app/src/App.tsx, D:/a/core/core/app/src/components/layout/StatusSummary.tsx, D:/a/core/core/app/src/components/layout/TopBar.tsx, D:/a/core/core/app/src/components/rooms/FavoritesSection.tsx, D:/a/core/core/app/src/components/rooms/RoomCard.tsx, D:/a/core/core/app/src/components/settings/SettingsModal.tsx, D:/a/core/core/app/src/screens/ConnectionSetup.tsx, D:/a/core/core/app/src/screens/StreamingBarApp.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                 0.48 kB │ gzip:   0.32 kB
+dist/assets/alku-yatay-logo-rgb-Nw-9q1yj.png  312.69 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+dist/assets/UniCast-Bni9Je0s.png              354.63 kB
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+dist/assets/index-BfUpQCyF.css                 24.13 kB │ gzip:   5.50 kB
+dist/assets/volume-2-CXHJQ7MD.js                0.44 kB │ gzip:   0.32 kB
+dist/assets/square-DiDR-cZQ.js                  1.07 kB │ gzip:   0.42 kB
+dist/assets/event-CnyWr2tN.js                   1.33 kB │ gzip:   0.66 kB
+dist/assets/systemStore-BMXaYRbq.js             1.91 kB │ gzip:   0.68 kB
+dist/assets/core-DhEqZVGG.js                    2.44 kB │ gzip:   0.98 kB
+dist/assets/StreamingBarApp-BxjY6Wwv.js         8.09 kB │ gzip:   3.04 kB
+dist/assets/SettingsModal-C-hVc9RG.js          16.33 kB │ gzip:   4.72 kB
+dist/assets/webviewWindow-Dwy5goXe.js          17.58 kB │ gzip:   3.77 kB
+dist/assets/ConnectionSetup-DyJPjAYS.js        30.56 kB │ gzip:  10.17 kB
+dist/assets/index-DCz3orc4.js                 577.89 kB │ gzip: 150.57 kB
+✓ built in 4.17s
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded kuchikiki v0.8.8-speedreader
+  Downloaded mac v0.1.1
+  Downloaded strsim v0.11.1
+  Downloaded string_cache_codegen v0.5.4
+  Downloaded synstructure v0.13.2
+  Downloaded time-core v0.1.8
+  Downloaded syn v2.0.117
+  Downloaded windows-implement v0.57.0
+  Downloaded zerovec-derive v0.11.3
+  Downloaded windows-targets v0.53.5
+  Downloaded zmij v1.0.21
+  Downloaded url v2.5.8
+  Downloaded env_logger v0.11.10
+  Downloaded colorchoice v1.0.5
+  Downloaded zerovec v0.11.6
+  Downloaded toml v0.9.12+spec-1.1.0
+  Downloaded icu_normalizer v2.2.0
+  Downloaded find-msvc-tools v0.1.9
+  Downloaded zerocopy v0.8.48
+  Downloaded crossbeam-utils v0.8.21
+  Downloaded jiff v0.2.23
+  Downloaded image v0.25.10
+  Downloaded tokio v1.51.1
+  Downloaded darling_core v0.23.0
+  Downloaded bytemuck v1.25.0
+  Downloaded anyhow v1.0.102
+  Downloaded zerotrie v0.2.4
+  Downloaded ico v0.5.0
+  Downloaded flate2 v1.1.9
+  Downloaded crossbeam-channel v0.5.15
+  Downloaded windows_x86_64_msvc v0.53.1
+  Downloaded windows_x86_64_msvc v0.52.6
+  Downloaded base64 v0.22.1
+  Downloaded typenum v1.19.0
+  Downloaded html5ever v0.29.1
+  Downloaded windows-core v0.57.0
+  Downloaded window-vibrancy v0.6.0
+  Downloaded toml_datetime v0.7.5+spec-1.1.0
+  Downloaded wry v0.54.4
+  Downloaded winnow v0.7.15
+  Downloaded glob v0.3.3
+  Downloaded cargo_metadata v0.19.2
+  Downloaded byteorder-lite v0.1.0
+  Downloaded unicode-segmentation v1.13.2
+  Downloaded ctor v0.2.9
+  Downloaded winnow v1.0.1
+  Downloaded zerofrom v0.1.7
+  Downloaded yoke v0.8.2
+  Downloaded windows-threading v0.1.0
+  Downloaded windows-implement v0.60.2
+  Downloaded vswhom v0.1.0
+  Downloaded tracing v0.1.44
+  Downloaded version_check v0.9.5
+  Downloaded utf8parse v0.2.2
+  Downloaded urlpattern v0.3.0
+  Downloaded unicode-ident v1.0.24
+  Downloaded unic-ucd-version v0.9.0
+  Downloaded unic-char-property v0.9.0
+  Downloaded icu_properties_data v2.2.0
+  Downloaded icu_properties v2.2.0
+  Downloaded hashbrown v0.12.3
+  Downloaded dunce v1.0.5
+  Downloaded dtoa v1.0.11
+  Downloaded chrono v0.4.44
+  Downloaded cfg-if v1.0.4
+  Downloaded windows-targets v0.52.6
+  Downloaded windows-result v0.1.2
+  Downloaded windows-numerics v0.2.0
+  Downloaded windows-interface v0.57.0
+  Downloaded utf-8 v0.7.6
+  Downloaded unic-ucd-ident v0.9.0
+  Downloaded unic-char-range v0.9.0
+  Downloaded typeid v1.0.3
+  Downloaded tray-icon v0.21.3
+  Downloaded json-patch v3.0.1
+  Downloaded is_terminal_polyfill v1.70.2
+  Downloaded icu_provider v2.2.0
+  Downloaded icu_locale_core v2.2.0
+  Downloaded getrandom v0.3.4
+  Downloaded generic-array v0.14.7
+  Downloaded env_filter v1.0.1
+  Downloaded encoding_rs v0.8.35
+  Downloaded dtoa-short v0.3.5
+  Downloaded darling_macro v0.23.0
+  Downloaded cargo-platform v0.1.9
+  Downloaded alloc-no-stdlib v2.0.4
+  Downloaded adler2 v2.0.1
+  Downloaded zerofrom-derive v0.1.7
+  Downloaded yoke-derive v0.8.2
+  Downloaded writeable v0.6.3
+  Downloaded winreg v0.55.0
+  Downloaded windows-version v0.1.7
+  Downloaded windows-strings v0.4.2
+  Downloaded windows-result v0.3.4
+  Downloaded windows-link v0.2.1
+  Downloaded windows-link v0.1.3
+  Downloaded windows-interface v0.59.3
+  Downloaded winapi-util v0.1.11
+  Downloaded webview2-com v0.38.2
+  Downloaded walkdir v2.5.0
+  Downloaded vswhom-sys v0.1.3
+  Downloaded uuid v1.23.0
+  Downloaded utf8_iter v1.0.4
+  Downloaded unic-common v0.9.0
+  Downloaded time v0.3.47
+  Downloaded tauri-utils v2.8.3
+  Downloaded tauri-runtime-wry v2.10.1
+  Downloaded tauri-plugin-shell v2.3.5
+  Downloaded tauri-plugin-fs v2.5.0
+  Downloaded windows-sys v0.61.2
+  Downloaded tauri v2.10.3
+  Downloaded tao v0.34.8
+  Downloaded regex-automata v0.4.14
+  Downloaded pxfm v0.1.28
+  Downloaded idna v1.1.0
+  Downloaded cargo_toml v0.22.3
+  Downloaded bytes v1.11.1
+  Downloaded aho-corasick v1.1.4
+  Downloaded windows-future v0.2.1
+  Downloaded windows-core v0.61.2
+  Downloaded windows-collections v0.2.0
+  Downloaded webview2-com-macros v0.8.1
+  Downloaded tracing-core v0.1.36
+  Downloaded toml_writer v1.1.1+spec-1.1.0
+  Downloaded toml_parser v1.1.2+spec-1.1.0
+  Downloaded tokio-macros v2.7.0
+  Downloaded tinystr v0.8.3
+  Downloaded time-macros v0.2.27
+  Downloaded regex-syntax v0.8.10
+  Downloaded libc v0.2.184
+  Downloaded keyboard-types v0.7.0
+  Downloaded indexmap v2.14.0
+  Downloaded getrandom v0.1.16
+  Downloaded erased-serde v0.4.10
+  Downloaded equivalent v1.0.2
+  Downloaded dyn-clone v1.0.20
+  Downloaded dirs v6.0.0
+  Downloaded deranged v0.5.8
+  Downloaded cssparser-macros v0.6.1
+  Downloaded convert_case v0.4.0
+  Downloaded brotli v8.0.2
+  Downloaded syn v1.0.109
+  Downloaded windows-sys v0.60.2
+  Downloaded serde_with v3.18.0
+  Downloaded serde_json v1.0.149
+  Downloaded regex v1.12.3
+  Downloaded moxcms v0.8.1
+  Downloaded jsonptr v0.6.3
+  Downloaded hex v0.4.3
+  Downloaded hashbrown v0.17.0
+  Downloaded getrandom v0.2.17
+  Downloaded displaydoc v0.2.5
+  Downloaded digest v0.10.7
+  Downloaded crc32fast v1.5.0
+  Downloaded cc v1.2.59
+  Downloaded byteorder v1.5.0
+  Downloaded brotli-decompressor v5.0.0
+  Downloaded anstyle-parse v1.0.0
+  Downloaded thiserror-impl v2.0.18
+  Downloaded thiserror-impl v1.0.69
+  Downloaded thiserror v2.0.18
+  Downloaded thiserror v1.0.69
+  Downloaded tendril v0.4.3
+  Downloaded tauri-winres v0.3.5
+  Downloaded tauri-runtime v2.10.1
+  Downloaded tauri-plugin v2.5.4
+  Downloaded tauri-macros v2.5.5
+  Downloaded tauri-codegen v2.5.5
+  Downloaded windows-sys v0.59.0
+  Downloaded tauri-build v2.5.6
+  Downloaded socket2 v0.6.3
+  Downloaded serde v1.0.228
+  Downloaded schemars v1.2.1
+  Downloaded schemars v0.9.0
+  Downloaded rand v0.8.5
+  Downloaded rand v0.7.3
+  Downloaded proc-macro2 v1.0.106
+  Downloaded png v0.18.1
+  Downloaded png v0.17.16
+  Downloaded muda v0.17.2
+  Downloaded miniz_oxide v0.8.9
+  Downloaded itoa v1.0.18
+  Downloaded infer v0.19.0
+  Downloaded indexmap v1.9.3
+  Downloaded icu_collections v2.2.0
+  Downloaded http v1.4.0
+  Downloaded heck v0.5.0
+  Downloaded fxhash v0.2.1
+  Downloaded form_urlencoded v1.2.2
+  Downloaded fnv v1.0.7
+  Downloaded embed-resource v3.0.8
+  Downloaded dpi v0.1.2
+  Downloaded derive_more v0.99.20
+  Downloaded darling v0.23.0
+  Downloaded crypto-common v0.1.7
+  Downloaded cfb v0.7.3
+  Downloaded camino v1.2.2
+  Downloaded bitflags v2.11.0
+  Downloaded anstyle-wincon v3.0.11
+  Downloaded anstyle v1.0.14
+  Downloaded string_cache v0.8.9
+  Downloaded softbuffer v0.4.8
+  Downloaded smallvec v1.15.1
+  Downloaded shlex v1.3.0
+  Downloaded sha2 v0.10.9
+  Downloaded serde_with_macros v3.18.0
+  Downloaded serde_derive_internals v0.29.1
+  Downloaded serde_derive v1.0.228
+  Downloaded serde_core v1.0.228
+  Downloaded serde-untagged v0.1.9
+  Downloaded semver v1.0.28
+  Downloaded selectors v0.24.0
+  Downloaded schemars_derive v0.8.22
+  Downloaded schemars v0.8.22
+  Downloaded raw-window-handle v0.6.2
+  Downloaded rand_core v0.6.4
+  Downloaded rand_core v0.5.1
+  Downloaded quote v1.0.45
+  Downloaded pin-project-lite v0.2.17
+  Downloaded phf_shared v0.10.0
+  Downloaded phf_macros v0.11.3
+  Downloaded phf_generator v0.11.3
+  Downloaded phf v0.11.3
+  Downloaded phf v0.10.1
+  Downloaded parking_lot_core v0.9.12
+  Downloaded open v5.3.3
+  Downloaded once_cell v1.21.4
+  Downloaded num-traits v0.2.19
+  Downloaded new_debug_unreachable v1.0.6
+  Downloaded mio v1.2.0
+  Downloaded memchr v2.8.0
+  Downloaded log v0.4.29
+  Downloaded litemap v0.8.2
+  Downloaded ident_case v1.0.1
+  Downloaded icu_normalizer_data v2.2.0
+  Downloaded getrandom v0.4.2
+  Downloaded dirs-sys v0.5.0
+  Downloaded cpufeatures v0.2.17
+  Downloaded block-buffer v0.10.4
+  Downloaded bitflags v1.3.2
+  Downloaded anstream v1.0.0
+  Downloaded siphasher v1.0.2
+  Downloaded siphasher v0.3.11
+  Downloaded simd-adler32 v0.3.9
+  Downloaded servo_arc v0.2.0
+  Downloaded serialize-to-javascript-impl v0.1.2
+  Downloaded serialize-to-javascript v0.1.2
+  Downloaded serde_spanned v1.1.1
+  Downloaded scopeguard v1.2.0
+  Downloaded rustc_version v0.4.1
+  Downloaded ref-cast-impl v1.0.25
+  Downloaded ref-cast v1.0.25
+  Downloaded rand_pcg v0.2.1
+  Downloaded rand_chacha v0.3.1
+  Downloaded rand_chacha v0.2.2
+  Downloaded precomputed-hash v0.1.1
+  Downloaded ppv-lite86 v0.2.21
+  Downloaded powerfmt v0.2.0
+  Downloaded phf_shared v0.11.3
+  Downloaded phf_codegen v0.8.0
+  Downloaded percent-encoding v2.3.2
+  Downloaded option-ext v0.2.0
+  Downloaded once_cell_polyfill v1.70.2
+  Downloaded num-conv v0.2.1
+  Downloaded nodrop v0.1.14
+  Downloaded matches v0.1.10
+  Downloaded idna_adapter v1.2.1
+  Downloaded futf v0.1.5
+  Downloaded fdeflate v0.3.7
+  Downloaded cssparser v0.29.6
+  Downloaded cookie v0.18.1
+  Downloaded autocfg v1.5.0
+  Downloaded anstyle-query v1.1.5
+  Downloaded alloc-stdlib v0.2.2
+  Downloaded stable_deref_trait v1.2.1
+  Downloaded shared_child v1.1.1
+  Downloaded serde_repr v0.1.20
+  Downloaded same-file v1.0.6
+  Downloaded proc-macro-hack v0.5.20+deprecated
+  Downloaded webview2-com-sys v0.38.2
+  Downloaded potential_utf v0.1.5
+  Downloaded phf_shared v0.8.0
+  Downloaded phf_macros v0.10.0
+  Downloaded phf_generator v0.10.0
+  Downloaded phf_generator v0.8.0
+  Downloaded phf_codegen v0.11.3
+  Downloaded phf v0.8.0
+  Downloaded parking_lot v0.12.5
+  Downloaded os_pipe v1.2.3
+  Downloaded mime v0.3.17
+  Downloaded match_token v0.1.0
+  Downloaded markup5ever v0.14.1
+  Downloaded lock_api v0.4.14
+  Downloaded windows v0.57.0
+  Downloaded windows v0.61.3
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling cfg-if v1.0.4
+   Compiling serde_core v1.0.228
+   Compiling zerocopy v0.8.48
+   Compiling getrandom v0.2.17
+   Compiling rand_core v0.6.4
+   Compiling icu_properties_data v2.2.0
+   Compiling icu_normalizer_data v2.2.0
+   Compiling syn v2.0.117
+   Compiling stable_deref_trait v1.2.1
+   Compiling siphasher v1.0.2
+   Compiling zmij v1.0.21
+   Compiling phf_shared v0.11.3
+   Compiling thiserror v2.0.18
+   Compiling serde v1.0.228
+   Compiling smallvec v1.15.1
+   Compiling parking_lot_core v0.9.12
+   Compiling siphasher v0.3.11
+   Compiling getrandom v0.1.16
+   Compiling windows-link v0.2.1
+   Compiling typeid v1.0.3
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_core v0.5.1
+   Compiling synstructure v0.13.2
+   Compiling rand_chacha v0.3.1
+   Compiling itoa v1.0.18
+   Compiling rand v0.8.5
+   Compiling ident_case v1.0.1
+   Compiling memchr v2.8.0
+   Compiling thiserror v1.0.69
+   Compiling erased-serde v0.4.10
+   Compiling phf_generator v0.11.3
+   Compiling litemap v0.8.2
+   Compiling strsim v0.11.1
+   Compiling writeable v0.6.3
+   Compiling windows_x86_64_msvc v0.52.6
+   Compiling syn v1.0.109
+   Compiling autocfg v1.5.0
+   Compiling darling_core v0.23.0
+   Compiling utf8_iter v1.0.4
+   Compiling rand_chacha v0.2.2
+   Compiling rand_pcg v0.2.1
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling zerovec-derive v0.11.3
+   Compiling serde_derive v1.0.228
+   Compiling displaydoc v0.2.5
+   Compiling zerofrom v0.1.7
+   Compiling yoke v0.8.2
+   Compiling thiserror-impl v2.0.18
+   Compiling zerovec v0.11.6
+   Compiling tinystr v0.8.3
+   Compiling icu_locale_core v2.2.0
+   Compiling potential_utf v0.1.5
+   Compiling zerotrie v0.2.4
+   Compiling phf_macros v0.11.3
+   Compiling icu_collections v2.2.0
+   Compiling icu_provider v2.2.0
+   Compiling darling_macro v0.23.0
+   Compiling thiserror-impl v1.0.69
+   Compiling phf_shared v0.8.0
+   Compiling proc-macro-hack v0.5.20+deprecated
+   Compiling anyhow v1.0.102
+   Compiling darling v0.23.0
+   Compiling rand v0.7.3
+   Compiling phf_shared v0.10.0
+   Compiling getrandom v0.4.2
+   Compiling serde_json v1.0.149
+   Compiling new_debug_unreachable v1.0.6
+   Compiling scopeguard v1.2.0
+   Compiling byteorder v1.5.0
+   Compiling lock_api v0.4.14
+   Compiling phf_generator v0.10.0
+   Compiling phf_generator v0.8.0
+   Compiling icu_properties v2.2.0
+   Compiling icu_normalizer v2.2.0
+   Compiling serde_with_macros v3.18.0
+   Compiling phf_codegen v0.11.3
+   Compiling string_cache_codegen v0.5.4
+   Compiling windows-sys v0.61.2
+   Compiling winnow v1.0.1
+   Compiling precomputed-hash v0.1.1
+   Compiling mac v0.1.1
+   Compiling futf v0.1.5
+   Compiling markup5ever v0.14.1
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling idna_adapter v1.2.1
+   Compiling phf_macros v0.10.0
+   Compiling phf_codegen v0.8.0
+   Compiling parking_lot v0.12.5
+   Compiling cssparser v0.29.6
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling semver v1.0.28
+   Compiling percent-encoding v2.3.2
+   Compiling winnow v0.7.15
+   Compiling bitflags v1.3.2
+   Compiling utf-8 v0.7.6
+   Compiling dtoa v1.0.11
+   Compiling log v0.4.29
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling libc v0.2.184
+   Compiling dtoa-short v0.3.5
+   Compiling tendril v0.4.3
+   Compiling form_urlencoded v1.2.2
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling uuid v1.23.0
+   Compiling phf v0.10.1
+   Compiling string_cache v0.8.9
+   Compiling selectors v0.24.0
+   Compiling idna v1.1.0
+   Compiling phf v0.11.3
+   Compiling cssparser-macros v0.6.1
+   Compiling ctor v0.2.9
+   Compiling indexmap v1.9.3
+   Compiling aho-corasick v1.1.4
+   Compiling convert_case v0.4.0
+   Compiling alloc-no-stdlib v2.0.4
+   Compiling unic-common v0.9.0
+   Compiling regex-syntax v0.8.10
+   Compiling nodrop v0.1.14
+   Compiling unic-char-range v0.9.0
+   Compiling matches v0.1.10
+   Compiling camino v1.2.2
+   Compiling unic-char-property v0.9.0
+   Compiling servo_arc v0.2.0
+   Compiling derive_more v0.99.20
+   Compiling unic-ucd-version v0.9.0
+   Compiling alloc-stdlib v0.2.2
+   Compiling url v2.5.8
+   Compiling regex-automata v0.4.14
+   Compiling winapi-util v0.1.11
+   Compiling fxhash v0.2.1
+   Compiling phf v0.8.0
+   Compiling match_token v0.1.0
+   Compiling serde_derive_internals v0.29.1
+   Compiling hashbrown v0.17.0
+   Compiling hashbrown v0.12.3
+   Compiling schemars v0.8.22
+   Compiling equivalent v1.0.2
+   Compiling fnv v1.0.7
+   Compiling version_check v0.9.5
+   Compiling schemars_derive v0.8.22
+   Compiling cfb v0.7.3
+   Compiling indexmap v2.14.0
+   Compiling regex v1.12.3
+   Compiling html5ever v0.29.1
+   Compiling same-file v1.0.6
+   Compiling brotli-decompressor v5.0.0
+   Compiling unic-ucd-ident v0.9.0
+   Compiling jsonptr v0.6.3
+   Compiling cargo-platform v0.1.9
+   Compiling find-msvc-tools v0.1.9
+   Compiling windows-link v0.1.3
+   Compiling dyn-clone v1.0.20
+   Compiling bytes v1.11.1
+   Compiling dunce v1.0.5
+   Compiling shlex v1.3.0
+   Compiling cc v1.2.59
+   Compiling http v1.4.0
+   Compiling cargo_metadata v0.19.2
+   Compiling json-patch v3.0.1
+   Compiling brotli v8.0.2
+   Compiling kuchikiki v0.8.8-speedreader
+   Compiling urlpattern v0.3.0
+   Compiling serde-untagged v0.1.9
+   Compiling walkdir v2.5.0
+   Compiling infer v0.19.0
+   Compiling serde_with v3.18.0
+   Compiling glob v0.3.3
+   Compiling vswhom-sys v0.1.3
+   Compiling crc32fast v1.5.0
+   Compiling tauri-utils v2.8.3
+   Compiling windows-targets v0.52.6
+   Compiling windows-result v0.3.4
+   Compiling windows-strings v0.4.2
+   Compiling windows-interface v0.59.3
+   Compiling windows-implement v0.60.2
+   Compiling windows-core v0.61.2
+   Compiling windows-sys v0.59.0
+   Compiling vswhom v0.1.0
+   Compiling rustc_version v0.4.1
+   Compiling option-ext v0.2.0
+   Compiling typenum v1.19.0
+   Compiling dirs-sys v0.5.0
+   Compiling windows-threading v0.1.0
+   Compiling generic-array v0.14.7
+   Compiling winreg v0.55.0
+   Compiling embed-resource v3.0.8
+   Compiling heck v0.5.0
+   Compiling tauri-winres v0.3.5
+   Compiling windows-future v0.2.1
+   Compiling dirs v6.0.0
+   Compiling windows-collections v0.2.0
+   Compiling windows-numerics v0.2.0
+   Compiling cargo_toml v0.22.3
+   Compiling bitflags v2.11.0
+   Compiling simd-adler32 v0.3.9
+   Compiling crossbeam-utils v0.8.21
+   Compiling windows_x86_64_msvc v0.53.1
+   Compiling tauri-build v2.5.6
+   Compiling windows v0.61.3
+   Compiling dpi v0.1.2
+   Compiling webview2-com-sys v0.38.2
+   Compiling num-conv v0.2.1
+   Compiling powerfmt v0.2.0
+   Compiling time-core v0.1.8
+   Compiling raw-window-handle v0.6.2
+   Compiling adler2 v2.0.1
+   Compiling miniz_oxide v0.8.9
+   Compiling time-macros v0.2.27
+   Compiling deranged v0.5.8
+   Compiling cookie v0.18.1
+   Compiling once_cell v1.21.4
+   Compiling unicode-segmentation v1.13.2
+   Compiling time v0.3.47
+   Compiling crossbeam-channel v0.5.15
+   Compiling windows-targets v0.53.5
+   Compiling flate2 v1.1.9
+   Compiling block-buffer v0.10.4
+   Compiling crypto-common v0.1.7
+   Compiling tauri v2.10.3
+   Compiling fdeflate v0.3.7
+   Compiling tauri-plugin v2.5.4
+   Compiling webview2-com-macros v0.8.1
+   Compiling num-traits v0.2.19
+   Compiling windows-version v0.1.7
+   Compiling pin-project-lite v0.2.17
+   Compiling png v0.17.16
+   Compiling digest v0.10.7
+   Compiling windows-sys v0.60.2
+   Compiling tauri-runtime v2.10.1
+   Compiling tracing-core v0.1.36
+   Compiling wry v0.54.4
+   Compiling cpufeatures v0.2.17
+   Compiling sha2 v0.10.9
+   Compiling tracing v0.1.44
+   Compiling ico v0.5.0
+   Compiling keyboard-types v0.7.0
+   Compiling getrandom v0.3.4
+   Compiling tauri-runtime-wry v2.10.1
+   Compiling base64 v0.22.1
+   Compiling pxfm v0.1.28
+   Compiling webview2-com v0.38.2
+   Compiling moxcms v0.8.1
+   Compiling tao v0.34.8
+   Compiling tauri-codegen v2.5.5
+   Compiling png v0.18.1
+   Compiling muda v0.17.2
+   Compiling softbuffer v0.4.8
+   Compiling mio v1.2.0
+   Compiling socket2 v0.6.3
+   Compiling serialize-to-javascript-impl v0.1.2
+   Compiling tokio-macros v2.7.0
+   Compiling byteorder-lite v0.1.0
+   Compiling bytemuck v1.25.0
+   Compiling tokio v1.51.1
+   Compiling image v0.25.10
+   Compiling serialize-to-javascript v0.1.2
+   Compiling window-vibrancy v0.6.0
+   Compiling tray-icon v0.21.3
+   Compiling tauri-macros v2.5.5
+   Compiling tauri-plugin-fs v2.5.0
+   Compiling tauri-plugin-shell v2.3.5
+   Compiling serde_repr v0.1.20
+   Compiling once_cell_polyfill v1.70.2
+   Compiling mime v0.3.17
+   Compiling utf8parse v0.2.2
+   Compiling anstyle v1.0.14
+   Compiling anstyle-parse v1.0.0
+   Compiling anstyle-wincon v3.0.11
+   Compiling windows-result v0.1.2
+   Compiling anstyle-query v1.1.5
+   Compiling windows-interface v0.57.0
+   Compiling windows-implement v0.57.0
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.5
+   Compiling anstream v1.0.0
+   Compiling windows-core v0.57.0
+   Compiling shared_child v1.1.1
+   Compiling open v5.3.3
+   Compiling env_filter v1.0.1
+   Compiling unicast v0.1.0 (D:\a\core\core\app\src-tauri)
+   Compiling encoding_rs v0.8.35
+   Compiling os_pipe v1.2.3
+   Compiling jiff v0.2.23
+   Compiling env_logger v0.11.10
+   Compiling windows v0.57.0
+    Finished `release` profile [optimized] target(s) in 7m 34s
+       Built application at: D:\a\core\core\app\src-tauri\target\release\unicast.exe
+        Info Patching D:\a\core\core\app\src-tauri\target\release\unicast.exe with bundle type information: msi
+        Info Verifying wix package
+ Downloading https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip
+        Info validating hash
+        Info extracting WIX
+        Info Target: x64
+     Running candle for "D:\\a\\core\\core\\app\\src-tauri\\target\\release\\wix\\x64\\main.wxs"
+     Running light to produce D:\a\core\core\app\src-tauri\target\release\bundle\msi\UniCast_0.1.0_x64_en-US.msi
+        Info Patching D:\a\core\core\app\src-tauri\target\release\unicast.exe with bundle type information: nsis
+        Info Verifying NSIS package
+ Downloading https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.11/nsis-3.11.zip
+        Info validating hash
+        Info extracting NSIS
+ Downloading https://github.com/tauri-apps/nsis-tauri-utils/releases/download/nsis_tauri_utils-v0.5.3/nsis_tauri_utils.dll
+        Info validating hash
+        Info Target: x64
+     Running makensis to produce D:\a\core\core\app\src-tauri\target\release\bundle\nsis\UniCast_0.1.0_x64-setup.exe
+    Finished 2 bundles at:
+        D:\a\core\core\app\src-tauri\target\release\bundle\msi\UniCast_0.1.0_x64_en-US.msi
+        D:\a\core\core\app\src-tauri\target\release\bundle\nsis\UniCast_0.1.0_x64-setup.exe
+
+Looking for artifacts in:
+D:\a\core\core\app\src-tauri\target\release\bundle\msi\UniCast_0.1.0_x64_en-US.msi
+D:\a\core\core\app\src-tauri\target\release\bundle\msi\UniCast_0.1.0_x64_en-US.msi.sig
+D:\a\core\core\app\src-tauri\target\release\bundle\msi\UniCast_0.1.0_x64_en-US.msi.zip
+D:\a\core\core\app\src-tauri\target\release\bundle\msi\UniCast_0.1.0_x64_en-US.msi.zip.sig
+D:\a\core\core\app\src-tauri\target\release\bundle\nsis\UniCast_0.1.0_x64-setup.exe
+D:\a\core\core\app\src-tauri\target\release\bundle\nsis\UniCast_0.1.0_x64-setup.exe.sig
+D:\a\core\core\app\src-tauri\target\release\bundle\nsis\UniCast_0.1.0_x64-setup.nsis.zip
+D:\a\core\core\app\src-tauri\target\release\bundle\nsis\UniCast_0.1.0_x64-setup.nsis.zip.sig
+Found artifacts:
+D:\a\core\core\app\src-tauri\target\release\bundle\msi\UniCast_0.1.0_x64_en-US.msi
+D:\a\core\core\app\src-tauri\target\release\bundle\nsis\UniCast_0.1.0_x64-setup.exe
+Couldn't parse --config flag as inline JSON. This is not an error if it's a file path. Source: "Unexpected token 'a', "tauri-resou"... is not valid JSON"
+Looking for a draft release with tag v0.1.0...
+Found draft release with tag v0.1.0 on the release list.
+Deleting existing UniCast_0.1.0_x64_en-US.msi...
+Uploading UniCast_0.1.0_x64_en-US.msi...
+Deleting existing UniCast_0.1.0_x64-setup.exe...
+Uploading UniCast_0.1.0_x64-setup.exe...
+Signature not found for the updater JSON. Skipping upload...
+0s
+29s
+Post job cleanup.
+"C:\Program Files\Git\usr\bin\tar.exe" --posix -cf cache.tzst --exclude cache.tzst -P -C D:/a/core/core --files-from manifest.txt --force-local --use-compress-program "zstd -T0"
+Sent 5177344 of 89869451 (5.8%), 4.9 MBs/sec
+Sent 25231360 of 89869451 (28.1%), 12.0 MBs/sec
+Sent 33554432 of 89869451 (37.3%), 10.6 MBs/sec
+Sent 39518208 of 89869451 (44.0%), 9.4 MBs/sec
+Sent 45481984 of 89869451 (50.6%), 8.6 MBs/sec
+Sent 49086464 of 89869451 (54.6%), 7.7 MBs/sec
+Sent 51249152 of 89869451 (57.0%), 6.9 MBs/sec
+Sent 53149696 of 89869451 (59.1%), 6.3 MBs/sec
+Sent 55050240 of 89869451 (61.3%), 5.8 MBs/sec
+Sent 57081856 of 89869451 (63.5%), 5.4 MBs/sec
+Sent 58916864 of 89869451 (65.6%), 5.1 MBs/sec
+Sent 60620800 of 89869451 (67.5%), 4.8 MBs/sec
+Sent 62521344 of 89869451 (69.6%), 4.6 MBs/sec
+Sent 64487424 of 89869451 (71.8%), 4.4 MBs/sec
+Sent 66584576 of 89869451 (74.1%), 4.2 MBs/sec
+Sent 68288512 of 89869451 (76.0%), 4.1 MBs/sec
+Sent 70385664 of 89869451 (78.3%), 3.9 MBs/sec
+Sent 72482816 of 89869451 (80.7%), 3.8 MBs/sec
+Sent 75759616 of 89869451 (84.3%), 3.7 MBs/sec
+Sent 78381056 of 89869451 (87.2%), 3.6 MBs/sec
+Sent 81199104 of 89869451 (90.4%), 3.6 MBs/sec
+Sent 84410368 of 89869451 (93.9%), 3.6 MBs/sec
+Sent 87883776 of 89869451 (97.8%), 3.6 MBs/sec
+Sent 89128960 of 89869451 (99.2%), 3.3 MBs/sec
+Sent 89869451 of 89869451 (100.0%), 3.3 MBs/sec
+Cache saved with key: windows-x86_64-gst-1.24.13-v10
+2s
+Post job cleanup.
+4s
+Post job cleanup.
+"C:\Program Files\Git\bin\git.exe" version
+git version 2.53.0.windows.2
+Temporarily overriding HOME='D:\a\_temp\a08ecaa6-6579-483c-b3bf-60a5a0999f7d' before making global git config changes
+Adding repository directory to the temporary git global config as a safe directory
+"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\core\core
+"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+http.https://github.com/.extraheader
+"C:\Program Files\Git\bin\git.exe" config --local --unset-all http.https://github.com/.extraheader
+"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+0s
+Cleaning up orphan processes
+Terminate orphan process: pid (9868) (vctip)
+Warning: Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/cache@v4, actions/checkout@v4, actions/setup-node@v4. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/"
+
+PNECERE MODU ÇALIŞTI SADECE SEÇTİĞİM PENCERE GELDİ
+pencere modunu çalıştıırnca log'da şunlar yazdı: "0:00:00.111272600  5548 000001FA3ED14360 WARN             d3d11device gstd3d11device.cpp:1275:gst_d3d11_device_get_video_device_handle: D3D11 call failed: 0x80004002, Böyle bir arabirim desteklenmiyor
+0:00:00.116521800  5548 000001FA3ED14360 ERROR           GST_PIPELINE gst/parse/grammar.y:1134:gst_parse_perform_link: could not link d3d11download0 to x264enc0, d3d11download0 can't handle caps video/x-raw, format=(string)NV12, width=(int)640, height=(int)360, framerate=(fraction)30/1
+",
+daha sonra ayarlardan sesi system default yerine device 0 yaptım.
+daha önceki gibi çalışmadı ve log'da şu var: "0:00:00.112161800  6400 0000022DE516B360 WARN             d3d11device gstd3d11device.cpp:1275:gst_d3d11_device_get_video_device_handle: D3D11 call failed: 0x80004002, Böyle bir arabirim desteklenmiyor
+0:00:00.200997300  6400 0000022DE5188100 WARN           wasapi2client gstwasapi2client.cpp:1005:gst_wasapi2_client_activate_async:<wasapi2client0> Couldn't find target device
+0:00:00.201751600  6400 0000022DE516B360 WARN       wasapi2ringbuffer gstwasapi2ringbuffer.cpp:352:gst_wasapi2_ring_buffer_post_open_error:<wasapi2src0> error: Failed to open device
+"
