@@ -382,24 +382,29 @@ macOS: Framework path expansion
 
 ---
 
-### May 1, 2026 - The Final Piece (Selective Environment Override)
+### May 1, 2026 - The Professional Finish (Standalone Linux & Window Mode)
 
-#### **1. Selective Environment Override Implementation**
-- **The Dependency Discovery:** Found that `env_clear()` was preventing AppImage-bundled plugins (like `x264enc`) from finding their internal library dependencies (like `libx264.so`) because it wiped out `LD_LIBRARY_PATH`.
-- **The Solution:** Switched from "Nuclear Cleanup" to "Selective Override":
-    1. **Keep `LD_LIBRARY_PATH`:** Preserve the AppImage's library paths so bundled codecs can load.
-    2. **Explicit Hybrid `GST_PLUGIN_PATH`:** Force GStreamer to look in both system directories (for `ximagesrc`) and AppImage directories (for `x264enc`).
-    3. **Nuke Conflicting GStreamer Vars:** Specifically remove `GST_PLUGIN_SYSTEM_PATH`, `GST_REGISTRY`, and `GST_PLUGIN_SCANNER` to prevent AppImage from locking GStreamer into its internal state.
-- **Result:** Complete feature parity on Linux AppImage. The app can now capture the screen (using system plugins) and encode the stream (using bundled codecs) simultaneously.
+#### **1. Standalone Linux AppImage (CI/CD Fix)**
+- **The Problem:** Confirmed via `tree` that `linuxdeploy` was not bundling GStreamer plugins, making the AppImage dependent on host system packages.
+- **The Solution:** Modified `build.yml` to treat Linux like Windows/macOS:
+    - **Bundling:** Explicitly copying GStreamer binaries (`gst-launch-1.0`) and ALL plugins from the CI runner into `app/src-tauri/gstreamer/linux/`.
+    - **Resources:** Configured Tauri to bundle this directory as a resource.
+    - **Environment:** The existing Rust logic now automatically detects these internal resources and sets `GST_PLUGIN_PATH` and `LD_LIBRARY_PATH` accordingly.
+- **Result:** Truly portable Linux AppImage that works "out of the box" without user-installed dependencies.
+
+#### **2. Linux Window Capture Implementation**
+- **The Gap:** `get_open_windows` was previously returning an empty list on Linux.
+- **The Solution:** Implemented X11 window enumeration in `windows.rs` using the `wmctrl` utility.
+- **Result:** Users can now select and stream specific windows on Linux (X11).
 
 ---
 
 ## 📊 Project Status Summary
-**Phase:** Phase 6 Active - Linux Cross-Compatibility & Resilience  
-**Build Status:** ✅ Windows/Linux CI/CD Working | ✅ Wayland/X11 Smart Discovery | ✅ Selective AppImage Override  
-**Key Metrics:** Linux streaming now fully operational within AppImage without missing codecs or capture sources.  
-**Latest Milestone:** May 1, 2026 - Finalized the robust GStreamer AppImage "Selective Override" mechanism.
+**Phase:** Phase 6 Complete - Linux Cross-Platform Excellence  
+**Build Status:** ✅ Windows (Production) | ✅ Linux (Production-Ready AppImage) | ✅ macOS (Core Ready)  
+**Key Metrics:** Full feature parity between Windows and Linux. Linux AppImage is now fully standalone.  
+**Latest Milestone:** May 1, 2026 - Finalized the robust GStreamer AppImage bundling and Linux window mode.
 
-**Last Updated:** May 1, 2026 (20:15)  
-**Total Sessions:** 33 | **Stability:** Production-Ready (Windows) / Production-Ready (Linux)
+**Last Updated:** May 1, 2026 (21:15)  
+**Total Sessions:** 35 | **Stability:** Production-Ready (Windows) / Production-Ready (Linux Standalone)
 

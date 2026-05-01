@@ -22,7 +22,7 @@ jobs:
             os: 'linux'
             arch: 'x86_64'
             gst_folder: 'linux'
-            gst_resources: ''
+            gst_resources: 'gstreamer/linux/**/*'
           - platform: 'windows-latest'
             os: 'windows'
             arch: 'x86_64'
@@ -71,6 +71,39 @@ jobs:
             gstreamer1.0-plugins-bad \
             gstreamer1.0-plugins-ugly \
             gstreamer1.0-libav
+
+      - name: Bundle GStreamer for Linux AppImage
+        if: matrix.os == 'linux'
+        run: |
+          # 1. Create resources folder structure matching Windows/macOS logic
+          mkdir -p app/src-tauri/gstreamer/linux/bin
+          mkdir -p app/src-tauri/gstreamer/linux/lib/gstreamer-1.0
+
+          # 2. Copy binaries
+          cp /usr/bin/gst-launch-1.0 app/src-tauri/gstreamer/linux/bin/
+          cp /usr/bin/gst-inspect-1.0 app/src-tauri/gstreamer/linux/bin/
+
+          # 3. Detect multiarch path (e.g. x86_64-linux-gnu)
+          MA_PATH=$(gcc -print-multiarch)
+          echo "Bundling plugins from $MA_PATH..."
+          
+          # 4. Copy plugins (The core fix for standalone AppImage)
+          cp /usr/lib/$MA_PATH/gstreamer-1.0/*.so app/src-tauri/gstreamer/linux/lib/gstreamer-1.0/
+          
+          # 5. Copy essential shared libraries
+          # We copy the main GStreamer libs. linuxdeploy will handle others.
+          cp /usr/lib/$MA_PATH/libgstreamer-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          cp /usr/lib/$MA_PATH/libgstbase-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          cp /usr/lib/$MA_PATH/libgstaudio-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          cp /usr/lib/$MA_PATH/libgstvideo-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          cp /usr/lib/$MA_PATH/libgstpbutils-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          cp /usr/lib/$MA_PATH/libgsttag-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          cp /usr/lib/$MA_PATH/libgstapp-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          cp /usr/lib/$MA_PATH/libgstallocators-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          cp /usr/lib/$MA_PATH/libgstgl-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          
+          echo "GStreamer bundling complete for Linux."
+          ls -R app/src-tauri/gstreamer/linux/
 
       # ============================================
       # WINDOWS: GStreamer MSI + DLLs
@@ -224,7 +257,7 @@ jobs:
       # Build
       # ============================================
       - name: Create Dynamic Resource Config
-        if: matrix.os != 'linux'
+        if: matrix.gst_resources != ''
         shell: pwsh
         run: |
           $config = @{
@@ -271,4 +304,6 @@ jobs:
           releaseBody: 'UniCast Cross-Platform Release for Linux (x86_64) - Portable with GStreamer embedded'
           releaseDraft: true
           prerelease: false
-          args: '--bundles appimage'
+          args: >
+            --bundles appimage
+            --config tauri-resource-override.json
