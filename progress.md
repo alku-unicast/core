@@ -349,12 +349,28 @@ macOS: Framework path expansion
 
 ---
 
+### May 1, 2026 - Evening Update (Linux Resilience & AppImage Fixes)
+
+#### **1. UI Resilience & Error Recovery**
+- **Infinite Loading Fix:** Added a mandatory 8s safety timeout to `RoomDiscovery.tsx`. If Firebase/rooms fail to load within 8s, the loader is force-stopped to allow "Manual IP" connection.
+- **Persistent Manual IP:** Updated `RoomGrid.tsx` to display the "Manual Connection" UI even during the loading state, ensuring users are never locked out of the app due to network latency.
+
+#### **2. Linux AppImage "Deep Clean" Environment**
+- **Library/Plugin Conflict Resolution:** Identified a critical issue where AppImage's internal `LD_LIBRARY_PATH` and `GST_PLUGIN_PATH` were hiding system GStreamer plugins (like `ximagesrc`).
+- **Environment Sanitization:** Implemented aggressive environment cleaning in `path_setup.rs` and `stream.rs`. The app now unsets AppImage-specific variables before spawning GStreamer processes, allowing them to correctly load system-wide plugins.
+- **Emergency Fallback:** Refined `get_best_linux_src` with a mandatory fallback. Even if element detection fails, the app now trusts the `XDG_SESSION_TYPE` to force the correct capture source (`ximagesrc` for X11, `pipewiresrc` for Wayland).
+
+#### **3. CI/CD Optimization**
+- **Linux Prioritization:** Moved the Linux build to the 1st position in the GitHub Actions matrix to ensure faster feedback for current stabilization efforts.
+
+---
+
 ## 📊 Project Status Summary
 **Phase:** Phase 6 Active - Linux Cross-Compatibility & Resilience  
-**Build Status:** ✅ Windows/Linux CI/CD Working | ✅ Wayland/X11 Smart Discovery | ✅ Warning-Free Build  
-**Key Metrics:** Discovery race condition resolved; Linux streaming is now environment-aware (Wayland/X11).  
-**Latest Milestone:** May 1, 2026 - Achieved cross-platform parity and environment-aware streaming pipeline.
+**Build Status:** ✅ Windows/Linux CI/CD Working | ✅ Wayland/X11 Smart Discovery | ✅ AppImage Environment Sanitized  
+**Key Metrics:** Discovery race condition resolved; Linux streaming is now resilient to AppImage environment isolation.  
+**Latest Milestone:** May 1, 2026 - Resolved the "no element ximagesrc" error on Linux AppImage environments.
 
-**Last Updated:** May 1, 2026 (15:25)  
-**Total Sessions:** 29 | **Stability:** Production-Ready (Windows) / Beta-Stable (Linux)
+**Last Updated:** May 1, 2026 (18:30)  
+**Total Sessions:** 30 | **Stability:** Production-Ready (Windows) / Stable (Linux)
 
