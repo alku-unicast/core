@@ -335,43 +335,31 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
             cmd.env("GST_REGISTRY", reg_path.to_string_lossy().to_string());
         }
     } else {
-        // If using system GStreamer on Linux AppImage, clear environment to avoid pollution.
+        // If using system GStreamer on Linux AppImage, perform selective override to avoid pollution
+        // while keeping LD_LIBRARY_PATH for bundled plugin dependencies.
         #[cfg(target_os = "linux")]
         if std::env::var("APPDIR").is_ok() {
-            cmd.env_clear();
-
-            let vars_to_restore = [
-                "DISPLAY",
-                "XAUTHORITY",
-                "WAYLAND_DISPLAY",
-                "HOME",
-                "XDG_RUNTIME_DIR",
-                "DBUS_SESSION_BUS_ADDRESS",
-            ];
-
-            for var in vars_to_restore {
-                if let Ok(val) = std::env::var(var) {
-                    cmd.env(var, val);
-                }
-            }
-            cmd.env("PATH", "/usr/bin:/bin:/usr/local/bin");
-
-            // --- HYBRID PLUGIN PATH LOGIC ---
-            let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
-            let system_plugins = format!("/usr/lib/{}/gstreamer-1.0", multiarch);
             let appdir = std::env::var("APPDIR").unwrap_or_default();
+            let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
+            
+            // Define hybrid plugin paths
+            let system_plugins = format!("/usr/lib/{}/gstreamer-1.0", multiarch);
             let appimage_plugins = format!("{}/usr/lib/{}/gstreamer-1.0", appdir, multiarch);
-
-            let mut plugin_paths = vec![system_plugins];
+            
+            let mut plugin_paths = vec![system_plugins, "/usr/lib/gstreamer-1.0".to_string()];
             if std::path::Path::new(&appimage_plugins).exists() {
                 plugin_paths.push(appimage_plugins);
             }
-            plugin_paths.push("/usr/lib/gstreamer-1.0".to_string());
-            cmd.env("GST_PLUGIN_PATH", plugin_paths.join(":"));
             
-            if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
-                cmd.env("LD_LIBRARY_PATH", orig_ld);
-            }
+            let final_plugin_path = plugin_paths.join(":");
+            
+            // Override GST_PLUGIN_PATH and remove conflicting vars
+            cmd.env("GST_PLUGIN_PATH", &final_plugin_path);
+            cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
+            cmd.env_remove("GST_REGISTRY");
+            cmd.env_remove("GST_PLUGIN_SCANNER");
+            
+            // LD_LIBRARY_PATH is intentionally kept to allow bundled plugins to load their dependencies
         }
     }
 
