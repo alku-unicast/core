@@ -109,7 +109,7 @@ pub async fn start_stream(
         // Linux AppImage environment restoration
         #[cfg(target_os = "linux")]
         if std::env::var("APPDIR").is_ok() {
-            log::info!("[stream] AppImage detected, performing clean environment restoration.");
+            log::info!("[stream] AppImage detected, performing clean environment restoration with hybrid plugin paths.");
             
             // "Nuclear" cleanup: Start with a completely empty environment
             cmd.env_clear();
@@ -133,6 +133,25 @@ pub async fn start_stream(
             // Set a clean PATH to ensure system binaries are found
             cmd.env("PATH", "/usr/bin:/bin:/usr/local/bin");
             
+            // --- HYBRID PLUGIN PATH LOGIC ---
+            // We need to merge system plugins (for ximagesrc) and AppImage plugins (for x264enc)
+            let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
+            let system_plugins = format!("/usr/lib/{}/gstreamer-1.0", multiarch);
+            let appdir = std::env::var("APPDIR").unwrap_or_default();
+            let appimage_plugins = format!("{}/usr/lib/{}/gstreamer-1.0", appdir, multiarch);
+
+            let mut plugin_paths = vec![system_plugins];
+            if std::path::Path::new(&appimage_plugins).exists() {
+                plugin_paths.push(appimage_plugins);
+            }
+            
+            // Add common system paths as well for robustness
+            plugin_paths.push("/usr/lib/gstreamer-1.0".to_string());
+            
+            let final_plugin_path = plugin_paths.join(":");
+            cmd.env("GST_PLUGIN_PATH", &final_plugin_path);
+            log::info!("[stream] Hybrid GST_PLUGIN_PATH: {}", final_plugin_path);
+
             // Optional: Restore original LD_LIBRARY_PATH if it existed
             if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
                 cmd.env("LD_LIBRARY_PATH", orig_ld);

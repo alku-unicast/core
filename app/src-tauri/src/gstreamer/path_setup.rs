@@ -355,6 +355,19 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
                 }
             }
             cmd.env("PATH", "/usr/bin:/bin:/usr/local/bin");
+
+            // --- HYBRID PLUGIN PATH LOGIC ---
+            let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
+            let system_plugins = format!("/usr/lib/{}/gstreamer-1.0", multiarch);
+            let appdir = std::env::var("APPDIR").unwrap_or_default();
+            let appimage_plugins = format!("{}/usr/lib/{}/gstreamer-1.0", appdir, multiarch);
+
+            let mut plugin_paths = vec![system_plugins];
+            if std::path::Path::new(&appimage_plugins).exists() {
+                plugin_paths.push(appimage_plugins);
+            }
+            plugin_paths.push("/usr/lib/gstreamer-1.0".to_string());
+            cmd.env("GST_PLUGIN_PATH", plugin_paths.join(":"));
             
             if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
                 cmd.env("LD_LIBRARY_PATH", orig_ld);
