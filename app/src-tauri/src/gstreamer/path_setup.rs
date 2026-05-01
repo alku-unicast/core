@@ -257,40 +257,38 @@ pub fn get_best_windows_src(app: &AppHandle) -> (String, bool) {
 /// Checks which Linux video source is available.
 #[cfg(target_os = "linux")]
 pub fn get_best_linux_src(app: &AppHandle) -> String {
-    // AppImage environment fix:
-    // AppImages often set GST_PLUGIN_PATH to an internal directory.
-    // If we haven't bundled plugins, this hides system plugins.
-    if std::env::var("APPDIR").is_ok() {
-        if let Ok(plugin_path) = std::env::var("GST_PLUGIN_PATH") {
-            // If the path doesn't exist or is empty, clear it to let GStreamer use system paths
-            let path = std::path::Path::new(&plugin_path);
-            let is_empty = !path.exists() || std::fs::read_dir(path).map(|mut d| d.next().is_none()).unwrap_or(true);
-            
-            if is_empty {
-                log::info!("[gst] AppImage GST_PLUGIN_PATH is empty, clearing it to use system plugins.");
-                std::env::remove_var("GST_PLUGIN_PATH");
-            }
-        }
-    }
-
     let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
     
+    // Safety check: On Linux, if we are in an AppImage, we must ensure we don't hide system plugins.
+    // We'll do a quick check for ximagesrc.
+    let has_x11_src = is_element_available(app, "ximagesrc");
+    let has_wayland_src = is_element_available(app, "pipewiresrc");
+
+    log::info!("[gst] Linux element detection: ximagesrc={}, pipewiresrc={}, wayland={}", has_x11_src, has_wayland_src, is_wayland);
+
     // Priority 1: If on Wayland, always prefer pipewiresrc
-    if is_wayland && is_element_available(app, "pipewiresrc") {
+    if is_wayland && has_wayland_src {
         log::info!("[gst] Wayland detected, using pipewiresrc for capture.");
         return "pipewiresrc".to_string();
     }
 
     // Priority 2: Standard X11 capture
-    if is_element_available(app, "ximagesrc") {
+    if has_x11_src {
         log::info!("[gst] Using ximagesrc for Linux screen capture.");
         "ximagesrc".to_string()
-    } else if is_element_available(app, "pipewiresrc") {
+    } else if has_wayland_src {
         log::info!("[gst] Falling back to pipewiresrc.");
         "pipewiresrc".to_string()
     } else {
-        log::error!("[gst] NO SCREEN CAPTURE ELEMENT FOUND! Please install gstreamer1.0-plugins-good and gstreamer1.0-x.");
-        "ximagesrc".to_string() // Fallback anyway
+        // EMERGENCY FALLBACK: If detection fails but we know the session type, trust the session type.
+        // This handles cases where gst-inspect-1.0 fails due to AppImage environment issues.
+        if !is_wayland {
+            log::warn!("[gst] Detection failed but X11 session detected. Forcing ximagesrc.");
+            "ximagesrc".to_string()
+        } else {
+            log::warn!("[gst] Detection failed but Wayland session detected. Forcing pipewiresrc.");
+            "pipewiresrc".to_string()
+        }
     }
 }
 
@@ -326,6 +324,19 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
     }
 
     let mut cmd = std::process::Command::new(inspect_path);
+
+    // Deep clean for Linux AppImage
+    #[cfg(target_os = "linux")]
+    if std::env::var("APPDIR").is_ok() {
+        // If we're not bundling GST, clear all GST and LD vars to use system ones
+        if !gst_root.exists() {
+            cmd.env_remove("GST_PLUGIN_PATH");
+            cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
+            cmd.env_remove("GST_REGISTRY");
+            // NOTE: We don't remove LD_LIBRARY_PATH here as it might break the binary itself,
+            // but we ensure GST specific paths are gone.
+        }
+    }
     
     // Add bin and plugin paths to env for inspection
     if gst_root.exists() {

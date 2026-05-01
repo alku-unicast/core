@@ -100,9 +100,24 @@ pub async fn start_stream(
 
     // LINUX / MAC İÇİN (Eski usul devam)
     #[cfg(not(target_os = "windows"))]
-    let mut child = std::process::Command::new(&gst_launch)
-        .args(pipeline.split_whitespace())
-        .spawn()
+    let mut cmd = std::process::Command::new(&gst_launch);
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        cmd.args(pipeline.split_whitespace());
+        
+        // Linux AppImage environment sanitization
+        #[cfg(target_os = "linux")]
+        if std::env::var("APPDIR").is_ok() {
+            log::info!("[stream] AppImage detected, cleaning GST environment variables.");
+            cmd.env_remove("GST_PLUGIN_PATH");
+            cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
+            cmd.env_remove("GST_REGISTRY");
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    let mut child = cmd.spawn()
         .map_err(|e| format!("Failed to launch GStreamer: {e}"))?;
 
     // --- UNIVERSAL FALLBACK LOGIC ---
