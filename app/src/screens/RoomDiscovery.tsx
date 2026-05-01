@@ -7,6 +7,7 @@ import { FloorTabs } from "../components/rooms/FloorTabs";
 import { RoomGrid } from "../components/rooms/RoomGrid";
 import { Room } from "../types/room";
 import { useConnectionStore } from "../stores/connectionStore";
+import { useRoomStore } from "../stores/roomStore";
 import { initFirebase } from "../services/firebase";
 import { startRoomListener } from "../services/roomService";
 
