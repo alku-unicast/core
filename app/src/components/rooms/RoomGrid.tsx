@@ -16,9 +16,18 @@ export function RoomGrid({ onConnect }: RoomGridProps) {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-muted)]">
-        <Loader2 size={28} className="animate-spin text-[var(--accent)]" />
-        <span className="text-sm">{t("common.loading")}</span>
+      <div className="flex-1 flex flex-col items-center justify-center gap-6">
+        <div className="flex flex-col items-center justify-center gap-3 text-[var(--text-muted)]">
+          <Loader2 size={28} className="animate-spin text-[var(--accent)]" />
+          <span className="text-sm">{t("common.loading")}</span>
+        </div>
+        
+        <div className="w-full max-w-sm px-6 pt-8 border-t border-[var(--border-subtle)]">
+          <p className="text-xs text-center text-[var(--text-muted)] mb-4">
+            {t("discovery.taking_too_long", "Taking too long? You can connect directly:")}
+          </p>
+          <ManualConnect onConnect={onConnect} />
+        </div>
       </div>
     );
   }

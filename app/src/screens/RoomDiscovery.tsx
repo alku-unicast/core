@@ -31,6 +31,16 @@ export function RoomDiscovery() {
     // We must await initFirebase (which has a 5s timeout) 
     // to ensure the DB is ready before starting the listener.
     // If it fails or times out, the listener will handle the fallback.
+    // Safety timeout: If rooms don't load in 8s, force-stop the loader
+    // so the user can at least use Manual IP connection.
+    const safetyTimeout = setTimeout(() => {
+      const { isLoading, setLoading } = useRoomStore.getState();
+      if (isLoading && isMounted) {
+        console.warn("[RoomDiscovery] Safety timeout reached, forcing loader to stop.");
+        setLoading(false);
+      }
+    }, 8000);
+
     initFirebase()
       .then(() => {
         console.log("[RoomDiscovery] Firebase init finished.");
@@ -48,6 +58,7 @@ export function RoomDiscovery() {
     return () => {
       isMounted = false;
       stopListener?.();
+      clearTimeout(safetyTimeout);
     };
   }, []);
 
