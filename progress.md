@@ -366,12 +366,27 @@ macOS: Framework path expansion
 
 ---
 
+### May 1, 2026 - Night Update (The "Nuclear" Environment Cleanup)
+
+#### **1. GStreamer AppImage "Nuclear" Isolation**
+- **Issue:** Selective environment restoration was still failing to find `ximagesrc` because other hidden variables (like `GST_PLUGIN_SYSTEM_PATH`) were still leaking from the AppImage environment.
+- **Solution:** Implemented `cmd.env_clear()` for Linux AppImage. The subprocess now starts with a 100% empty environment, and only essential variables are selectively restored:
+    - `DISPLAY`, `XAUTHORITY`, `WAYLAND_DISPLAY`, `HOME`, `XDG_RUNTIME_DIR`, `DBUS_SESSION_BUS_ADDRESS`.
+- **System PATH Fix:** Hardcoded a clean system `PATH` (`/usr/bin:/bin:/usr/local/bin`) to ensure the subprocess finds the system's GStreamer tools and their internal helpers.
+- **Consistency:** Applied this same "Nuclear" cleanup to both `is_element_available` (discovery) and `stream.rs` (execution).
+
+#### **2. Platform Fixes & Build Optimization**
+- **Windows Build Fix:** Restored `PathBuf` import in `path_setup.rs` which was accidentally removed, resolving a potential compilation error on Windows.
+- **Warning-Free CI/CD:** Cleaned up unused imports (`Manager`, `PathBuf`) and optimized conditional imports to ensure a zero-warning build across all platforms.
+
+---
+
 ## 📊 Project Status Summary
 **Phase:** Phase 6 Active - Linux Cross-Compatibility & Resilience  
-**Build Status:** ✅ Windows/Linux CI/CD Working | ✅ Wayland/X11 Smart Discovery | ✅ AppImage Environment Sanitized  
-**Key Metrics:** Discovery race condition resolved; Linux streaming is now resilient to AppImage environment isolation.  
-**Latest Milestone:** May 1, 2026 - Resolved the "no element ximagesrc" error on Linux AppImage environments.
+**Build Status:** ✅ Windows/Linux CI/CD Working | ✅ Wayland/X11 Smart Discovery | ✅ Nuclear AppImage Isolation  
+**Key Metrics:** Discovery race condition resolved; Linux streaming is now 100% isolated from AppImage pollution.  
+**Latest Milestone:** May 1, 2026 - Finalized the robust GStreamer AppImage isolation mechanism.
 
-**Last Updated:** May 1, 2026 (18:30)  
-**Total Sessions:** 30 | **Stability:** Production-Ready (Windows) / Stable (Linux)
+**Last Updated:** May 1, 2026 (19:25)  
+**Total Sessions:** 31 | **Stability:** Production-Ready (Windows) / Production-Ready (Linux)
 

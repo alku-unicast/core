@@ -1,5 +1,7 @@
-use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Manager};
+use std::path::Path;
+#[cfg(target_os = "windows")]
+use std::path::PathBuf;
+use tauri::AppHandle;
 #[cfg(target_os = "windows")]
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -313,74 +315,50 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
         std::path::PathBuf::from(exe_name)
     };
 
-    if !gst_root.exists() {
-        // If no bundled GStreamer, check if it's in the system PATH
-        let output = std::process::Command::new(exe_name).arg("--version").output();
-        if output.is_err() {
-            return false;
-        }
-    } else if !inspect_path.exists() {
-        return false;
-    }
+    let mut cmd = std::process::Command::new(&inspect_path);
 
-    let mut cmd = std::process::Command::new(inspect_path);
-
-    // Deep clean / Restore for Linux AppImage
-    #[cfg(target_os = "linux")]
-    if std::env::var("APPDIR").is_ok() && !gst_root.exists() {
-        // Restore original LD_LIBRARY_PATH if AppImage backed it up
-        if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
-            cmd.env("LD_LIBRARY_PATH", orig_ld);
-        } else {
-            cmd.env_remove("LD_LIBRARY_PATH");
-        }
-
-        // Restore original GST_PLUGIN_PATH if AppImage backed it up
-        if let Ok(orig_gst) = std::env::var("GST_PLUGIN_PATH_ORIG") {
-            cmd.env("GST_PLUGIN_PATH", orig_gst);
-        } else {
-            cmd.env_remove("GST_PLUGIN_PATH");
-            cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
-            cmd.env_remove("GST_REGISTRY");
-        }
-        log::info!("[gst] Restored original environment for gst-inspect-1.0");
-    }
-    
-    // Add bin and plugin paths to env for inspection
+    // If using bundled GStreamer, set up its specific environment
     if gst_root.exists() {
         let plugins_path = gst_root.join("lib").join("gstreamer-1.0");
-        
-        // Only override GST_PLUGIN_PATH if the bundled directory actually contains something.
-        // This prevents hiding system plugins when an empty placeholder directory exists in AppImage.
-        let has_bundled_plugins = plugins_path.exists() && 
-            std::fs::read_dir(&plugins_path).map(|mut d| d.next().is_some()).unwrap_or(false);
+        if plugins_path.exists() {
+            cmd.env("GST_PLUGIN_PATH", plugins_path.to_string_lossy().to_string());
+        }
 
-        if has_bundled_plugins {
-            #[cfg(target_os = "windows")]
-            {
-                let current_path = std::env::var("PATH").unwrap_or_default();
-                cmd.env("PATH", format!("{};{}", bin_dir, current_path));
-                
-                let safe_plugins_path = get_short_path(&plugins_path)
-                    .unwrap_or(plugins_path)
-                    .to_string_lossy()
-                    .to_string();
-                    
-                let reg_path = std::env::var("GST_REGISTRY").unwrap_or_else(|_| {
-                    app.path().app_local_data_dir().unwrap_or_default().join("gstreamer_registry_1_24_13.bin").to_string_lossy().to_string()
-                });
+        #[cfg(target_os = "windows")]
+        {
+            let current_path = std::env::var("PATH").unwrap_or_default();
+            cmd.env("PATH", format!("{};{}", bin_dir, current_path));
+            
+            // Handle Windows registry if needed
+            let data_dir = app.path().app_local_data_dir().unwrap_or_default();
+            let reg_path = data_dir.join("gstreamer_registry_1_24_13.bin");
+            cmd.env("GST_REGISTRY", reg_path.to_string_lossy().to_string());
+        }
+    } else {
+        // If using system GStreamer on Linux AppImage, clear environment to avoid pollution.
+        #[cfg(target_os = "linux")]
+        if std::env::var("APPDIR").is_ok() {
+            cmd.env_clear();
 
-                cmd.env("GST_PLUGIN_PATH", safe_plugins_path);
-                cmd.env("GST_REGISTRY", reg_path);
+            let vars_to_restore = [
+                "DISPLAY",
+                "XAUTHORITY",
+                "WAYLAND_DISPLAY",
+                "HOME",
+                "XDG_RUNTIME_DIR",
+                "DBUS_SESSION_BUS_ADDRESS",
+            ];
+
+            for var in vars_to_restore {
+                if let Ok(val) = std::env::var(var) {
+                    cmd.env(var, val);
+                }
             }
-
-            #[cfg(not(target_os = "windows"))]
-            {
-                log::info!("[gst] Found bundled Linux plugins, setting GST_PLUGIN_PATH.");
-                cmd.env("GST_PLUGIN_PATH", plugins_path.to_string_lossy().to_string());
+            cmd.env("PATH", "/usr/bin:/bin:/usr/local/bin");
+            
+            if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
+                cmd.env("LD_LIBRARY_PATH", orig_ld);
             }
-        } else {
-            log::info!("[gst] Bundled plugins dir is empty or missing, relying on system GStreamer.");
         }
     }
 

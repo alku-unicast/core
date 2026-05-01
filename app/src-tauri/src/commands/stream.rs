@@ -109,20 +109,33 @@ pub async fn start_stream(
         // Linux AppImage environment restoration
         #[cfg(target_os = "linux")]
         if std::env::var("APPDIR").is_ok() {
-            log::info!("[stream] AppImage detected, restoring original environment variables.");
+            log::info!("[stream] AppImage detected, performing clean environment restoration.");
             
-            if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
-                cmd.env("LD_LIBRARY_PATH", orig_ld);
-            } else {
-                cmd.env_remove("LD_LIBRARY_PATH");
+            // "Nuclear" cleanup: Start with a completely empty environment
+            cmd.env_clear();
+
+            // Restore critical system variables for display and session communication
+            let vars_to_restore = [
+                "DISPLAY",
+                "XAUTHORITY",
+                "WAYLAND_DISPLAY",
+                "HOME",
+                "XDG_RUNTIME_DIR",
+                "DBUS_SESSION_BUS_ADDRESS",
+            ];
+
+            for var in vars_to_restore {
+                if let Ok(val) = std::env::var(var) {
+                    cmd.env(var, val);
+                }
             }
 
-            if let Ok(orig_gst) = std::env::var("GST_PLUGIN_PATH_ORIG") {
-                cmd.env("GST_PLUGIN_PATH", orig_gst);
-            } else {
-                cmd.env_remove("GST_PLUGIN_PATH");
-                cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
-                cmd.env_remove("GST_REGISTRY");
+            // Set a clean PATH to ensure system binaries are found
+            cmd.env("PATH", "/usr/bin:/bin:/usr/local/bin");
+            
+            // Optional: Restore original LD_LIBRARY_PATH if it existed
+            if let Ok(orig_ld) = std::env::var("LD_LIBRARY_PATH_ORIG") {
+                cmd.env("LD_LIBRARY_PATH", orig_ld);
             }
         }
     }
