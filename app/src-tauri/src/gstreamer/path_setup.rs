@@ -333,8 +333,8 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
             cmd.env_remove("GST_PLUGIN_PATH");
             cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
             cmd.env_remove("GST_REGISTRY");
-            // NOTE: We don't remove LD_LIBRARY_PATH here as it might break the binary itself,
-            // but we ensure GST specific paths are gone.
+            cmd.env_remove("LD_LIBRARY_PATH");
+            log::info!("[gst] Deep cleaning environment for gst-inspect-1.0");
         }
     }
     

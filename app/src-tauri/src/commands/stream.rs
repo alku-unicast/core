@@ -109,10 +109,11 @@ pub async fn start_stream(
         // Linux AppImage environment sanitization
         #[cfg(target_os = "linux")]
         if std::env::var("APPDIR").is_ok() {
-            log::info!("[stream] AppImage detected, cleaning GST environment variables.");
+            log::info!("[stream] AppImage detected, deep cleaning environment (GST & LD_LIBRARY_PATH).");
             cmd.env_remove("GST_PLUGIN_PATH");
             cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
             cmd.env_remove("GST_REGISTRY");
+            cmd.env_remove("LD_LIBRARY_PATH");
         }
     }
 
