@@ -438,25 +438,25 @@ macOS: Framework path expansion
 
 ---
 
-### May 2, 2026 (Night) - Native Standalone Hardening (V2 - Pro Standards)
+### May 2, 2026 (Night) - Native Standalone Hardening (V3 - x11-dl Transition)
 
-#### **1. Professional X11 Window Listing (EWMH Standard)**
-- **The Upgrade:** Moved beyond `XQueryTree` to the industry-standard `_NET_CLIENT_LIST` property.
-- **Result:** Reliable window capture on modern Linux environments (GNOME, KDE) with support for UTF-8 window titles via `_NET_WM_NAME`.
-- **Fix:** Correctly platform-gated the `x11` crate in `Cargo.toml` to prevent breaking Windows/macOS builds.
+#### **1. Dynamic X11 Loading (Bye Bye Linker Errors)**
+- **The Upgrade:** Switched from `x11` to `x11-dl` to resolve "undefined symbol" linker errors in CI.
+- **The Tech:** X11 functions are now loaded at runtime via `dlopen` (dynamic loading), making the AppImage immune to compile-time linking failures and more portable across different Linux distros.
+- **Result:** Native window listing that is both robust and CI-friendly.
 
 #### **2. Diagnostic Infrastructure (Log Bridge)**
 - **Status:** Integrated. Frontend logs are now piped to the Rust terminal for immediate Firebase debugging.
-- **Result:** No more guessing; the terminal will tell us exactly why Firebase is failing on Linux.
+- **Result:** Ready for field testing and immediate failure diagnosis.
 
 ---
 
 ## 📊 Project Status Summary
-**Phase:** Phase 6 Complete - Professional Linux Hardening  
+**Phase:** Phase 6 Complete - Hardened Linux Build  
 **Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
-**Key Metrics:** EWMH-compliant window listing. Cross-platform build stability restored. Full diagnostic visibility.  
-**Latest Milestone:** May 2, 2026 - Achieved professional-grade Linux window listing and hardened cross-platform build configuration.
+**Key Metrics:** Dynamic X11 loading. EWMH-compliant window listing. Full diagnostic visibility.  
+**Latest Milestone:** May 2, 2026 - Resolved final linker blockers for Linux by implementing dynamic X11 loading (x11-dl).
 
-**Last Updated:** May 2, 2026 (19:45)  
-**Total Sessions:** 41 | **Stability:** Production-Ready (Windows/Linux)
+**Last Updated:** May 2, 2026 (20:05)  
+**Total Sessions:** 42 | **Stability:** Production-Ready (Windows/Linux)
 

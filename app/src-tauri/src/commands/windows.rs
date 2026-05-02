@@ -25,26 +25,35 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
         tokio::task::spawn_blocking(|| {
             use std::ptr;
             use std::ffi::CStr;
-            use x11::xlib;
+            use x11_dl::xlib;
 
             let mut windows = Vec::new();
 
+            // 1. Load X11 library at runtime
+            let xlib = match xlib::Xlib::open() {
+                Ok(x) => x,
+                Err(e) => {
+                    log::error!("[windows] Could not open X11 library: {}", e);
+                    return Ok(vec![]);
+                }
+            };
+
             unsafe {
-                let display = xlib::XOpenDisplay(ptr::null());
+                let display = (xlib.XOpenDisplay)(ptr::null());
                 if display.is_null() {
                     log::error!("[windows] Could not open X display");
                     return Ok(vec![]);
                 }
 
-                let root = xlib::XDefaultRootWindow(display);
+                let root = (xlib.XDefaultRootWindow)(display);
                 
-                // 1. Get the _NET_CLIENT_LIST atom
-                let client_list_atom = xlib::XInternAtom(display, b"_NET_CLIENT_LIST\0".as_ptr() as *const i8, xlib::False);
-                let utf8_string_atom = xlib::XInternAtom(display, b"UTF8_STRING\0".as_ptr() as *const i8, xlib::False);
-                let net_wm_name_atom = xlib::XInternAtom(display, b"_NET_WM_NAME\0".as_ptr() as *const i8, xlib::False);
+                // 2. Get atoms
+                let client_list_atom = (xlib.XInternAtom)(display, b"_NET_CLIENT_LIST\0".as_ptr() as *const i8, xlib::False);
+                let utf8_string_atom = (xlib.XInternAtom)(display, b"UTF8_STRING\0".as_ptr() as *const i8, xlib::False);
+                let net_wm_name_atom = (xlib::XInternAtom)(display, b"_NET_WM_NAME\0".as_ptr() as *const i8, xlib::False);
 
                 if client_list_atom == 0 {
-                    xlib::XCloseDisplay(display);
+                    (xlib.XCloseDisplay)(display);
                     return Ok(vec![]);
                 }
 
@@ -54,16 +63,16 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
                 let mut bytes_after = 0;
                 let mut data_ptr: *mut u8 = ptr::null_mut();
 
-                // 2. Query the property from the root window
-                if xlib::XGetWindowProperty(
+                // 3. Query the property from the root window
+                if (xlib.XGetWindowProperty)(
                     display, root, client_list_atom, 0, 1024, xlib::False, xlib::XA_WINDOW,
                     &mut actual_type, &mut actual_format, &mut nitems, &mut bytes_after, &mut data_ptr
-                ) == xlib::Success as i32 && !data_ptr.is_null() {
+                ) == 0 && !data_ptr.is_null() {
                     
                     let window_ids = std::slice::from_raw_parts(data_ptr as *const xlib::Window, nitems as usize);
 
                     for &window in window_ids {
-                        // 3. Try to get UTF-8 name (_NET_WM_NAME)
+                        // 4. Try to get UTF-8 name (_NET_WM_NAME)
                         let mut name_type = 0;
                         let mut name_format = 0;
                         let mut name_nitems = 0;
@@ -72,18 +81,18 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
 
                         let mut title = String::new();
 
-                        if xlib::XGetWindowProperty(
+                        if (xlib.XGetWindowProperty)(
                             display, window, net_wm_name_atom, 0, 1024, xlib::False, utf8_string_atom,
                             &mut name_type, &mut name_format, &mut name_nitems, &mut name_bytes_after, &mut name_ptr
-                        ) == xlib::Success as i32 && !name_ptr.is_null() {
+                        ) == 0 && !name_ptr.is_null() {
                             title = CStr::from_ptr(name_ptr as *const i8).to_string_lossy().into_owned();
-                            xlib::XFree(name_ptr as *mut _);
+                            (xlib.XFree)(name_ptr as *mut _);
                         } else {
                             // Fallback to legacy XFetchName
                             let mut legacy_name_ptr: *mut i8 = ptr::null_mut();
-                            if xlib::XFetchName(display, window, &mut legacy_name_ptr) != 0 && !legacy_name_ptr.is_null() {
+                            if (xlib.XFetchName)(display, window, &mut legacy_name_ptr) != 0 && !legacy_name_ptr.is_null() {
                                 title = CStr::from_ptr(legacy_name_ptr).to_string_lossy().into_owned();
-                                xlib::XFree(legacy_name_ptr as *mut _);
+                                (xlib.XFree)(legacy_name_ptr as *mut _);
                             }
                         }
 
@@ -95,9 +104,9 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
                             });
                         }
                     }
-                    xlib::XFree(data_ptr as *mut _);
+                    (xlib.XFree)(data_ptr as *mut _);
                 }
-                xlib::XCloseDisplay(display);
+                (xlib.XCloseDisplay)(display);
             }
 
             Ok(windows)
