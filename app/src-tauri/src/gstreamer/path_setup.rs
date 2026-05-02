@@ -31,7 +31,7 @@ pub fn get_gst_launch(app: &AppHandle) -> String {
             });
 
             log::info!("[gst] Final GStreamer path (Windows): {:?}", final_path);
-            setup_gstreamer_env(app, &final_path);
+            apply_gstreamer_env_to_parent(app);
             
             let bin_path = final_path.join("bin").join("gst-launch-1.0.exe");
             return bin_path.to_string_lossy().to_string();
@@ -44,7 +44,8 @@ pub fn get_gst_launch(app: &AppHandle) -> String {
     #[cfg(not(target_os = "windows"))]
     {
         if gst_root.exists() {
-            setup_gstreamer_env(app, &gst_root);
+            // Apply environment to parent process once during initialization
+            apply_gstreamer_env_to_parent(app);
             let bin_name = if cfg!(target_os = "windows") { "gst-launch-1.0.exe" } else { "gst-launch-1.0" };
             return gst_root.join("bin").join(bin_name).to_string_lossy().to_string();
         }
@@ -93,125 +94,109 @@ fn get_short_path(path: &Path) -> Result<PathBuf, String> {
     }
 }
 
-fn setup_gstreamer_env(app: &AppHandle, gst_root: &Path) {
-    // Smart root detection: some extractions (like dpkg -x) nest everything under "usr/"
-    let actual_root = if gst_root.join("usr").exists() {
-        gst_root.join("usr")
-    } else {
-        gst_root.to_path_buf()
+/// Applies GStreamer environment to a child process Command.
+pub fn apply_gstreamer_env_to_cmd(app: &AppHandle, cmd: &mut std::process::Command) {
+    let envs = get_gstreamer_env_vars(app);
+    for (key, val) in envs {
+        if val.is_empty() {
+            cmd.env_remove(key);
+        } else {
+            cmd.env(key, val);
+        }
+    }
+}
+
+/// Applies GStreamer environment to the current parent process.
+pub fn apply_gstreamer_env_to_parent(app: &AppHandle) {
+    let envs = get_gstreamer_env_vars(app);
+    for (key, val) in envs {
+        if val.is_empty() {
+            // We don't really want to remove from parent unless necessary
+        } else {
+            std::env::set_var(key, val);
+        }
+    }
+}
+
+fn get_gstreamer_env_vars(app: &AppHandle) -> Vec<(&'static str, String)> {
+    let mut envs = Vec::new();
+    let platform_subfolder = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", _) => "windows",
+        ("linux", _) => "linux",
+        ("macos", "aarch64") => "macos/silicon",
+        ("macos", _) => "macos/intel",
+        _ => "windows",
     };
 
-    let bin = actual_root.join("bin");
+    let resource_dir = app.path().resource_dir().unwrap_or_default();
+    let gst_root = resource_dir.join("gstreamer").join(platform_subfolder);
     
-    // Smart lib detection: Official tar.xz uses "lib", Debian uses "lib/x86_64-linux-gnu"
-    let mut lib = actual_root.join("lib");
-    let mut plugins = lib.join("gstreamer-1.0");
+    let actual_root = if gst_root.join("usr").exists() { gst_root.join("usr") } else { gst_root };
 
-    if !plugins.exists() {
-        // Check for common multiarch paths used in Ubuntu/Debian
-        let possible_lib = if cfg!(target_arch = "x86_64") && cfg!(target_os = "linux") {
-            actual_root.join("lib").join("x86_64-linux-gnu")
-        } else if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
-            actual_root.join("lib").join("aarch64-linux-gnu")
-        } else {
-            actual_root.join("lib")
-        };
+    if actual_root.exists() {
+        let bin = actual_root.join("bin");
+        let mut lib = actual_root.join("lib");
+        let mut plugins = lib.join("gstreamer-1.0");
 
-        if possible_lib.join("gstreamer-1.0").exists() {
-            lib = possible_lib;
-            plugins = lib.join("gstreamer-1.0");
-            log::info!("[gst] Detected multiarch lib path: {:?}", lib);
-        }
-    }
-
-    let scanner_name = if cfg!(target_os = "windows") { "gst-plugin-scanner.exe" } else { "gst-plugin-scanner" };
-    
-    // Scanner can be in libexec or in the same bin dir depending on build
-    let mut scanner = actual_root.join("libexec").join("gstreamer-1.0").join(scanner_name);
-    if !scanner.exists() {
-        scanner = bin.join(scanner_name);
-    }
-
-    let bin_str = bin.to_string_lossy().to_string();
-    let lib_str = lib.to_string_lossy().to_string();
-    let plugins_str = plugins.to_string_lossy().to_string();
-    let scanner_str = scanner.to_string_lossy().to_string();
-
-    #[cfg(target_os = "windows")]
-    {
-        let current_path = std::env::var("PATH").unwrap_or_default();
-        if !current_path.contains(&bin_str) {
-            let new_path = format!(
-                "{};{};{}",
-                bin_str,
-                lib_str,
-                current_path
-            );
-            std::env::set_var("PATH", &new_path);
-        }
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        let ld_var = if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" } else { "LD_LIBRARY_PATH" };
-        let current_ld = std::env::var(ld_var).unwrap_or_default();
-        let new_ld = if current_ld.is_empty() {
-            format!("{}:{}", bin_str, lib_str)
-        } else {
-            format!("{}:{}:{}", bin_str, lib_str, current_ld)
-        };
-        std::env::set_var(ld_var, new_ld);
-    }
-    
-    std::env::set_var("GST_PLUGIN_PATH", &plugins_str);
-    std::env::set_var("GST_PLUGIN_SYSTEM_PATH", &plugins_str);
-    
-    if scanner.exists() {
-        std::env::set_var("GST_PLUGIN_SCANNER", &scanner_str);
-    } else {
-        log::error!("[gst] Plugin scanner NOT FOUND at {:?}. Cross-platform plugins might fail to load!", scanner);
-    }
-
-    let data_dir = app
-        .path()
-        .app_local_data_dir()
-        .unwrap_or_default();
-
-    // Registry is version-keyed so GStreamer auto-invalidates it on upgrades.
-    // Do NOT delete it on every launch — that forces a slow full plugin re-scan
-    // every time gst-launch starts, which takes 2-3s and can crash mid-scan.
-    // Use a versioned registry filename to force a fresh scan for this build.
-    // If the registry was previously empty/stale, this ensures a re-scan.
-    let registry_path = data_dir.join("gstreamer_registry_1_24_13.bin");
-    if let Some(path_str) = registry_path.to_str() {
-        std::env::set_var("GST_REGISTRY", path_str);
-        log::info!("[gst] Using registry at: {}", path_str);
-    }
-
-    // Write gst-launch stderr to a rotated log file for post-crash diagnosis.
-    let debug_log = data_dir.join("gst_debug.log");
-    if let Some(path_str) = debug_log.to_str() {
-        std::env::set_var("GST_DEBUG_FILE", path_str);
-    }
-    
-    // Level 3 (INFO) is sufficient for plugin scanning diagnostics without bloating the disk.
-    std::env::set_var("GST_DEBUG", "3");
-    
-    // Diagnostic: Check for bundled VC++ DLLs
-    #[cfg(target_os = "windows")]
-    {
-        let dlls = ["vcruntime140_1.dll", "concrt140.dll", "msvcp140_1.dll"];
-        for dll in dlls {
-            let p = bin.join(dll);
-            if p.exists() {
-                log::info!("[gst] Bundled DLL found: {}", dll);
-            } else {
-                log::warn!("[gst] Bundled DLL MISSING: {}", dll);
+        #[cfg(target_os = "linux")]
+        {
+            let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
+            let possible_lib = actual_root.join("lib").join(multiarch);
+            if possible_lib.join("gstreamer-1.0").exists() {
+                lib = possible_lib;
+                plugins = lib.join("gstreamer-1.0");
             }
         }
+
+        let bin_str = bin.to_string_lossy().to_string();
+        let lib_str = lib.to_string_lossy().to_string();
+        let plugins_str = plugins.to_string_lossy().to_string();
+
+        // 1. Path & LD_LIBRARY_PATH
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(current_path) = std::env::var("PATH") {
+                envs.push(("PATH", format!("{};{};{}", bin_str, lib_str, current_path)));
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let ld_var = if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" } else { "LD_LIBRARY_PATH" };
+            let current_ld = std::env::var(ld_var).unwrap_or_default();
+            let new_ld = if current_ld.is_empty() {
+                format!("{}:{}", bin_str, lib_str)
+            } else {
+                format!("{}:{}:{}", bin_str, lib_str, current_ld)
+            };
+            envs.push((ld_var, new_ld));
+        }
+
+        // 2. Plugins (Pure Bundled - No hybrid risk if bundled exists)
+        envs.push(("GST_PLUGIN_PATH", plugins_str));
+        envs.push(("GST_PLUGIN_SYSTEM_PATH", "".to_string())); // Clear system paths to avoid ABI mismatch
+        
+        #[cfg(target_os = "linux")]
+        if std::env::var("APPDIR").is_ok() {
+            envs.push(("GST_REGISTRY", "".to_string())); // Trigger clean scan in AppImage
+        }
+
+        // 3. Scanner
+        let scanner_name = if cfg!(target_os = "windows") { "gst-plugin-scanner.exe" } else { "gst-plugin-scanner" };
+        let mut scanner = actual_root.join("libexec").join("gstreamer-1.0").join(scanner_name);
+        if !scanner.exists() { scanner = bin.join(scanner_name); }
+        if scanner.exists() {
+            envs.push(("GST_PLUGIN_SCANNER", scanner.to_string_lossy().to_string()));
+        }
     }
 
-    log::info!("[gst] Environment setup complete for platform root: {:?}", gst_root);
+    // 4. Debugging
+    let data_dir = app.path().app_local_data_dir().unwrap_or_default();
+    let registry_path = data_dir.join("gstreamer_registry_1_24_13.bin");
+    envs.push(("GST_REGISTRY", registry_path.to_string_lossy().to_string()));
+    envs.push(("GST_DEBUG_FILE", data_dir.join("gst_debug.log").to_string_lossy().to_string()));
+    envs.push(("GST_DEBUG", "3".to_string()));
+
+    envs
 }
 
 #[cfg(target_os = "windows")]
@@ -296,72 +281,18 @@ pub fn get_best_linux_src(app: &AppHandle) -> String {
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 fn is_element_available(app: &AppHandle, name: &str) -> bool {
-    let platform_subfolder = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("windows", _) => "windows",
-        ("linux", _) => "linux",
-        ("macos", "aarch64") => "macos/silicon",
-        ("macos", _) => "macos/intel",
-        _ => "windows",
-    };
-
-    let resource_dir = app.path().resource_dir().unwrap_or_default();
-    let gst_root = resource_dir.join("gstreamer").join(platform_subfolder);
-    let bin_dir = get_gst_bin_dir(app);
     let exe_name = if cfg!(target_os = "windows") { "gst-inspect-1.0.exe" } else { "gst-inspect-1.0" };
+    let bin_dir = get_gst_bin_dir(app);
+    let inspect_path = Path::new(&bin_dir).join(exe_name);
     
-    let inspect_path = if gst_root.exists() {
-        Path::new(&bin_dir).join(exe_name)
+    let mut cmd = if inspect_path.exists() {
+        std::process::Command::new(inspect_path)
     } else {
-        std::path::PathBuf::from(exe_name)
+        std::process::Command::new(exe_name)
     };
 
-    let mut cmd = std::process::Command::new(&inspect_path);
-
-    // If using bundled GStreamer, set up its specific environment
-    if gst_root.exists() {
-        let plugins_path = gst_root.join("lib").join("gstreamer-1.0");
-        if plugins_path.exists() {
-            cmd.env("GST_PLUGIN_PATH", plugins_path.to_string_lossy().to_string());
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            let current_path = std::env::var("PATH").unwrap_or_default();
-            cmd.env("PATH", format!("{};{}", bin_dir, current_path));
-            
-            // Handle Windows registry if needed
-            let data_dir = app.path().app_local_data_dir().unwrap_or_default();
-            let reg_path = data_dir.join("gstreamer_registry_1_24_13.bin");
-            cmd.env("GST_REGISTRY", reg_path.to_string_lossy().to_string());
-        }
-    } else {
-        // If using system GStreamer on Linux AppImage, perform selective override to avoid pollution
-        // while keeping LD_LIBRARY_PATH for bundled plugin dependencies.
-        #[cfg(target_os = "linux")]
-        if std::env::var("APPDIR").is_ok() {
-            let appdir = std::env::var("APPDIR").unwrap_or_default();
-            let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
-            
-            // Define hybrid plugin paths
-            let system_plugins = format!("/usr/lib/{}/gstreamer-1.0", multiarch);
-            let appimage_plugins = format!("{}/usr/lib/{}/gstreamer-1.0", appdir, multiarch);
-            
-            let mut plugin_paths = vec![system_plugins, "/usr/lib/gstreamer-1.0".to_string()];
-            if std::path::Path::new(&appimage_plugins).exists() {
-                plugin_paths.push(appimage_plugins);
-            }
-            
-            let final_plugin_path = plugin_paths.join(":");
-            
-            // Override GST_PLUGIN_PATH and remove conflicting vars
-            cmd.env("GST_PLUGIN_PATH", &final_plugin_path);
-            cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
-            cmd.env_remove("GST_REGISTRY");
-            cmd.env_remove("GST_PLUGIN_SCANNER");
-            
-            // LD_LIBRARY_PATH is intentionally kept to allow bundled plugins to load their dependencies
-        }
-    }
+    // SINGLE SOURCE OF TRUTH: Use the centralized environment setup
+    apply_gstreamer_env_to_cmd(app, &mut cmd);
 
     let output = cmd.arg(name).output();
     

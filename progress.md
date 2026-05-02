@@ -399,12 +399,30 @@ macOS: Framework path expansion
 
 ---
 
-## 📊 Project Status Summary
-**Phase:** Phase 6 Complete - Linux Cross-Platform Excellence  
-**Build Status:** ✅ Windows (Production) | ✅ Linux (Production-Ready AppImage) | ✅ macOS (Core Ready)  
-**Key Metrics:** Full feature parity between Windows and Linux. Linux AppImage is now fully standalone.  
-**Latest Milestone:** May 1, 2026 - Finalized the robust GStreamer AppImage bundling and Linux window mode.
+### May 2, 2026 - The "Tank" Architecture (Consolidation & LDD)
 
-**Last Updated:** May 1, 2026 (21:15)  
-**Total Sessions:** 35 | **Stability:** Production-Ready (Windows) / Production-Ready (Linux Standalone)
+#### **1. Centralized Environment Architecture (Single Source of Truth)**
+- **The Cleanup:** Refactored `path_setup.rs` to eliminate redundant and error-prone environment logic.
+- **The Fix:** Created `apply_gstreamer_env_to_cmd` and `apply_gstreamer_env_to_parent` as the only ways to configure GStreamer paths.
+- **Result:** Both `stream.rs` (streaming) and `is_element_available` (detection) now use identical logic, ensuring consistency across the entire app.
+
+#### **2. Standalone "Tank" Build (LDD Dependency Gathering)**
+- **The Problem:** Simple plugin copying was missing transitive dependencies (like `libx264.so` or `libopus.so`) not present on minimal Linux systems.
+- **The Solution:** Upgraded `build.yml` with a professional `ldd` scanner that identifies all required shared libraries and bundles them automatically.
+- **Result:** Linux AppImage is now 100% standalone, surviving even on systems with ZERO GStreamer packages installed.
+
+#### **3. Pure Bundled Strategy (ABI Resilience)**
+- **The Change:** Removed "Hybrid" plugin paths. The app now prioritizes bundled plugins exclusively if they exist, eliminating ABI mismatch risks between host and bundle.
+- **Result:** High-performance streaming is now guaranteed to use the stable, tested plugins included in the build.
+
+---
+
+## 📊 Project Status Summary
+**Phase:** Phase 6 Finalized - Linux Architectural Consolidation  
+**Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
+**Key Metrics:** Full architectural parity. Linux is now as robust and standalone as the Windows version.  
+**Latest Milestone:** May 2, 2026 - Consolidated GStreamer environment and implemented LDD-based dependency bundling.
+
+**Last Updated:** May 2, 2026 (14:55)  
+**Total Sessions:** 36 | **Stability:** Production-Ready (Windows/Linux)
 

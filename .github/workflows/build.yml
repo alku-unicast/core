@@ -75,34 +75,49 @@ jobs:
       - name: Bundle GStreamer for Linux AppImage
         if: matrix.os == 'linux'
         run: |
-          # 1. Create resources folder structure matching Windows/macOS logic
+          # 1. Structure matching our unified resource logic
           mkdir -p app/src-tauri/gstreamer/linux/bin
           mkdir -p app/src-tauri/gstreamer/linux/lib/gstreamer-1.0
 
-          # 2. Copy binaries
+          # 2. Core Binaries
           cp /usr/bin/gst-launch-1.0 app/src-tauri/gstreamer/linux/bin/
           cp /usr/bin/gst-inspect-1.0 app/src-tauri/gstreamer/linux/bin/
 
-          # 3. Detect multiarch path (e.g. x86_64-linux-gnu)
+          # 3. Detect multiarch path
           MA_PATH=$(gcc -print-multiarch)
-          echo "Bundling plugins from $MA_PATH..."
+          echo "Multiarch: $MA_PATH"
           
-          # 4. Copy plugins (The core fix for standalone AppImage)
+          # 4. Copy gst-plugin-scanner (Crucial for plugin discovery)
+          GST_SCANNER=$(find /usr/lib/$MA_PATH -name "gst-plugin-scanner" 2>/dev/null | head -1)
+          if [ -z "$GST_SCANNER" ]; then GST_SCANNER=$(find /usr/lib -name "gst-plugin-scanner" 2>/dev/null | head -1); fi
+          
+          if [ -n "$GST_SCANNER" ]; then
+            cp "$GST_SCANNER" app/src-tauri/gstreamer/linux/bin/
+            chmod +x app/src-tauri/gstreamer/linux/bin/gst-plugin-scanner
+            echo "Bundled gst-plugin-scanner from: $GST_SCANNER"
+          else
+            echo "WARNING: gst-plugin-scanner NOT FOUND!"
+          fi
+
+          # 5. Copy Plugins
           cp /usr/lib/$MA_PATH/gstreamer-1.0/*.so app/src-tauri/gstreamer/linux/lib/gstreamer-1.0/
           
-          # 5. Copy essential shared libraries
-          # We copy the main GStreamer libs. linuxdeploy will handle others.
-          cp /usr/lib/$MA_PATH/libgstreamer-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
-          cp /usr/lib/$MA_PATH/libgstbase-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
-          cp /usr/lib/$MA_PATH/libgstaudio-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
-          cp /usr/lib/$MA_PATH/libgstvideo-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
-          cp /usr/lib/$MA_PATH/libgstpbutils-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
-          cp /usr/lib/$MA_PATH/libgsttag-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
-          cp /usr/lib/$MA_PATH/libgstapp-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
-          cp /usr/lib/$MA_PATH/libgstallocators-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
-          cp /usr/lib/$MA_PATH/libgstgl-1.0.so.0* app/src-tauri/gstreamer/linux/lib/
+          # 6. COLLECT TRANSITIVE DEPENDENCIES (ldd magic)
+          # This finds all .so files needed by our binaries/plugins and copies them to lib/
+          # Fix: Include versioned .so* files in the scan
+          echo "Gathering shared library dependencies..."
+          find app/src-tauri/gstreamer/linux/ -type f -executable -o -name "*.so*" | xargs ldd | grep "=> /" | awk '{print $3}' | sort -u | \
+            grep -v "libc.so" | \
+            grep -v "libpthread.so" | \
+            grep -v "libdl.so" | \
+            grep -v "libm.so" | \
+            grep -v "librt.so" | \
+            grep -v "libresolv.so" | \
+            grep -v "libgcc_s.so" | \
+            grep -v "libstdc++.so" | \
+            xargs -I {} cp -v {} app/src-tauri/gstreamer/linux/lib/
           
-          echo "GStreamer bundling complete for Linux."
+          echo "GStreamer standalone bundling complete."
           ls -R app/src-tauri/gstreamer/linux/
 
       # ============================================

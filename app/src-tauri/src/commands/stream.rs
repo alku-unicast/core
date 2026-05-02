@@ -106,36 +106,15 @@ pub async fn start_stream(
     {
         cmd.args(pipeline.split_whitespace());
         
-        // Linux AppImage environment restoration
+        // Apply platform-specific GStreamer environment (Single Source of Truth)
+        crate::gstreamer::path_setup::apply_gstreamer_env_to_cmd(&app, &mut cmd);
+
         #[cfg(target_os = "linux")]
-        if std::env::var("APPDIR").is_ok() {
-            log::info!("[stream] AppImage detected, performing selective environment override.");
-            
-            let appdir = std::env::var("APPDIR").unwrap_or_default();
-            let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
-            
-            // Define hybrid plugin paths
-            let system_plugins = format!("/usr/lib/{}/gstreamer-1.0", multiarch);
-            let appimage_plugins = format!("{}/usr/lib/{}/gstreamer-1.0", appdir, multiarch);
-            
-            let mut plugin_paths = vec![system_plugins, "/usr/lib/gstreamer-1.0".to_string()];
-            if std::path::Path::new(&appimage_plugins).exists() {
-                plugin_paths.push(appimage_plugins);
+        {
+            if let Some(bin_dir) = std::path::Path::new(&gst_launch).parent() {
+                cmd.current_dir(bin_dir);
+                log::info!("[stream] bin_dir (CWD): {:?}", bin_dir);
             }
-            
-            let final_plugin_path = plugin_paths.join(":");
-            
-            // 1. Explicitly set hybrid plugin path to find both system and bundled elements
-            cmd.env("GST_PLUGIN_PATH", &final_plugin_path);
-            
-            // 2. Remove problematic GStreamer environment variables that AppImage locks to its internal paths
-            cmd.env_remove("GST_PLUGIN_SYSTEM_PATH");
-            cmd.env_remove("GST_REGISTRY");
-            cmd.env_remove("GST_PLUGIN_SCANNER");
-            
-            // 3. Keep LD_LIBRARY_PATH intact (inherited) so bundled plugins can find their dependencies (e.g. libx264.so)
-            
-            log::info!("[stream] Hybrid GST_PLUGIN_PATH set: {}", final_plugin_path);
         }
     }
 
