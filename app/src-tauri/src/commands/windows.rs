@@ -30,7 +30,7 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
             let mut windows = Vec::new();
 
             // 1. Load X11 library at runtime
-            let xlib = match xlib::Xlib::open() {
+            let lib_x11 = match xlib::Xlib::open() {
                 Ok(x) => x,
                 Err(e) => {
                     log::error!("[windows] Could not open X11 library: {}", e);
@@ -39,21 +39,21 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
             };
 
             unsafe {
-                let display = (xlib.XOpenDisplay)(ptr::null());
+                let display = (lib_x11.XOpenDisplay)(ptr::null());
                 if display.is_null() {
                     log::error!("[windows] Could not open X display");
                     return Ok(vec![]);
                 }
 
-                let root = (xlib.XDefaultRootWindow)(display);
+                let root = (lib_x11.XDefaultRootWindow)(display);
                 
                 // 2. Get atoms
-                let client_list_atom = (xlib.XInternAtom)(display, b"_NET_CLIENT_LIST\0".as_ptr() as *const i8, xlib::False);
-                let utf8_string_atom = (xlib.XInternAtom)(display, b"UTF8_STRING\0".as_ptr() as *const i8, xlib::False);
-                let net_wm_name_atom = (xlib::XInternAtom)(display, b"_NET_WM_NAME\0".as_ptr() as *const i8, xlib::False);
+                let client_list_atom = (lib_x11.XInternAtom)(display, b"_NET_CLIENT_LIST\0".as_ptr() as *const i8, xlib::False);
+                let utf8_string_atom = (lib_x11.XInternAtom)(display, b"UTF8_STRING\0".as_ptr() as *const i8, xlib::False);
+                let net_wm_name_atom = (lib_x11.XInternAtom)(display, b"_NET_WM_NAME\0".as_ptr() as *const i8, xlib::False);
 
                 if client_list_atom == 0 {
-                    (xlib.XCloseDisplay)(display);
+                    (lib_x11.XCloseDisplay)(display);
                     return Ok(vec![]);
                 }
 
@@ -64,7 +64,7 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
                 let mut data_ptr: *mut u8 = ptr::null_mut();
 
                 // 3. Query the property from the root window
-                if (xlib.XGetWindowProperty)(
+                if (lib_x11.XGetWindowProperty)(
                     display, root, client_list_atom, 0, 1024, xlib::False, xlib::XA_WINDOW,
                     &mut actual_type, &mut actual_format, &mut nitems, &mut bytes_after, &mut data_ptr
                 ) == 0 && !data_ptr.is_null() {
@@ -81,18 +81,18 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
 
                         let mut title = String::new();
 
-                        if (xlib.XGetWindowProperty)(
+                        if (lib_x11.XGetWindowProperty)(
                             display, window, net_wm_name_atom, 0, 1024, xlib::False, utf8_string_atom,
                             &mut name_type, &mut name_format, &mut name_nitems, &mut name_bytes_after, &mut name_ptr
                         ) == 0 && !name_ptr.is_null() {
                             title = CStr::from_ptr(name_ptr as *const i8).to_string_lossy().into_owned();
-                            (xlib.XFree)(name_ptr as *mut _);
+                            (lib_x11.XFree)(name_ptr as *mut _);
                         } else {
                             // Fallback to legacy XFetchName
                             let mut legacy_name_ptr: *mut i8 = ptr::null_mut();
-                            if (xlib.XFetchName)(display, window, &mut legacy_name_ptr) != 0 && !legacy_name_ptr.is_null() {
+                            if (lib_x11.XFetchName)(display, window, &mut legacy_name_ptr) != 0 && !legacy_name_ptr.is_null() {
                                 title = CStr::from_ptr(legacy_name_ptr).to_string_lossy().into_owned();
-                                (xlib.XFree)(legacy_name_ptr as *mut _);
+                                (lib_x11.XFree)(legacy_name_ptr as *mut _);
                             }
                         }
 
@@ -104,9 +104,9 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
                             });
                         }
                     }
-                    (xlib.XFree)(data_ptr as *mut _);
+                    (lib_x11.XFree)(data_ptr as *mut _);
                 }
-                (xlib.XCloseDisplay)(display);
+                (lib_x11.XCloseDisplay)(display);
             }
 
             Ok(windows)
