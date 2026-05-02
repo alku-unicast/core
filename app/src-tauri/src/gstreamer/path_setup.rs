@@ -135,8 +135,8 @@ fn get_gstreamer_env_vars(app: &AppHandle) -> Vec<(&'static str, String)> {
 
     if actual_root.exists() {
         let bin = actual_root.join("bin");
-        let lib = actual_root.join("lib");
-        let plugins = lib.join("gstreamer-1.0");
+        let mut lib = actual_root.join("lib");
+        let mut plugins = lib.join("gstreamer-1.0");
 
         #[cfg(target_os = "linux")]
         {
