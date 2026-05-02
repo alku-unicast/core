@@ -7,3 +7,4 @@ pub mod network;
 pub mod settings;
 pub mod stream;
 pub mod windows;
+pub mod firebase;

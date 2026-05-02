@@ -51,6 +51,8 @@ pub fn run() {
             commands::auth::wake_pi_hdmi,
             // Network
             commands::network::get_network_quality,
+            // Firebase
+            commands::firebase::fetch_firebase_rooms,
             // Capture exclusion
             commands::capture::set_bar_capture_exclusion,
             // Debug

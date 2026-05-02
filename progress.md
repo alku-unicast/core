@@ -438,25 +438,28 @@ macOS: Framework path expansion
 
 ---
 
-### May 2, 2026 (Night) - Native Standalone Hardening (V3 - x11-dl Transition)
+### May 2, 2026 (Night) - Native Standalone Hardening (V4 - Firebase Rust Bridge)
 
-#### **1. Dynamic X11 Loading (Bye Bye Linker Errors)**
-- **The Upgrade:** Switched from `x11` to `x11-dl` to resolve "undefined symbol" linker errors in CI.
-- **The Tech:** X11 functions are now loaded at runtime via `dlopen` (dynamic loading), making the AppImage immune to compile-time linking failures and more portable across different Linux distros.
-- **Result:** Native window listing that is both robust and CI-friendly.
+#### **1. Bypassing CORS: Firebase Rust Backend**
+- **The Problem:** Linux WebKit was blocking Firebase JS SDK due to CORS/Origin restrictions (`tauri://localhost` not whitelisted by Google).
+- **The Solution:** Moved Firebase room discovery to the Rust backend using `reqwest`.
+- **Result:** Room discovery now works reliably on Linux AppImage without any CORS or authentication errors. Frontend polls the Rust bridge every 10 seconds.
 
-#### **2. Diagnostic Infrastructure (Log Bridge)**
-- **Status:** Integrated. Frontend logs are now piped to the Rust terminal for immediate Firebase debugging.
-- **Result:** Ready for field testing and immediate failure diagnosis.
+#### **2. Aspect Ratio Correction**
+- **The Fix:** Added `pixel-aspect-ratio=1/1` to the GStreamer pipeline caps.
+- **Result:** Prevented window capture stretching/distortion. Images now maintain their natural proportions on the target screen.
+
+#### **3. Standalone Hardening Confirmed**
+- **Status:** All external dependencies (wmctrl, direct Firebase SDK) have been eliminated or bypassed in favor of native Rust implementations.
 
 ---
 
 ## 📊 Project Status Summary
-**Phase:** Phase 6 Complete - Hardened Linux Build  
+**Phase:** Phase 6 Complete - Professional Standalone Build  
 **Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
-**Key Metrics:** Dynamic X11 loading. EWMH-compliant window listing. Full diagnostic visibility.  
-**Latest Milestone:** May 2, 2026 - Resolved final linker blockers for Linux by implementing dynamic X11 loading (x11-dl).
+**Key Metrics:** Zero browser CORS issues. EWMH-compliant window listing. Correct aspect ratio streaming.  
+**Latest Milestone:** May 2, 2026 - Successfully bypassed Linux CORS issues by migrating Firebase logic to Rust.
 
-**Last Updated:** May 2, 2026 (20:05)  
-**Total Sessions:** 42 | **Stability:** Production-Ready (Windows/Linux)
+**Last Updated:** May 2, 2026 (20:35)  
+**Total Sessions:** 43 | **Stability:** Production-Ready (Windows/Linux)
 
