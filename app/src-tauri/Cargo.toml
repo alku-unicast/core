@@ -26,7 +26,6 @@ tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 log = "0.4"
 env_logger = "0.11"
-x11 = "2"
 
 # Platform-specific
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -47,6 +46,9 @@ windows = { version = "0.57", features = [
   "Win32_UI_Shell",
   "Win32_Storage_FileSystem",
 ] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+x11 = "2"
 
 [profile.release]
 panic = "abort"

@@ -37,39 +37,65 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
                 }
 
                 let root = xlib::XDefaultRootWindow(display);
-                let mut root_return = 0;
-                let mut parent_return = 0;
-                let mut children_return: *mut xlib::Window = ptr::null_mut();
-                let mut nchildren_return = 0;
+                
+                // 1. Get the _NET_CLIENT_LIST atom
+                let client_list_atom = xlib::XInternAtom(display, b"_NET_CLIENT_LIST\0".as_ptr() as *const i8, xlib::False);
+                let utf8_string_atom = xlib::XInternAtom(display, b"UTF8_STRING\0".as_ptr() as *const i8, xlib::False);
+                let net_wm_name_atom = xlib::XInternAtom(display, b"_NET_WM_NAME\0".as_ptr() as *const i8, xlib::False);
 
-                if xlib::XQueryTree(display, root, &mut root_return, &mut parent_return, &mut children_return, &mut nchildren_return) != 0 {
-                    let children = std::slice::from_raw_parts(children_return, nchildren_return as usize);
+                if client_list_atom == xlib::None {
+                    xlib::XCloseDisplay(display);
+                    return Ok(vec![]);
+                }
+
+                let mut actual_type = 0;
+                let mut actual_format = 0;
+                let mut nitems = 0;
+                let mut bytes_after = 0;
+                let mut data_ptr: *mut u8 = ptr::null_mut();
+
+                // 2. Query the property from the root window
+                if xlib::XGetWindowProperty(
+                    display, root, client_list_atom, 0, 1024, xlib::False, xlib::XA_WINDOW,
+                    &mut actual_type, &mut actual_format, &mut nitems, &mut bytes_after, &mut data_ptr
+                ) == xlib::Success as i32 && !data_ptr.is_null() {
                     
-                    for &window in children {
-                        // Check if window is viewable/mapped
-                        let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
-                        if xlib::XGetWindowAttributes(display, window, &mut attrs) != 0 {
-                            if attrs.map_state != xlib::IsViewable {
-                                continue;
+                    let window_ids = std::slice::from_raw_parts(data_ptr as *const xlib::Window, nitems as usize);
+
+                    for &window in window_ids {
+                        // 3. Try to get UTF-8 name (_NET_WM_NAME)
+                        let mut name_type = 0;
+                        let mut name_format = 0;
+                        let mut name_nitems = 0;
+                        let mut name_bytes_after = 0;
+                        let mut name_ptr: *mut u8 = ptr::null_mut();
+
+                        let mut title = String::new();
+
+                        if xlib::XGetWindowProperty(
+                            display, window, net_wm_name_atom, 0, 1024, xlib::False, utf8_string_atom,
+                            &mut name_type, &mut name_format, &mut name_nitems, &mut name_bytes_after, &mut name_ptr
+                        ) == xlib::Success as i32 && !name_ptr.is_null() {
+                            title = CStr::from_ptr(name_ptr as *const i8).to_string_lossy().into_owned();
+                            xlib::XFree(name_ptr as *mut _);
+                        } else {
+                            // Fallback to legacy XFetchName
+                            let mut legacy_name_ptr: *mut i8 = ptr::null_mut();
+                            if xlib::XFetchName(display, window, &mut legacy_name_ptr) != 0 && !legacy_name_ptr.is_null() {
+                                title = CStr::from_ptr(legacy_name_ptr).to_string_lossy().into_owned();
+                                xlib::XFree(legacy_name_ptr as *mut _);
                             }
                         }
 
-                        // Get window name
-                        let mut name_ptr: *mut i8 = ptr::null_mut();
-                        if xlib::XFetchName(display, window, &mut name_ptr) != 0 && !name_ptr.is_null() {
-                            let name = CStr::from_ptr(name_ptr).to_string_lossy().into_owned();
-                            xlib::XFree(name_ptr as *mut _);
-
-                            if !name.is_empty() && name != "UniCast" {
-                                windows.push(WindowInfo {
-                                    id: window as u64,
-                                    title: name,
-                                    process_name: "X11 Window".to_string(),
-                                });
-                            }
+                        if !title.is_empty() && title != "UniCast" {
+                            windows.push(WindowInfo {
+                                id: window as u64,
+                                title,
+                                process_name: "Linux App".to_string(),
+                            });
                         }
                     }
-                    xlib::XFree(children_return as *mut _);
+                    xlib::XFree(data_ptr as *mut _);
                 }
                 xlib::XCloseDisplay(display);
             }

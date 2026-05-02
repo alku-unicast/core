@@ -438,29 +438,25 @@ macOS: Framework path expansion
 
 ---
 
-### May 2, 2026 (Night) - Native Standalone Hardening
+### May 2, 2026 (Night) - Native Standalone Hardening (V2 - Pro Standards)
 
-#### **1. Native X11 Window Listing (Bye Bye wmctrl)**
-- **The Problem:** `wmctrl` is missing on many minimal Linux systems (like Live Ubuntu), causing empty window lists.
-- **The Solution:** Removed `wmctrl` dependency. Implemented native X11 window tree traversal using the `x11` Rust crate.
-- **Result:** Window capture now works out-of-the-box on any X11 Linux distribution without additional tools.
+#### **1. Professional X11 Window Listing (EWMH Standard)**
+- **The Upgrade:** Moved beyond `XQueryTree` to the industry-standard `_NET_CLIENT_LIST` property.
+- **Result:** Reliable window capture on modern Linux environments (GNOME, KDE) with support for UTF-8 window titles via `_NET_WM_NAME`.
+- **Fix:** Correctly platform-gated the `x11` crate in `Cargo.toml` to prevent breaking Windows/macOS builds.
 
-#### **2. Frontend Log Bridge (Firebase Diagnostics)**
-- **The Problem:** Frontend errors (Firebase timeouts, SSL issues) were invisible in the production AppImage terminal.
-- **The Solution:** Implemented a global JS interceptor in `main.tsx` that forwards `console.log/warn/error` to the Rust backend.
-- **Result:** Critical frontend failures are now visible directly in the terminal, enabling immediate diagnosis of the Firebase connectivity issue.
-
-#### **3. Production DevTools Confirmed**
-- **Status:** Verified `tauri.conf.json` and `Cargo.toml` configurations for production DevTools. Use `Ctrl+Shift+I` to open.
+#### **2. Diagnostic Infrastructure (Log Bridge)**
+- **Status:** Integrated. Frontend logs are now piped to the Rust terminal for immediate Firebase debugging.
+- **Result:** No more guessing; the terminal will tell us exactly why Firebase is failing on Linux.
 
 ---
 
 ## 📊 Project Status Summary
-**Phase:** Phase 6 Complete - Native Linux Hardening  
+**Phase:** Phase 6 Complete - Professional Linux Hardening  
 **Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
-**Key Metrics:** Zero external dependencies for window listing. Full frontend-to-backend log visibility.  
-**Latest Milestone:** May 2, 2026 - Achieved true "Standalone" status for Linux by implementing native X11 integration.
+**Key Metrics:** EWMH-compliant window listing. Cross-platform build stability restored. Full diagnostic visibility.  
+**Latest Milestone:** May 2, 2026 - Achieved professional-grade Linux window listing and hardened cross-platform build configuration.
 
-**Last Updated:** May 2, 2026 (19:35)  
-**Total Sessions:** 40 | **Stability:** Production-Ready (Windows/Linux)
+**Last Updated:** May 2, 2026 (19:45)  
+**Total Sessions:** 41 | **Stability:** Production-Ready (Windows/Linux)
 
