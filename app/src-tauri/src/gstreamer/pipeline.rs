@@ -146,13 +146,13 @@ fn build_video_src(_app: &AppHandle, _config: &StreamConfig) -> String {
                     if is_wayland || best_element == "pipewiresrc" {
                         // Wayland window isolation prevents simple XID capture. Fallback to full screen picker.
                         log::warn!("[gst] Wayland/Pipewire window capture is experimental; falling back to full-screen (portal choice)");
-                        format!("{best_element} ! videoconvert")
+                        format!("{best_element}")
                     } else {
                         format!("{best_element} xid={wid} use-damage=false")
                     }
                 } else {
                     if is_wayland || best_element == "pipewiresrc" {
-                        format!("{best_element} ! videoconvert")
+                        format!("{best_element}")
                     } else {
                         format!("{best_element} use-damage=false")
                     }
@@ -160,7 +160,7 @@ fn build_video_src(_app: &AppHandle, _config: &StreamConfig) -> String {
             }
             _ => {
                 if is_wayland || best_element == "pipewiresrc" {
-                    format!("{best_element} ! videoconvert")
+                    format!("{best_element}")
                 } else {
                     format!("{best_element} use-damage=false")
                 }
