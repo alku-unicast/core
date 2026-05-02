@@ -43,7 +43,7 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
                 let utf8_string_atom = xlib::XInternAtom(display, b"UTF8_STRING\0".as_ptr() as *const i8, xlib::False);
                 let net_wm_name_atom = xlib::XInternAtom(display, b"_NET_WM_NAME\0".as_ptr() as *const i8, xlib::False);
 
-                if client_list_atom == xlib::None {
+                if client_list_atom == 0 {
                     xlib::XCloseDisplay(display);
                     return Ok(vec![]);
                 }
