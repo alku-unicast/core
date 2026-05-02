@@ -51,7 +51,7 @@ pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
 
     #[cfg(target_os = "windows")]
     let video_part = format!(
-        "{video_src} {download_part} ! videoconvert ! videoscale ! \
+        "{video_src} {download_part} ! videoconvert ! videoscale add-borders=true ! \
          video/x-raw,format=NV12,width={width},height={height},pixel-aspect-ratio=1/1,framerate={fps}/1 ! queue ! \
          {encoder} bitrate={bitrate} {} ! \
          rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000",
@@ -60,7 +60,7 @@ pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
 
     #[cfg(not(target_os = "windows"))]
     let video_part = format!(
-        "{video_src} ! queue ! videoconvert ! videoscale ! \
+        "{video_src} ! queue ! videoconvert ! videoscale add-borders=true ! \
          video/x-raw,format=NV12,width={width},height={height},pixel-aspect-ratio=1/1,framerate={fps}/1 ! queue ! \
          {encoder} bitrate={bitrate} {} ! \
          rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000",

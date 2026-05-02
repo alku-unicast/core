@@ -45,7 +45,6 @@ export function startRoomListener(): () => void {
       const raw = await invoke("fetch_firebase_rooms") as Record<string, RawRoom> | null;
 
       if (!raw) {
-        // Fallback/Mock
         injectMockRoom();
         return;
       }
@@ -54,17 +53,6 @@ export function startRoomListener(): () => void {
       for (const [id, data] of Object.entries(raw)) {
         rooms[id] = parseRoom(id, data);
       }
-
-      // --- MOCK MODE INJECTION ---
-      rooms["oda-mock"] = {
-        id: "oda-mock",
-        label: "Lokal Test Odası",
-        floor: "0",
-        ip: "127.0.0.1",
-        status: "idle",
-        lastSeen: Date.now(),
-      };
-      // ---------------------------
 
       setRooms(rooms);
       setLoading(false);
