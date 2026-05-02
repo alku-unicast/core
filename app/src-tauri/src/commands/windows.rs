@@ -61,7 +61,12 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
                     Ok(windows)
                 },
                 _ => {
-                    log::warn!("[windows] wmctrl not found or failed. Window listing unavailable on Linux.");
+                    let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").map(|v| v == "wayland").unwrap_or(false);
+                    if is_wayland {
+                        log::info!("[windows] Wayland detected. Window listing via wmctrl is limited/unavailable. Use full screen or portal.");
+                    } else {
+                        log::warn!("[windows] wmctrl not found. Please install it with 'sudo apt install wmctrl' for window capture support on X11.");
+                    }
                     Ok(vec![])
                 }
             }

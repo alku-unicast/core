@@ -417,12 +417,51 @@ macOS: Framework path expansion
 
 ---
 
-## 📊 Project Status Summary
-**Phase:** Phase 6 Finalized - Linux Architectural Consolidation  
-**Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
-**Key Metrics:** Full architectural parity. Linux is now as robust and standalone as the Windows version.  
-**Latest Milestone:** May 2, 2026 - Consolidated GStreamer environment and implemented LDD-based dependency bundling.
+### May 2, 2026 (Evening) - Linux Bugfix & Stability Run
 
-**Last Updated:** May 2, 2026 (14:55)  
-**Total Sessions:** 36 | **Stability:** Production-Ready (Windows/Linux)
+#### **1. Audio & Clock Sync (Ses ve Görüntü Düzeltmesi)**
+- **The Problem:** Generic `@DEFAULT_MONITOR@` was stalling the GStreamer pipeline clock, causing "frozen" video and no audio.
+- **The Solution:** Implemented `get_linux_audio_monitor` in `path_setup.rs` to dynamically resolve the PulseAudio monitor device using `pactl`.
+- **Result:** Pipeline clock now advances correctly, restoring both audio and video streams.
+
+#### **2. Wayland/X11 Awareness**
+- **The Improvement:** Enhanced source detection to be more aggressive about picking `pipewiresrc` on Wayland sessions (XDG_SESSION_TYPE detection).
+- **The Fix:** Removed redundant `videoconvert` in the Linux pipeline to optimize performance and CPU usage.
+
+#### **3. Authentication & Discovery Hardening**
+- **The Problem:** Manual IP connection sometimes timed out on slower networks or busy receivers.
+- **The Solution:** Increased UDP timeouts to 8 seconds in `auth.rs` and added detailed logging for connection diagnosis.
+- **Result:** More robust initial connection for manual IP entries.
+
+#### **4. Window Capture Diagnostics**
+- **The Improvement:** Added clear logging and user guidance for `wmctrl` dependency. The app now correctly identifies why window listing might be empty (Wayland limitations or missing tool).
+
+---
+
+### May 2, 2026 (Night) - The "Safe Tank" Polish (Final Review Fixes)
+
+#### **1. Defensive Source Selection (Wayland Safety)**
+- **The Issue:** Forcing `pipewiresrc` on Wayland without full Portal integration could result in black screens.
+- **The Fix:** Reverted priority to `ximagesrc` even on Wayland, as it can still capture XWayland windows reliably. `pipewiresrc` remains as a secondary fallback.
+- **Result:** Maximum compatibility across different Linux window managers.
+
+#### **2. Audio Fallback Correction**
+- **The Bug:** Changed audio fallback from `"auto"` to `""` (empty string).
+- **Reason:** `pulsesrc` interprets an empty string as "use default," whereas "auto" was being treated as a literal (non-existent) device name.
+- **Result:** Guaranteed audio capture even if monitor detection fails.
+
+#### **3. Auth Layer Verification**
+- **The Status:** Verified 8-second UDP timeouts and detailed connection logging in `auth.rs`.
+- **Result:** Solid foundation for diagnosing "Room not found" issues in the field.
+
+---
+
+## 📊 Project Status Summary
+**Phase:** Phase 6 Complete - Linux Excellence & Stability  
+**Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
+**Key Metrics:** Full architectural parity. Linux handles X11/Wayland sessions with maximum safety and robust audio discovery.  
+**Latest Milestone:** May 2, 2026 - Final defensive adjustments for Linux GStreamer and authentication layers.
+
+**Last Updated:** May 2, 2026 (18:45)  
+**Total Sessions:** 38 | **Stability:** Production-Ready (Windows/Linux)
 

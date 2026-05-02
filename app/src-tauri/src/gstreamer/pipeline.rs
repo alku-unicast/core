@@ -60,7 +60,7 @@ pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
 
     #[cfg(not(target_os = "windows"))]
     let video_part = format!(
-        "{video_src} ! queue ! videoconvert ! videoscale ! videoconvert ! \
+        "{video_src} ! queue ! videoconvert ! videoscale ! \
          video/x-raw,format=NV12,width={width},height={height},framerate={fps}/1 ! queue ! \
          {encoder} bitrate={bitrate} {} ! \
          rtph264pay config-interval=1 ! queue ! udpsink host={ip} port=5000",
@@ -214,8 +214,10 @@ fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
             return String::new();
         }
 
+        let monitor = path_setup::get_linux_audio_monitor();
+
         format!(
-            " pulsesrc device=\"@DEFAULT_MONITOR@\" ! queue ! audioconvert ! audioresample ! \
+            " pulsesrc device=\"{monitor}\" ! queue ! audioconvert ! audioresample ! \
              opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={_ip} port=5002"
         )
     }

@@ -244,39 +244,74 @@ pub fn get_best_windows_src(app: &AppHandle) -> (String, bool) {
 /// Checks which Linux video source is available.
 #[cfg(target_os = "linux")]
 pub fn get_best_linux_src(app: &AppHandle) -> String {
-    let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
+    let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").map(|v| v == "wayland").unwrap_or(false);
     
-    // Safety check: On Linux, if we are in an AppImage, we must ensure we don't hide system plugins.
-    // We'll do a quick check for ximagesrc.
     let has_x11_src = is_element_available(app, "ximagesrc");
     let has_wayland_src = is_element_available(app, "pipewiresrc");
 
     log::info!("[gst] Linux element detection: ximagesrc={}, pipewiresrc={}, wayland={}", has_x11_src, has_wayland_src, is_wayland);
 
-    // Priority 1: If on Wayland, always prefer pipewiresrc
-    if is_wayland && has_wayland_src {
-        log::info!("[gst] Wayland detected, using pipewiresrc for capture.");
+    // If on X11, always prefer ximagesrc
+    if !is_wayland && has_x11_src {
+        return "ximagesrc".to_string();
+    }
+
+    // On Wayland, we prefer ximagesrc (for XWayland) if portal logic isn't fully ready,
+    // but pipewiresrc is the "correct" way for native capture.
+    // For now, let's stick with ximagesrc if available as it's more stable for basic use.
+    if has_x11_src {
+        return "ximagesrc".to_string();
+    }
+
+    if has_wayland_src {
         return "pipewiresrc".to_string();
     }
 
-    // Priority 2: Standard X11 capture
-    if has_x11_src {
-        log::info!("[gst] Using ximagesrc for Linux screen capture.");
-        "ximagesrc".to_string()
-    } else if has_wayland_src {
-        log::info!("[gst] Falling back to pipewiresrc.");
-        "pipewiresrc".to_string()
-    } else {
-        // EMERGENCY FALLBACK: If detection fails but we know the session type, trust the session type.
-        // This handles cases where gst-inspect-1.0 fails due to AppImage environment issues.
-        if !is_wayland {
-            log::warn!("[gst] Detection failed but X11 session detected. Forcing ximagesrc.");
-            "ximagesrc".to_string()
-        } else {
-            log::warn!("[gst] Detection failed but Wayland session detected. Forcing pipewiresrc.");
-            "pipewiresrc".to_string()
+    "ximagesrc".to_string()
+}
+
+/// Helper to get the actual PulseAudio/Pipewire monitor name on Linux.
+#[cfg(target_os = "linux")]
+pub fn get_linux_audio_monitor() -> String {
+    use std::process::Command;
+
+    // 1. Try to get default sink name
+    let output = Command::new("pactl")
+        .arg("get-default-sink")
+        .output();
+
+    if let Ok(out) = output {
+        if out.status.success() {
+            let sink_name = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !sink_name.is_empty() {
+                let monitor_name = format!("{}.monitor", sink_name);
+                log::info!("[gst] Resolved Linux default audio monitor: {}", monitor_name);
+                return monitor_name;
+            }
         }
     }
+
+    // 2. Fallback: List all sources and look for one with ".monitor"
+    let sources = Command::new("pactl")
+        .args(["list", "short", "sources"])
+        .output();
+
+    if let Ok(out) = sources {
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        for line in stdout.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                let name = parts[1];
+                if name.contains(".monitor") {
+                    log::info!("[gst] Fallback resolved audio monitor: {}", name);
+                    return name.to_string();
+                }
+            }
+        }
+    }
+
+    log::warn!("[gst] Could not resolve Linux audio monitor. Using default pulsesrc behavior.");
+    "".to_string() // Empty string makes pulsesrc pick default
 }
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
