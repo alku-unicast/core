@@ -15,6 +15,15 @@ use commands::network::start_rtt_monitor;
 #[cfg(target_os = "windows")]
 use utils::capture_exclusion::exclude_from_capture;
 
+#[tauri::command]
+fn log_frontend(level: String, message: String) {
+    match level.as_str() {
+        "error" => log::error!("[frontend] {}", message),
+        "warn" => log::warn!("[frontend] {}", message),
+        _ => log::info!("[frontend] {}", message),
+    }
+}
+
 pub fn run() {
     env_logger::init();
 
@@ -44,6 +53,8 @@ pub fn run() {
             commands::network::get_network_quality,
             // Capture exclusion
             commands::capture::set_bar_capture_exclusion,
+            // Debug
+            log_frontend,
         ])
         .setup(|app| {
             // ── Streaming bar: apply WDA_EXCLUDEFROMCAPTURE (Windows) ────────

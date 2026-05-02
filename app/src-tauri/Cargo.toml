@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [
   "tray-icon",
   "image-png",
+  "devtools",
 ] }
 tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
@@ -25,6 +26,7 @@ tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 log = "0.4"
 env_logger = "0.11"
+x11 = "2"
 
 # Platform-specific
 [target.'cfg(target_os = "macos")'.dependencies]

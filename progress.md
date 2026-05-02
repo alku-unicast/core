@@ -438,25 +438,29 @@ macOS: Framework path expansion
 
 ---
 
-### May 2, 2026 (Final Polish) - Redundancy Cleanup & Perfection
+### May 2, 2026 (Night) - Native Standalone Hardening
 
-#### **1. Pipeline Optimization (Performance)**
-- **The Fix:** Removed redundant `videoconvert` stages in the `pipewiresrc` path within `pipeline.rs`.
-- **Result:** Lower CPU overhead on Wayland/Pipewire sessions. The main pipeline now handles all necessary conversions in a single stage.
+#### **1. Native X11 Window Listing (Bye Bye wmctrl)**
+- **The Problem:** `wmctrl` is missing on many minimal Linux systems (like Live Ubuntu), causing empty window lists.
+- **The Solution:** Removed `wmctrl` dependency. Implemented native X11 window tree traversal using the `x11` Rust crate.
+- **Result:** Window capture now works out-of-the-box on any X11 Linux distribution without additional tools.
 
-#### **2. Full Consensus Reached**
-- **Audio:** `@DEFAULT_MONITOR@` fallback is active and solid.
-- **Wayland:** Defensive `ximagesrc` priority is active for maximum compatibility.
-- **Auth:** 8-second timeout and detailed logging are confirmed and mühürlendi.
+#### **2. Frontend Log Bridge (Firebase Diagnostics)**
+- **The Problem:** Frontend errors (Firebase timeouts, SSL issues) were invisible in the production AppImage terminal.
+- **The Solution:** Implemented a global JS interceptor in `main.tsx` that forwards `console.log/warn/error` to the Rust backend.
+- **Result:** Critical frontend failures are now visible directly in the terminal, enabling immediate diagnosis of the Firebase connectivity issue.
+
+#### **3. Production DevTools Confirmed**
+- **Status:** Verified `tauri.conf.json` and `Cargo.toml` configurations for production DevTools. Use `Ctrl+Shift+I` to open.
 
 ---
 
 ## 📊 Project Status Summary
-**Phase:** Phase 6 Complete - Final Stabilization  
+**Phase:** Phase 6 Complete - Native Linux Hardening  
 **Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
-**Key Metrics:** Zero redundant pipeline stages. Maximum architectural stability. Hardened authentication.  
-**Latest Milestone:** May 2, 2026 - Final optimization and consensus reached on all platform-specific edge cases.
+**Key Metrics:** Zero external dependencies for window listing. Full frontend-to-backend log visibility.  
+**Latest Milestone:** May 2, 2026 - Achieved true "Standalone" status for Linux by implementing native X11 integration.
 
-**Last Updated:** May 2, 2026 (18:55)  
-**Total Sessions:** 39 | **Stability:** Production-Ready (Windows/Linux/macOS Core)
+**Last Updated:** May 2, 2026 (19:35)  
+**Total Sessions:** 40 | **Stability:** Production-Ready (Windows/Linux)
 

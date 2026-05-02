@@ -23,53 +23,58 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
     #[cfg(target_os = "linux")]
     {
         tokio::task::spawn_blocking(|| {
-            use std::process::Command;
-            
-            // Try to use wmctrl -l to list windows
-            let output = Command::new("wmctrl")
-                .arg("-l")
-                .output();
-            
-            match output {
-                Ok(out) if out.status.success() => {
-                    let stdout = String::from_utf8_lossy(&out.stdout);
-                    let mut windows = Vec::new();
+            use std::ptr;
+            use std::ffi::CStr;
+            use x11::xlib;
+
+            let mut windows = Vec::new();
+
+            unsafe {
+                let display = xlib::XOpenDisplay(ptr::null());
+                if display.is_null() {
+                    log::error!("[windows] Could not open X display");
+                    return Ok(vec![]);
+                }
+
+                let root = xlib::XDefaultRootWindow(display);
+                let mut root_return = 0;
+                let mut parent_return = 0;
+                let mut children_return: *mut xlib::Window = ptr::null_mut();
+                let mut nchildren_return = 0;
+
+                if xlib::XQueryTree(display, root, &mut root_return, &mut parent_return, &mut children_return, &mut nchildren_return) != 0 {
+                    let children = std::slice::from_raw_parts(children_return, nchildren_return as usize);
                     
-                    for line in stdout.lines() {
-                        let parts: Vec<&str> = line.split_whitespace().collect();
-                        if parts.len() >= 4 {
-                            // Format: 0x03400007  0  hostname  Title
-                            let xid_str = parts[0];
-                            // Parse hex string (0x...) to u64
-                            let id = u64::from_str_radix(xid_str.trim_start_matches("0x"), 16).unwrap_or(0);
-                            
-                            // Reconstruct title (everything after the 3rd column)
-                            let title = line.splitn(4, |c: char| c.is_whitespace())
-                                .nth(3)
-                                .unwrap_or("Unknown Window")
-                                .trim()
-                                .to_string();
-                            
-                            // We don't have a direct process name from wmctrl -l, but we can use the title or a fallback
-                            windows.push(WindowInfo {
-                                id,
-                                title,
-                                process_name: String::from("Linux App"),
-                            });
+                    for &window in children {
+                        // Check if window is viewable/mapped
+                        let mut attrs: xlib::XWindowAttributes = std::mem::zeroed();
+                        if xlib::XGetWindowAttributes(display, window, &mut attrs) != 0 {
+                            if attrs.map_state != xlib::IsViewable {
+                                continue;
+                            }
+                        }
+
+                        // Get window name
+                        let mut name_ptr: *mut i8 = ptr::null_mut();
+                        if xlib::XFetchName(display, window, &mut name_ptr) != 0 && !name_ptr.is_null() {
+                            let name = CStr::from_ptr(name_ptr).to_string_lossy().into_owned();
+                            xlib::XFree(name_ptr as *mut _);
+
+                            if !name.is_empty() && name != "UniCast" {
+                                windows.push(WindowInfo {
+                                    id: window as u64,
+                                    title: name,
+                                    process_name: "X11 Window".to_string(),
+                                });
+                            }
                         }
                     }
-                    Ok(windows)
-                },
-                _ => {
-                    let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").map(|v| v == "wayland").unwrap_or(false);
-                    if is_wayland {
-                        log::info!("[windows] Wayland detected. Window listing via wmctrl is limited/unavailable. Use full screen or portal.");
-                    } else {
-                        log::warn!("[windows] wmctrl not found. Please install it with 'sudo apt install wmctrl' for window capture support on X11.");
-                    }
-                    Ok(vec![])
+                    xlib::XFree(children_return as *mut _);
                 }
+                xlib::XCloseDisplay(display);
             }
+
+            Ok(windows)
         })
         .await
         .map_err(|e| e.to_string())?
