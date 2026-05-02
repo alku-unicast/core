@@ -63,6 +63,7 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             libssl-dev \
+            libx11-dev \
             patchelf \
             fuse \
             gstreamer1.0-tools \
