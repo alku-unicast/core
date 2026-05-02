@@ -135,8 +135,8 @@ fn get_gstreamer_env_vars(app: &AppHandle) -> Vec<(&'static str, String)> {
 
     if actual_root.exists() {
         let bin = actual_root.join("bin");
-        let mut lib = actual_root.join("lib");
-        let mut plugins = lib.join("gstreamer-1.0");
+        let lib = actual_root.join("lib");
+        let plugins = lib.join("gstreamer-1.0");
 
         #[cfg(target_os = "linux")]
         {
@@ -310,8 +310,8 @@ pub fn get_linux_audio_monitor() -> String {
         }
     }
 
-    log::warn!("[gst] Could not resolve Linux audio monitor. Using default pulsesrc behavior.");
-    "".to_string() // Empty string makes pulsesrc pick default
+    log::warn!("[gst] Could not resolve Linux audio monitor. Using @DEFAULT_MONITOR@.");
+    "@DEFAULT_MONITOR@".to_string()
 }
 
 #[cfg(any(target_os = "windows", target_os = "linux"))]
