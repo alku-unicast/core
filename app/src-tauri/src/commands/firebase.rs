@@ -7,7 +7,7 @@ pub struct RawRoom {
     pub floor: Option<String>,
     pub pi_ip: Option<String>,
     pub pi_status: Option<String>,
-    pub last_seen: Option<u64>,
+    pub last_seen: Option<serde_json::Value>, // Flexible type
 }
 
 #[tauri::command]
@@ -51,8 +51,6 @@ pub async fn fetch_firebase_rooms() -> Result<HashMap<String, RawRoom>, String> 
         .await
         .map_err(|e| format!("Failed to read response body: {}", e))?;
     
-    log::info!("[firebase] Raw response from DB: {}", body_text);
-
     if body_text == "null" {
         return Ok(HashMap::new());
     }

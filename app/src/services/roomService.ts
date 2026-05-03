@@ -4,20 +4,27 @@ import { Room, RoomStatus } from "../types/room";
 
 // Raw shape coming from Firebase — aligned with Pi Agent v3 / Rules
 interface RawRoom {
-  name?: string;      // formerly label
+  name?: string;
   floor?: string;
-  pi_ip?: string;     // formerly ip
-  pi_status?: string; // formerly status
-  last_seen?: number;
+  pi_ip?: string;
+  pi_status?: string;
+  last_seen?: number | string | null;
 }
 
 function parseRoom(id: string, raw: RawRoom): Room {
   const validStatuses: RoomStatus[] = ["idle", "streaming", "offline"];
   
-  // pi_status gelmediyse varsayılan offline
   const status = validStatuses.includes(raw.pi_status as RoomStatus)
     ? (raw.pi_status as RoomStatus)
     : "offline";
+
+  // Handle number, string, or null for last_seen
+  let lastSeen = 0;
+  if (typeof raw.last_seen === "number") {
+    lastSeen = raw.last_seen;
+  } else if (typeof raw.last_seen === "string" && raw.last_seen !== "") {
+    lastSeen = parseInt(raw.last_seen, 10) || 0;
+  }
 
   return {
     id,
@@ -25,7 +32,7 @@ function parseRoom(id: string, raw: RawRoom): Room {
     floor: raw.floor ?? "0",
     ip: raw.pi_ip ?? "",
     status,
-    lastSeen: raw.last_seen ?? 0,
+    lastSeen,
   };
 }
 
