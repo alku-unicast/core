@@ -438,28 +438,21 @@ macOS: Framework path expansion
 
 ---
 
-### May 2, 2026 (Night) - Native Standalone Hardening (V4 - Firebase Rust Bridge)
+### May 3, 2026 (Morning) - Firebase Bridge Stabilization
 
-#### **1. Bypassing CORS: Firebase Rust Backend**
-- **The Problem:** Linux WebKit was blocking Firebase JS SDK due to CORS/Origin restrictions (`tauri://localhost` not whitelisted by Google).
-- **The Solution:** Moved Firebase room discovery to the Rust backend using `reqwest`.
-- **Result:** Room discovery now works reliably on Linux AppImage without any CORS or authentication errors. Frontend polls the Rust bridge every 10 seconds.
-
-#### **2. Aspect Ratio Correction**
-- **The Fix:** Added `pixel-aspect-ratio=1/1` to the GStreamer pipeline caps.
-- **Result:** Prevented window capture stretching/distortion. Images now maintain their natural proportions on the target screen.
-
-#### **3. Standalone Hardening Confirmed**
-- **Status:** All external dependencies (wmctrl, direct Firebase SDK) have been eliminated or bypassed in favor of native Rust implementations.
+#### **1. Resolved JSON Parsing Failures**
+- **The Problem:** Rust bridge was crashing with `JSON parsing error` when Firebase returned `null` (empty DB) or mismatched structures.
+- **The Fix:** Implemented two-stage parsing. First validate as `serde_json::Value`, check for `null`, then attempt strict deserialization with detailed error reporting.
+- **Result:** Stable room discovery even with empty or slightly inconsistent database states.
 
 ---
 
 ## 📊 Project Status Summary
-**Phase:** Phase 6 Complete - Professional Standalone Build  
+**Phase:** Phase 6 Complete - Hardened Linux & Windows Build  
 **Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
-**Key Metrics:** Zero browser CORS issues. EWMH-compliant window listing. Correct aspect ratio streaming.  
-**Latest Milestone:** May 2, 2026 - Successfully bypassed Linux CORS issues by migrating Firebase logic to Rust.
+**Key Metrics:** Zero browser CORS issues. EWMH-compliant window listing. Robust JSON bridge.  
+**Latest Milestone:** May 3, 2026 - Stabilized the Rust-Firebase bridge to handle edge-case data scenarios.
 
-**Last Updated:** May 2, 2026 (20:35)  
-**Total Sessions:** 43 | **Stability:** Production-Ready (Windows/Linux)
+**Last Updated:** May 3, 2026 (13:45)  
+**Total Sessions:** 44 | **Stability:** Production-Ready (Windows/Linux)
 

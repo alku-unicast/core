@@ -46,9 +46,18 @@ pub async fn fetch_firebase_rooms() -> Result<HashMap<String, RawRoom>, String> 
         return Err(format!("Firebase returned error status: {}", response.status()));
     }
 
-    let rooms: HashMap<String, RawRoom> = response.json()
+    // Parse into a generic JSON Value first to handle 'null'
+    let full_json: serde_json::Value = response.json()
         .await
         .map_err(|e| format!("JSON parsing error: {}", e))?;
+
+    if full_json.is_null() {
+        return Ok(HashMap::new());
+    }
+
+    // Try to convert Value to HashMap
+    let rooms: HashMap<String, RawRoom> = serde_json::from_value(full_json)
+        .map_err(|e| format!("Room structure mismatch: {}", e))?;
 
     Ok(rooms)
 }
