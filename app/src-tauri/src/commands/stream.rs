@@ -115,6 +115,10 @@ pub async fn start_stream(
                 cmd.current_dir(bin_dir);
                 log::info!("[stream] bin_dir (CWD): {:?}", bin_dir);
             }
+            // Nuclear fix: Force-disable MIT-SHM to prevent BadMatch crashes during window resize
+            cmd.env("QT_X11_NO_MITSHM", "1");
+            cmd.env("_X11_NO_MITSHM", "1");
+            cmd.env("GST_XIMAGE_NO_SHM", "1");
         }
     }
 
