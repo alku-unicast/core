@@ -297,6 +297,16 @@ export function ConnectionSetup() {
             onRefreshWindows={handleRefreshWindows}
             windowsLoading={windowsLoading}
           />
+
+          {/* Scaling Hint: Addresses the dynamic resize limitation in X11 window capture (Linux-only) */}
+          {streamMode === "window" && /linux/i.test(navigator.userAgent) && (
+            <div className="mt-3 px-3 py-2 rounded-lg bg-[var(--accent-subtle)] border border-[var(--accent)]/20 flex gap-2 items-center">
+              <div className="w-1 h-1 rounded-full bg-[var(--accent)] animate-pulse" />
+              <p className="text-[10px] text-[var(--accent)] font-medium">
+                {t("connection.window_hint", "İpucu: En iyi görüntü için pencerenizi (Tam Ekran vb.) yayını başlatmadan önce ayarlayın.")}
+              </p>
+            </div>
+          )}
         </section>
 
         {/* ── PIN entry or Streaming Active ─────────────────────────────────── */}

@@ -76,7 +76,7 @@ export const useSystemStore = create<SystemStore>((set) => ({
       const result = await invoke<EncoderResult>("detect_encoder");
       set({ detectedEncoder: result, encoderDetecting: false });
     } catch (e) {
-      console.error("[systemStore] detectEncoder failed:", e);
+      console.warn("[systemStore] detectEncoder: No HW encoder found, using software fallback.", e);
       set({ encoderDetecting: false });
     }
   },

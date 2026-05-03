@@ -58,6 +58,7 @@
     "audio_title": "Sistem Sesi",
     "audio_enabled": "Yayına dahil edilecek",
     "audio_disabled": "Yayına dahil edilmeyecek",
+    "window_hint": "İpucu: En iyi görüntü için pencerenizi (Tam Ekran vb.) yayını başlatmadan önce ayarlayın.",
     "pin_instruction": "Projektördeki <1>4 haneli PIN</1>'i girin",
     "pin_placeholder": "Projektördeki 4 haneli PIN kodunu girin",
     "start_stream": "Yayını Başlat",
