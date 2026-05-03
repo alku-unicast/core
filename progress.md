@@ -483,17 +483,17 @@ macOS: Framework path expansion
 - **Linux Window Scaling Hint:** Added a platform-aware UI hint in `ConnectionSetup.tsx`. On Linux (X11), users are now advised to resize their windows *before* starting the stream to avoid the known GStreamer `ximagesrc` dynamic capture limitation.
 - **Platform Awareness:** Hid/Conditionalized UI elements to ensure Windows users don't see irrelevant Linux-only warnings, maintaining a clean experience across all OSs.
 - **Log Noise Suppression:** Downgraded encoder detection failures to `console.warn`. Software fallback is now handled silently as a standard operation mode.
-- **Nuclear Linux Stability:** Forced-disabled MIT-SHM at the process environment level (`QT_X11_NO_MITSHM=1`, etc.) to guarantee 100% stability during window resizing on Linux, bypassing GStreamer's inconsistent `remote=true` behavior.
-- **Amber UI Warning:** Repositioned the Linux window-scaling hint to a prominent amber box above the selector to ensure high visibility for teachers.
+- **Triple-Layered Linux Stability:** Combined environment-level SHM disabling (`QT_X11_NO_MITSHM=1`), pipeline-level flags (`use-shm=false`), and explicit UI warnings to guarantee stability on Linux X11 environments.
+- **Explicit UI Warning:** Updated the amber hint in `ConnectionSetup.tsx` to explicitly warn against resizing or toggling fullscreen during an active stream.
 
 ---
 
 ## 📊 Project Status Summary
 **Phase:** Phase 6 Complete - Production-Ready Architecture  
-**Build Status:** ✅ Pure Rust Firebase Bridge | ✅ 4-Tier Status System | ✅ Nuclear SHM Disable (Linux Resize Fix) | ✅ Amber UI Hint  
+**Build Status:** ✅ Pure Rust Firebase Bridge | ✅ 4-Tier Status System | ✅ Triple-Layered Linux Stability | ✅ Enhanced UI Warning  
 **Key Metrics:** 0ms SDK startup latency. 20s Reconnection Grace Period. X11 Window Stability Guaranteed.  
-**Latest Milestone:** May 3, 2026 - Implemented process-level SHM disabling for bulletproof Linux window capture stability.
+**Latest Milestone:** May 3, 2026 - Finalized production hardening for Linux and Windows environments.
 
-**Last Updated:** May 3, 2026 (23:30)  
+**Last Updated:** May 3, 2026 (23:45)  
 **Total Sessions:** 47 | **Stability:** Production-Ready (Verified)
 

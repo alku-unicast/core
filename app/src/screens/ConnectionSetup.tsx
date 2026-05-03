@@ -290,7 +290,7 @@ export function ConnectionSetup() {
             <div className="mb-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 flex gap-2 items-center">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               <p className="text-[10px] text-amber-500 font-bold">
-                {t("connection.window_hint", "İpucu: En iyi görüntü için pencerenizi (Tam Ekran vb.) yayını başlatmadan önce ayarlayın.")}
+                {t("connection.window_hint", "ÖNEMLİ: En iyi görüntü için pencerenizi (Tam Ekran vb.) yayını başlatmadan önce ayarlayın. Yayın sırasında pencere boyutunu değiştirmek (Tam ekrandan çıkmak vb.) hataya sebep olabilir.")}
               </p>
             </div>
           )}

@@ -149,13 +149,13 @@ fn build_video_src(_app: &AppHandle, _config: &StreamConfig) -> String {
                         log::warn!("[gst] Wayland/Pipewire window capture is experimental; falling back to full-screen (portal choice)");
                         format!("{best_element}")
                     } else {
-                        format!("{best_element} xid={wid} use-damage=false remote=true")
+                        format!("{best_element} xid={wid} use-damage=false remote=true use-shm=false")
                     }
                 } else {
                     if is_wayland || best_element == "pipewiresrc" {
                         format!("{best_element}")
                     } else {
-                        format!("{best_element} use-damage=false remote=true")
+                        format!("{best_element} use-damage=false remote=true use-shm=false")
                     }
                 }
             }
