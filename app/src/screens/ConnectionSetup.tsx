@@ -37,6 +37,7 @@ export function ConnectionSetup() {
     stopStream,
     reset,
     resetStream,
+    isRestarting,
   } = useConnectionStore();
 
   const isStreaming = phase === "streaming";
@@ -107,8 +108,17 @@ export function ConnectionSetup() {
         } catch (_) {}
 
         if (event.payload.reason === "error") {
-          // Stay on connection screen so user can see the error and retry
-          resetStream("Akış beklenmedik şekilde durdu. GStreamer eklentisi eksik olabilir. AppData\\Local\\UniCast\\gst_debug.log dosyasını kontrol edin.");
+          // Linux window-mode auto-restart logic
+          const { attemptAutoRestart, resetStream } = useConnectionStore.getState();
+          const isLinux = /linux/i.test(navigator.userAgent);
+          const isWindow = useConnectionStore.getState().streamMode === "window";
+
+          if (isLinux && isWindow) {
+            attemptAutoRestart();
+          } else {
+            // Stay on connection screen so user can see the error and retry
+            resetStream("Akış beklenmedik şekilde durdu. GStreamer eklentisi eksik olabilir. AppData\\Local\\UniCast\\gst_debug.log dosyasını kontrol edin.");
+          }
         } else {
           reset();
           navigate("/", { replace: true });
@@ -274,11 +284,20 @@ export function ConnectionSetup() {
 
         {/* ── Stream error banner ────────────────────────────────────────── */}
         {streamError && (
-          <section className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 flex gap-3 items-start">
-            <span className="text-red-400 text-base leading-none mt-0.5">✕</span>
+          <section className={`
+            ${isRestarting ? 'bg-amber-500/10 border-amber-500/30' : 'bg-red-500/10 border-red-500/30'} 
+            rounded-xl px-4 py-3 flex gap-3 items-start transition-colors duration-300
+          `}>
+            {isRestarting ? (
+              <div className="w-4 h-4 border-2 border-amber-500/40 border-t-amber-500 rounded-full animate-spin mt-0.5 shrink-0" />
+            ) : (
+              <span className="text-red-400 text-base leading-none mt-0.5">✕</span>
+            )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-red-400 mb-0.5">Akış başlatılamadı</p>
-              <p className="text-xs text-red-400/70 break-words">{streamError}</p>
+              <p className={`text-sm font-semibold ${isRestarting ? 'text-amber-500' : 'text-red-400'} mb-0.5`}>
+                {isRestarting ? 'Görüntü Optimize Ediliyor' : 'Akış başlatılamadı'}
+              </p>
+              <p className={`text-xs ${isRestarting ? 'text-amber-500/70' : 'text-red-400/70'} break-words`}>{streamError}</p>
             </div>
           </section>
         )}

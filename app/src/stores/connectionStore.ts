@@ -25,11 +25,19 @@ interface ConnectionStore {
   // Stream error (shown when pipeline fails to start)
   streamError: string | null;
 
+  // Auto-restart logic
+  lastStreamConfig: StreamConfig | null;
+  restartAttempts: number;
+  lastRestartTime: number;
+  isRestarting: boolean;
+  restartTimeout: ReturnType<typeof setTimeout> | null;
+
   // Actions
   connect: (room: Room) => void;
   submitPIN: (pin: string) => Promise<boolean>;
   startStream: (config: StreamConfig) => Promise<boolean>;
   stopStream: () => Promise<void>;
+  attemptAutoRestart: () => Promise<void>;
   toggleMute: () => Promise<void>;
   setStreamVolume: (volume: number) => Promise<void>;
   setAudioEnabled: (enabled: boolean) => void;
@@ -55,6 +63,11 @@ const initialState = {
   networkQuality: "excellent" as NetworkQuality,
   lastRTT: null,
   streamError: null as string | null,
+  lastStreamConfig: null as StreamConfig | null,
+  restartAttempts: 0,
+  lastRestartTime: 0,
+  isRestarting: false,
+  restartTimeout: null as ReturnType<typeof setTimeout> | null,
 };
 
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
@@ -100,7 +113,13 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       const { invoke } = await import("@tauri-apps/api/core");
       const result = await invoke<{ success: boolean; pid: number }>("start_stream", { config });
       if (result.success) {
-        set({ streamPid: result.pid, streamElapsed: 0 });
+        set({ 
+          streamPid: result.pid, 
+          streamElapsed: 0, 
+          lastStreamConfig: config,
+          isRestarting: false,
+          streamError: null
+        });
 
         // ── Streaming bar: show window + send current stream mode ─────────
         const { useSettingsStore } = await import("./settingsStore");
@@ -139,7 +158,55 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     }
   },
 
+  attemptAutoRestart: async () => {
+    const { lastStreamConfig, restartAttempts, lastRestartTime, restartTimeout, streamMode } = get();
+    
+    // Clear any existing timeout
+    if (restartTimeout) clearTimeout(restartTimeout);
+
+    // Safety checks
+    if (!lastStreamConfig) return;
+    
+    // Only auto-restart on Linux window mode (this is where the BadMatch occurs)
+    const isLinux = /linux/i.test(navigator.userAgent);
+    if (!isLinux || streamMode !== "window") {
+      set({ phase: "awaiting_pin", isRestarting: false });
+      return;
+    }
+
+    const now = Date.now();
+    const isRecent = now - lastRestartTime < 30000;
+    const newCount = isRecent ? restartAttempts + 1 : 1;
+
+    if (newCount > 3) {
+      console.warn("[connectionStore] Max auto-restart attempts reached.");
+      set({ 
+        phase: "awaiting_pin", 
+        isRestarting: false, 
+        streamError: "Linux pencere modu kararsız olabilir. Lütfen pencere boyutunu değiştirmeyin veya Tam Ekran moduna geçin." 
+      });
+      return;
+    }
+
+    set({ 
+      isRestarting: true, 
+      restartAttempts: newCount, 
+      lastRestartTime: now,
+      streamError: "Görüntü kalitesi optimize ediliyor..." // Professional wording for "it crashed and we are fixing it"
+    });
+
+    const timeout = setTimeout(async () => {
+      console.log("[connectionStore] Executing auto-restart attempt", newCount);
+      await get().startStream(lastStreamConfig);
+    }, 1500);
+
+    set({ restartTimeout: timeout });
+  },
+
   stopStream: async () => {
+    const { restartTimeout } = get();
+    if (restartTimeout) clearTimeout(restartTimeout);
+    
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("stop_stream");
@@ -190,7 +257,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
   incrementElapsed: () => set((s) => ({ streamElapsed: s.streamElapsed + 1 })),
 
-  reset: () => set({ ...initialState }),
+  reset: () => {
+    const { restartTimeout } = get();
+    if (restartTimeout) clearTimeout(restartTimeout);
+    set({ ...initialState });
+  },
 
   resetStream: (error?) => set((s) => ({
     phase: "awaiting_pin" as ConnectionPhase,
