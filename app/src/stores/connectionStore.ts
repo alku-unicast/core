@@ -153,7 +153,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       return result.success;
     } catch (e) {
       console.error("[connectionStore] startStream failed:", e);
-      set({ phase: "awaiting_pin", streamError: String(e) });
+      set({ phase: "awaiting_pin", streamError: "Yayın başlatılamadı. Lütfen ağ bağlantısını ve eklentileri kontrol edin." });
       return false;
     }
   },
