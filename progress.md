@@ -483,15 +483,17 @@ macOS: Framework path expansion
 - **Linux Window Scaling Hint:** Added a platform-aware UI hint in `ConnectionSetup.tsx`. On Linux (X11), users are now advised to resize their windows *before* starting the stream to avoid the known GStreamer `ximagesrc` dynamic capture limitation.
 - **Platform Awareness:** Hid/Conditionalized UI elements to ensure Windows users don't see irrelevant Linux-only warnings, maintaining a clean experience across all OSs.
 - **Log Noise Suppression:** Downgraded encoder detection failures to `console.warn`. Software fallback is now handled silently as a standard operation mode.
+- **Linux Crash Shield:** Implemented `remote=true` for `ximagesrc` window capture on Linux to prevent MIT-SHM `BadMatch` crashes during window resizing, while maintaining high-performance SHM for fullscreen mode.
+- **Amber UI Warning:** Repositioned the Linux window-scaling hint to a prominent amber box above the selector to ensure high visibility for teachers.
 
 ---
 
 ## 📊 Project Status Summary
 **Phase:** Phase 6 Complete - Production-Ready Architecture  
-**Build Status:** ✅ Pure Rust Firebase Bridge | ✅ 4-Tier Status System | ✅ UX Reconnection Optimized | ✅ Linux Scaling Hint Added  
-**Key Metrics:** 0ms SDK startup latency. 99% reduction in Auth calls. 20s Reconnection Grace Period.  
-**Latest Milestone:** May 3, 2026 - Successfully stabilized cross-platform window capture and reconnection UX.
+**Build Status:** ✅ Pure Rust Firebase Bridge | ✅ 4-Tier Status System | ✅ Linux Window Resize Fix (Remote Mode) | ✅ Amber UI Hint  
+**Key Metrics:** 0ms SDK startup latency. 20s Reconnection Grace Period. X11 Window Stability Guaranteed.  
+**Latest Milestone:** May 3, 2026 - Finalized Linux stabilization and UI/UX polish for projector environments.
 
-**Last Updated:** May 3, 2026 (23:00)  
-**Total Sessions:** 46 | **Stability:** Production-Ready (Verified)
+**Last Updated:** May 3, 2026 (23:15)  
+**Total Sessions:** 47 | **Stability:** Production-Ready (Verified)
 
