@@ -12,18 +12,32 @@ interface RawRoom {
 }
 
 function parseRoom(id: string, raw: RawRoom): Room {
-  const validStatuses: RoomStatus[] = ["idle", "streaming", "offline"];
-  
-  const status = validStatuses.includes(raw.pi_status as RoomStatus)
-    ? (raw.pi_status as RoomStatus)
-    : "offline";
-
-  // Handle number, string, or null for last_seen
-  let lastSeen = 0;
+  // 1. Convert raw last_seen (seconds) to milliseconds immediately
+  let lastSeenSeconds = 0;
   if (typeof raw.last_seen === "number") {
-    lastSeen = raw.last_seen;
+    lastSeenSeconds = raw.last_seen;
   } else if (typeof raw.last_seen === "string" && raw.last_seen !== "") {
-    lastSeen = parseInt(raw.last_seen, 10) || 0;
+    lastSeenSeconds = parseInt(raw.last_seen, 10) || 0;
+  }
+  const lastSeenMs = lastSeenSeconds * 1000;
+
+  // 2. Compute Smart Status (4-Tier)
+  let status: RoomStatus = "offline";
+  const now = Date.now();
+  const OFFLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutes (Pi updates every 60s)
+
+  if (!raw.pi_ip || raw.pi_ip.trim() === "") {
+    // Case 1: Room defined in Firebase but Pi hasn't registered an IP yet
+    status = "unconfigured";
+  } else if (lastSeenMs > 0 && now - lastSeenMs > OFFLINE_THRESHOLD) {
+    // Case 2: Pi has an IP but hasn't sent a heartbeat in > 5 minutes
+    status = "offline";
+  } else {
+    // Case 3: Pi is active, trust the pi_status field (idle/streaming)
+    const validStatuses: RoomStatus[] = ["idle", "streaming", "offline"];
+    status = validStatuses.includes(raw.pi_status as RoomStatus)
+      ? (raw.pi_status as RoomStatus)
+      : "idle"; // Default to idle if IP is valid and heartbeat is fresh
   }
 
   return {
@@ -32,7 +46,7 @@ function parseRoom(id: string, raw: RawRoom): Room {
     floor: raw.floor ?? "0",
     ip: raw.pi_ip ?? "",
     status,
-    lastSeen,
+    lastSeen: lastSeenMs,
   };
 }
 
@@ -52,7 +66,7 @@ export function startRoomListener(): () => void {
       const raw = await invoke("fetch_firebase_rooms") as Record<string, RawRoom> | null;
 
       if (!raw) {
-        injectMockRoom();
+        setRooms({});
         return;
       }
 
@@ -68,29 +82,14 @@ export function startRoomListener(): () => void {
       console.error("[roomService] Failed to fetch rooms:", e);
       setError("Firebase verisi çekilemedi. Rust köprüsü hatası.");
       setLoading(false);
-      injectMockRoom();
     }
-  };
-
-  const injectMockRoom = () => {
-    const mockRooms: Record<string, Room> = {
-      "oda-mock": {
-        id: "oda-mock",
-        label: "Lokal Test Odası (Offline)",
-        floor: "0",
-        ip: "127.0.0.1",
-        status: "idle",
-        lastSeen: Date.now(),
-      }
-    };
-    setRooms(mockRooms);
   };
 
   // Initial fetch
   fetchRooms();
 
-  // Poll every 10 seconds for "live" updates
-  pollInterval = setInterval(fetchRooms, 10000);
+  // Poll every 30 seconds (Pi updates every 60s, so 30s is more than enough)
+  pollInterval = setInterval(fetchRooms, 30000);
 
   return () => {
     if (pollInterval) {

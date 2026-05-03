@@ -30,6 +30,7 @@
     "idle": "Boş",
     "streaming": "Yayında",
     "offline": "Çevrimdışı",
+    "unconfigured": "Kurulum Bekleniyor",
     "busy": "Meşgul",
     "in_progress": "Yayın devam ediyor",
     "online_count": "{{count}} sınıf çevrimiçi",

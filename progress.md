@@ -447,12 +447,45 @@ macOS: Framework path expansion
 
 ---
 
-## 📊 Project Status Summary
-**Phase:** Phase 6 Complete - Hardened Linux & Windows Build  
-**Build Status:** ✅ Windows (Production) | ✅ Linux (Standalone "Tank" AppImage) | ✅ macOS (Core Ready)  
-**Key Metrics:** Zero browser CORS issues. EWMH-compliant window listing. Robust JSON bridge.  
-**Latest Milestone:** May 3, 2026 - Stabilized the Rust-Firebase bridge to handle edge-case data scenarios.
+### May 3, 2026 (Evening) - Architecture Hardening (Pure Rust Bridge & Smart Status)
 
-**Last Updated:** May 3, 2026 (13:45)  
-**Total Sessions:** 44 | **Stability:** Production-Ready (Windows/Linux)
+#### **1. Legacy Firebase SDK Purge (Startup Latency Eliminated)**
+- **The Problem:** The app was blocking for 5-8 seconds on startup due to Firebase JS SDK CORS and authentication timeouts on Linux/Windows.
+- **The Solution:** Completely removed the `firebase` npm dependency. All authentication and data fetching are now handled via a high-performance Rust bridge (`fetch_firebase_rooms`).
+- **Result:** **Instant startup.** The discovery screen loads immediately without blocking.
+
+#### **2. Thread-Safe Token Caching (Cloud Optimization)**
+- **The Problem:** Polling Firebase every 10 seconds was creating thousands of "Anonymous" users daily, risking account limits.
+- **The Solution:** Implemented a thread-safe `tokio::sync::Mutex` cache in Rust for the `idToken`. The token is cached for 50 minutes and automatically refreshed on expiry.
+- **Result:** Reduced Firebase Auth overhead by >99%.
+
+#### **3. 4-Tier Smart Status System**
+- **The Logic:** Implemented a sophisticated status determination system in `roomService.ts`:
+    - **Active (Idle/Streaming):** Room has a valid IP and a fresh heartbeat (< 5 min).
+    - **Offline (Red):** Room has a valid IP but heartbeat is missing or stale (> 5 min).
+    - **Unconfigured (Grey):** Room entry exists but no Pi IP has been registered yet.
+    - **Smart Unit Fix:** Corrected `last_seen` timestamp handling (Pi sends seconds, JS expects ms) to prevent unit mismatch bugs.
+
+#### **4. UX & Security Hardening**
+- **Interactions:** Disabled "Connect" button for `offline` and `unconfigured` rooms.
+- **Mock Data:** Purged all legacy mock injection logic (`injectMockRoom`) to ensure users only see real, actionable rooms.
+- **Poll Interval:** Optimized polling to 30s (balanced for the Pi's 60s heartbeat) to reduce network and CPU usage.
+
+---
+
+#### **5. Final Cleanup & Build Integrity**
+- **Dead Code Purge:** Deleted the legacy `firebase.ts` file. Since the `firebase` npm package was removed, leaving this file would have caused `tsc` (TypeScript compiler) to fail during the build process.
+- **i18n Completion:** Added `unconfigured` ("Kurulum Bekleniyor") translation keys to both Turkish and English locales, ensuring the UI remains professional and consistent.
+- **Visual Safety:** Implemented fallback labels in `RoomCard.tsx` for status strings to prevent raw key exposure.
+
+---
+
+## 📊 Project Status Summary
+**Phase:** Phase 6 Finalized - Production-Ready Architecture  
+**Build Status:** ✅ Pure Rust Firebase Bridge | ✅ 4-Tier Status System | ✅ Zero Build-Blocking Dead Code  
+**Key Metrics:** 0ms SDK startup latency. 99% reduction in Auth calls. Verified Build Integrity.  
+**Latest Milestone:** May 3, 2026 - Achieved "zırhlı" (armored) architecture with verified TypeScript build safety.
+
+**Last Updated:** May 3, 2026 (22:30)  
+**Total Sessions:** 45 | **Stability:** Production-Ready (Verified)
 

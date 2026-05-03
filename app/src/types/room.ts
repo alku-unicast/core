@@ -1,4 +1,4 @@
-export type RoomStatus = "idle" | "streaming" | "offline";
+export type RoomStatus = "idle" | "streaming" | "offline" | "unconfigured";
 
 export interface Room {
   id: string;           // Firebase key, e.g. "101", "003-005"

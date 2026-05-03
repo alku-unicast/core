@@ -9,15 +9,17 @@ const STATUS_VISUALS: Record<
   RoomStatus,
   { dot: string; pulse: boolean }
 > = {
-  idle:      { dot: "bg-[var(--status-idle)]",      pulse: true  },
-  streaming: { dot: "bg-[var(--status-streaming)]", pulse: false },
-  offline:   { dot: "bg-[var(--status-offline)]",   pulse: false },
+  idle:         { dot: "bg-[var(--status-idle)]",         pulse: true  },
+  streaming:    { dot: "bg-[var(--status-streaming)]",    pulse: false },
+  offline:      { dot: "bg-[var(--status-offline)]",      pulse: false },
+  unconfigured: { dot: "bg-[var(--status-unconfigured)]", pulse: false },
 };
 
 // ── StatusDot ─────────────────────────────────────────────────────────────────
 
 function StatusDot({ status }: { status: RoomStatus }) {
-  const { dot, pulse } = STATUS_VISUALS[status];
+  const visual = STATUS_VISUALS[status] || STATUS_VISUALS.offline;
+  const { dot, pulse } = visual;
   return (
     <span className="relative flex items-center justify-center w-3 h-3">
       {pulse && (
@@ -43,7 +45,7 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
   const { favorites, toggleFavorite } = useSettingsStore();
 
   const isFavorite = favorites.includes(room.id);
-  const statusLabel = t(`status.${room.status}`);
+  const statusLabel = t(`status.${room.status}`, room.status === "unconfigured" ? "Setup Pending" : "");
   const canConnect = room.status === "idle";
 
   const floorDisplay = room.floor === "0"
@@ -55,13 +57,14 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
     return (
       <div
         id={`room-card-compact-${room.id}`}
-        className="
+        className={`
           flex flex-col items-center gap-2 p-3 w-24
           bg-[var(--bg-secondary)] border border-[var(--border)]
-          rounded-xl shrink-0 cursor-pointer
-          hover:border-[var(--border-hover)] hover:scale-[1.03]
-          transition-all duration-150
-        "
+          rounded-xl shrink-0 transition-all duration-150
+          ${canConnect 
+            ? "cursor-pointer hover:border-[var(--border-hover)] hover:scale-[1.03]" 
+            : "cursor-default opacity-80"}
+        `}
         onClick={() => canConnect && onConnect(room)}
       >
         <StatusDot status={room.status} />
@@ -77,13 +80,14 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
   return (
     <div
       id={`room-card-${room.id}`}
-      className="
+      className={`
         group relative flex flex-col gap-3 p-4
         bg-[var(--bg-secondary)] border border-[var(--border)]
-        rounded-2xl
-        hover:border-[var(--border-hover)] hover:shadow-lg hover:scale-[1.02]
-        transition-all duration-150
-      "
+        rounded-2xl transition-all duration-150
+        ${canConnect 
+          ? "hover:border-[var(--border-hover)] hover:shadow-lg hover:scale-[1.02]" 
+          : "opacity-90"}
+      `}
     >
       {/* Header row */}
       <div className="flex items-start justify-between">
@@ -127,6 +131,8 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
               ? "text-[var(--status-idle)]"
               : room.status === "streaming"
               ? "text-[var(--status-streaming)]"
+              : room.status === "unconfigured"
+              ? "text-[var(--status-unconfigured)]"
               : "text-[var(--status-offline)]"
           }`}
         >
@@ -156,7 +162,12 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
           }
         `}
       >
-        {room.status === "offline" ? (
+        {room.status === "unconfigured" ? (
+          <>
+            <WifiOff size={14} className="opacity-50" />
+            {t("status.unconfigured", "Setup Pending")}
+          </>
+        ) : room.status === "offline" ? (
           <>
             <WifiOff size={14} />
             {t("status.offline")}

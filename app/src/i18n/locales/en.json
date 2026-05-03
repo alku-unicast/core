@@ -30,6 +30,7 @@
     "idle": "Idle",
     "streaming": "Streaming",
     "offline": "Offline",
+    "unconfigured": "Setup Pending",
     "busy": "Busy",
     "in_progress": "Streaming in progress",
     "online_count": "{{count}} rooms online",

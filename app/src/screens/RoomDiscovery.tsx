@@ -8,7 +8,6 @@ import { RoomGrid } from "../components/rooms/RoomGrid";
 import { Room } from "../types/room";
 import { useConnectionStore } from "../stores/connectionStore";
 import { useRoomStore } from "../stores/roomStore";
-import { initFirebase } from "../services/firebase";
 import { startRoomListener } from "../services/roomService";
 
 // Lazy-load SettingsModal to keep initial bundle small
@@ -24,42 +23,14 @@ export function RoomDiscovery() {
   const { connect } = useConnectionStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Initialize Firebase + start room listener once on mount
+  // Start room listener immediately on mount
   useEffect(() => {
-    let stopListener: (() => void) | null = null;
-    let isMounted = true;
-
-    // We must await initFirebase (which has a 5s timeout) 
-    // to ensure the DB is ready before starting the listener.
-    // If it fails or times out, the listener will handle the fallback.
-    // Safety timeout: If rooms don't load in 8s, force-stop the loader
-    // so the user can at least use Manual IP connection.
-    const safetyTimeout = setTimeout(() => {
-      const { isLoading, setLoading } = useRoomStore.getState();
-      if (isLoading && isMounted) {
-        console.warn("[RoomDiscovery] Safety timeout reached, forcing loader to stop.");
-        setLoading(false);
-      }
-    }, 8000);
-
-    initFirebase()
-      .then(() => {
-        console.log("[RoomDiscovery] Firebase init finished.");
-        if (isMounted) {
-          stopListener = startRoomListener();
-        }
-      })
-      .catch((e) => {
-        console.error("[RoomDiscovery] Firebase init failed:", e);
-        if (isMounted) {
-          stopListener = startRoomListener();
-        }
-      });
+    console.log("[RoomDiscovery] Starting room listener...");
+    const stopListener = startRoomListener();
 
     return () => {
-      isMounted = false;
-      stopListener?.();
-      clearTimeout(safetyTimeout);
+      console.log("[RoomDiscovery] Stopping room listener.");
+      stopListener();
     };
   }, []);
 
