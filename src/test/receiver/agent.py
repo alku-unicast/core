@@ -24,9 +24,9 @@ class ReceiverAgent:
         self.audio_port = audio_port
         self.echo_port = echo_port
         self.benchmarker = benchmarker
-        self.running = False
+        self.is_audio_mode = ("sesli" in self.mode or "audio" in self.mode)
 
-        if self.mode == "audio":
+        if self.is_audio_mode:
             self._max_system_volume()
 
         self.create_pipeline()
@@ -50,7 +50,7 @@ class ReceiverAgent:
         return Gst.PadProbeReturn.OK
 
     def create_pipeline(self):
-        if self.mode == "audio":
+        if self.is_audio_mode:
             print("Initializing Audio+Video Pipeline...")
             pipeline_str = (
                 # --- Video Branch ---
@@ -96,12 +96,12 @@ class ReceiverAgent:
 
         # Audio jitter buffer only exists in audio mode
         ajbuf = None
-        if self.mode == "audio":
+        if self.is_audio_mode:
             ajbuf = self.pipeline.get_by_name("ajbuf")
 
         # Warm-up: pipeline stabilize olana kadar bekle
         # Audio modda pipeline daha gec basliyor (video+audio sync)
-        WARMUP_S = 20 if self.mode == "audio" else 5
+        WARMUP_S = 5 if self.is_audio_mode else 2
         warmup_start = time.time()
         print(f"Warm-up: {WARMUP_S}s bekleniyor (pipeline stabilizasyonu)...", flush=True)
         while self.running and (time.time() - warmup_start) < WARMUP_S:
@@ -192,8 +192,8 @@ class ReceiverAgent:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UniCast Receiver Agent")
-    parser.add_argument("--mode", choices=["silent", "audio"], default="audio",
-                        help="silent = video only, audio = video + audio")
+    parser.add_argument("--mode", default="audio",
+                        help="silent = video only, audio = video + audio (veya yeni senaryo isimleri)")
     parser.add_argument("--video-port",    type=int, default=5000)
     parser.add_argument("--audio-port",    type=int, default=5002)
     parser.add_argument("--echo-port",     type=int, default=5005)

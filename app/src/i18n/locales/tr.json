@@ -103,6 +103,25 @@
       "repo": "GitHub"
     }
   },
+  "network": {
+    "no_network": "Ağ bağlantısı yok. Lütfen Wi-Fi'yi açıp Eduroam'a bağlanın.",
+    "local_only": "İnternet erişimi yok. Önbellekteki odalar gösteriliyor.",
+    "cache_age": "{{min}} dk önce güncellendi",
+    "refreshing": "Oda listesi güncelleniyor...",
+    "manual_connect": "Manuel Bağlantı",
+    "offline_mode": "Çevrimdışı",
+    "ip_placeholder": "Örn: 10.50.0.113",
+    "connect": "Bağlan",
+    "invalid_ip": "Geçerli bir IP adresi girin.",
+    "manual_hint": "Hedef odanın ekranındaki IP adresini girin."
+  },
+  "linux_warning": {
+    "title": "Pencere Modu Uyarısı",
+    "description": "Linux'ta en iyi deneyim için yayın başlatmadan önce pencerenizi istediğiniz boyuta getirin. Yayın sırasında pencereyi yeniden boyutlandırmak akışın kesilmesine neden olabilir.",
+    "tip": "Tam ekrana geçmek için F11 tuşuna basabilirsiniz.",
+    "dont_show_again": "Bir daha gösterme",
+    "understood": "Anladım"
+  },
   "streaming_bar": {
     "mode_fullscreen": "Tam Ekran",
     "mode_window": "Pencere",

@@ -4,6 +4,7 @@ import { Settings, DEFAULT_SETTINGS } from "../types/settings";
 interface SettingsStore extends Settings {
   // Actions
   toggleFavorite: (roomId: string) => void;
+  setHideLinuxWindowWarning: (value: boolean) => void;
   updateSettings: (partial: Partial<Settings>) => void;
   resetToDefaults: () => Promise<void>;
   loadFromDisk: () => Promise<void>;
@@ -12,6 +13,11 @@ interface SettingsStore extends Settings {
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   ...DEFAULT_SETTINGS,
+
+  setHideLinuxWindowWarning: (value) => {
+    set({ hideLinuxWindowWarning: value });
+    get().saveToDisk();
+  },
 
   toggleFavorite: (roomId) => {
     const { favorites } = get();
@@ -62,6 +68,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         encoder: state.encoder,
         appearance: state.appearance,
         streamingBar: state.streamingBar,
+        hideLinuxWindowWarning: state.hideLinuxWindowWarning,
       };
       await invoke("write_settings", { settings: payload });
       const { emit } = await import("@tauri-apps/api/event");

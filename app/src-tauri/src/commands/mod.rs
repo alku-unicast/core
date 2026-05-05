@@ -1,5 +1,6 @@
 pub mod audio;
 pub mod auth;
+pub mod cache;
 pub mod capture;
 pub mod encoder;
 pub mod monitors;

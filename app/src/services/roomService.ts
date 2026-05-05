@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useRoomStore } from "../stores/roomStore";
+import { useNetworkStore } from "../stores/networkStore";
 import { Room, RoomStatus } from "../types/room";
 
 // Raw shape coming from Firebase — aligned with Pi Agent v3 / Rules
@@ -11,8 +12,22 @@ interface RawRoom {
   last_seen?: number | string | null;
 }
 
+interface CachedRoom {
+  id: string;
+  label: string;
+  floor: string;
+  ip: string;
+  status: string;
+  lastSeen: number;
+}
+
+interface RoomsCache {
+  rooms: CachedRoom[];
+  lastUpdated: number;
+  version: number;
+}
+
 function parseRoom(id: string, raw: RawRoom): Room {
-  // 1. Convert raw last_seen (seconds) to milliseconds immediately
   let lastSeenSeconds = 0;
   if (typeof raw.last_seen === "number") {
     lastSeenSeconds = raw.last_seen;
@@ -21,23 +36,19 @@ function parseRoom(id: string, raw: RawRoom): Room {
   }
   const lastSeenMs = lastSeenSeconds * 1000;
 
-  // 2. Compute Smart Status (4-Tier)
   let status: RoomStatus = "offline";
   const now = Date.now();
-  const OFFLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutes (Pi updates every 60s)
+  const OFFLINE_THRESHOLD = 5 * 60 * 1000;
 
   if (!raw.pi_ip || raw.pi_ip.trim() === "") {
-    // Case 1: Room defined in Firebase but Pi hasn't registered an IP yet
     status = "unconfigured";
   } else if (lastSeenMs > 0 && now - lastSeenMs > OFFLINE_THRESHOLD) {
-    // Case 2: Pi has an IP but hasn't sent a heartbeat in > 5 minutes
     status = "offline";
   } else {
-    // Case 3: Pi is active, trust the pi_status field (idle/streaming)
     const validStatuses: RoomStatus[] = ["idle", "streaming", "offline"];
     status = validStatuses.includes(raw.pi_status as RoomStatus)
       ? (raw.pi_status as RoomStatus)
-      : "idle"; // Default to idle if IP is valid and heartbeat is fresh
+      : "idle";
   }
 
   return {
@@ -50,46 +61,127 @@ function parseRoom(id: string, raw: RawRoom): Room {
   };
 }
 
+function cachedRoomsToRecord(cached: CachedRoom[]): Record<string, Room> {
+  const rooms: Record<string, Room> = {};
+  for (const r of cached) {
+    rooms[r.id] = {
+      id: r.id,
+      label: r.label,
+      floor: r.floor,
+      ip: r.ip,
+      status: r.status as RoomStatus,
+      lastSeen: r.lastSeen,
+    };
+  }
+  return rooms;
+}
+
+function roomsToCache(rooms: Record<string, Room>): RoomsCache {
+  return {
+    rooms: Object.values(rooms).map((r) => ({
+      id: r.id,
+      label: r.label,
+      floor: r.floor,
+      ip: r.ip,
+      status: r.status,
+      lastSeen: r.lastSeen,
+    })),
+    lastUpdated: Date.now(),
+    version: 1,
+  };
+}
+
 let pollInterval: any = null;
 
 /**
  * Starts fetching rooms from Firebase via Rust backend.
- * Bypasses CORS issues on Linux.
+ * On first run: loads cache instantly, then fetches Firebase in background.
+ * Updates networkStore to ONLINE or LOCAL_ONLY based on Firebase reachability.
  * Returns a cleanup function to stop polling.
  */
 export function startRoomListener(): () => void {
-  const { setRooms, setLoading, setError } = useRoomStore.getState();
-  
-  const fetchRooms = async () => {
+  const { setRooms, setLoading, setError, setRefreshing, setLastCacheUpdate } =
+    useRoomStore.getState();
+  const { checkLocalNetwork, setNetworkState } = useNetworkStore.getState();
+
+  // Step 1: check local network presence
+  checkLocalNetwork();
+
+  // Step 2: load cache instantly so UI shows something before Firebase
+  const loadCache = async () => {
     try {
-      console.log("[roomService] Fetching rooms via Rust...");
-      const raw = await invoke("fetch_firebase_rooms") as Record<string, RawRoom> | null;
-
-      if (!raw) {
-        setRooms({});
-        return;
+      const cache = await invoke<RoomsCache | null>("read_rooms_cache");
+      if (cache && cache.rooms.length > 0) {
+        setRooms(cachedRoomsToRecord(cache.rooms));
+        setLastCacheUpdate(cache.lastUpdated);
+        setLoading(false);
+        console.log("[roomService] Loaded", cache.rooms.length, "rooms from cache.");
       }
-
-      const rooms: Record<string, Room> = {};
-      for (const [id, data] of Object.entries(raw)) {
-        rooms[id] = parseRoom(id, data);
-      }
-
-      setRooms(rooms);
-      setLoading(false);
-      setError(null);
     } catch (e) {
-      console.error("[roomService] Failed to fetch rooms:", e);
-      setError("Firebase verisi çekilemedi. Rust köprüsü hatası.");
-      setLoading(false);
+      console.warn("[roomService] Cache load failed:", e);
     }
   };
 
-  // Initial fetch
-  fetchRooms();
+  // Step 3: fetch fresh data from Firebase
+  const fetchRooms = async () => {
+    const { rooms: currentRooms } = useRoomStore.getState();
+    const hasCachedData = Object.keys(currentRooms).length > 0;
 
-  // Poll every 30 seconds (Pi updates every 60s, so 30s is more than enough)
-  pollInterval = setInterval(fetchRooms, 30000);
+    if (hasCachedData) setRefreshing(true);
+
+    try {
+      const raw = (await invoke("fetch_firebase_rooms")) as Record<string, RawRoom> | null;
+
+      if (!raw) {
+        setRooms({});
+      } else {
+        const rooms: Record<string, Room> = {};
+        for (const [id, data] of Object.entries(raw)) {
+          rooms[id] = parseRoom(id, data);
+        }
+        setRooms(rooms);
+
+        // Save fresh data to cache
+        try {
+          await invoke("write_rooms_cache", { cache: roomsToCache(rooms) });
+          setLastCacheUpdate(Date.now());
+        } catch (e) {
+          console.warn("[roomService] Cache save failed:", e);
+        }
+      }
+
+      setLoading(false);
+      setRefreshing(false);
+      setError(null);
+      setNetworkState("ONLINE");
+    } catch (e: any) {
+      console.error("[roomService] Firebase fetch failed:", e);
+      setRefreshing(false);
+
+      const isTimeout =
+        typeof e === "string" &&
+        (e.includes("timeout") || e.includes("timed out") || e.includes("Timeout"));
+
+      if (isTimeout || useNetworkStore.getState().hasLocalInterface) {
+        setNetworkState("LOCAL_ONLY");
+      } else {
+        setNetworkState("NO_NETWORK");
+      }
+
+      // Don't overwrite cached rooms on error
+      const { rooms } = useRoomStore.getState();
+      if (Object.keys(rooms).length === 0) {
+        setError("Oda listesi alınamadı.");
+        setLoading(false);
+      }
+    }
+  };
+
+  // Run startup sequence
+  loadCache().then(() => {
+    fetchRooms();
+    pollInterval = setInterval(fetchRooms, 30000);
+  });
 
   return () => {
     if (pollInterval) {

@@ -5,6 +5,8 @@ interface RoomStore {
   rooms: Record<string, Room>;
   activeFloor: string;       // "all" | "0" | "1" | "2" ...
   isLoading: boolean;
+  isRefreshing: boolean;     // true while Firebase fetch is in-flight (cache already shown)
+  lastCacheUpdate: number | null;
   error: string | null;
 
   // Derived helpers
@@ -15,6 +17,8 @@ interface RoomStore {
   setRooms: (rooms: Record<string, Room>) => void;
   setActiveFloor: (floor: string) => void;
   setLoading: (loading: boolean) => void;
+  setRefreshing: (refreshing: boolean) => void;
+  setLastCacheUpdate: (ts: number) => void;
   setError: (error: string | null) => void;
 }
 
@@ -22,6 +26,8 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   rooms: {},
   activeFloor: "all",
   isLoading: true,
+  isRefreshing: false,
+  lastCacheUpdate: null,
   error: null,
 
   getFloors: () => {
@@ -40,5 +46,7 @@ export const useRoomStore = create<RoomStore>((set, get) => ({
   setRooms: (rooms) => set({ rooms }),
   setActiveFloor: (floor) => set({ activeFloor: floor }),
   setLoading: (isLoading) => set({ isLoading }),
+  setRefreshing: (isRefreshing) => set({ isRefreshing }),
+  setLastCacheUpdate: (ts) => set({ lastCacheUpdate: ts }),
   setError: (error) => set({ error }),
 }));

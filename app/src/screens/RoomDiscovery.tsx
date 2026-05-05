@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TopBar } from "../components/layout/TopBar";
 import { StatusSummary } from "../components/layout/StatusSummary";
+import { StatusBanner } from "../components/layout/StatusBanner";
 import { FavoritesSection } from "../components/rooms/FavoritesSection";
 import { FloorTabs } from "../components/rooms/FloorTabs";
 import { RoomGrid } from "../components/rooms/RoomGrid";
+import { ManualConnectSection } from "../components/rooms/ManualConnectSection";
 import { Room } from "../types/room";
 import { useConnectionStore } from "../stores/connectionStore";
 import { useRoomStore } from "../stores/roomStore";
@@ -46,6 +48,9 @@ export function RoomDiscovery() {
 
       {/* ── Scrollable body ─────────────────────────────────────────── */}
       <main className="flex flex-col flex-1 overflow-y-auto gap-4 py-4">
+        {/* Network state banner — only visible when there's a problem */}
+        <StatusBanner />
+
         {/* Favorites — hidden if empty */}
         <FavoritesSection onConnect={handleConnect} />
 
@@ -54,6 +59,9 @@ export function RoomDiscovery() {
 
         {/* Room grid */}
         <RoomGrid onConnect={handleConnect} />
+
+        {/* Manual IP connect — hidden when NO_NETWORK */}
+        <ManualConnectSection />
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────── */}

@@ -88,15 +88,20 @@ pub async fn start_stream(
     println!("[stream] pipeline: {}", pipeline);
     println!("[stream] Full command about to run: {} {}", gst_launch, pipeline);
 
-    // WINDOWS: Split the pipeline into separate arguments for gst-launch-1.0. 
-    // This is safer and prevents the 'syntax error' often caused by passing the 
-    // entire pipeline as a single quoted argument.
+    // WINDOWS: Split the pipeline into separate arguments for gst-launch-1.0.
+    // CREATE_NO_WINDOW (0x08000000) prevents a CMD console popup on Windows.
     #[cfg(target_os = "windows")]
-    let mut child = std::process::Command::new(&gst_launch)
-        .args(pipeline.split_whitespace())
-        .current_dir(&bin_dir)
-        .spawn()
-        .map_err(|e| format!("Failed to launch GStreamer (Windows): {e}"))?;
+    use std::os::windows::process::CommandExt;
+
+    #[cfg(target_os = "windows")]
+    let mut child = {
+        let mut cmd = std::process::Command::new(&gst_launch);
+        cmd.args(pipeline.split_whitespace())
+            .current_dir(&bin_dir)
+            .creation_flags(0x08000000); // CREATE_NO_WINDOW
+        cmd.spawn()
+            .map_err(|e| format!("Failed to launch GStreamer (Windows): {e}"))?
+    };
 
     // LINUX / MAC İÇİN (Eski usul devam)
     #[cfg(not(target_os = "windows"))]

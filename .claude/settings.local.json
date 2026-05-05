@@ -12,7 +12,8 @@
       "Bash(curl -sL \"https://gstreamer.freedesktop.org/data/pkg/\")",
       "Bash(curl -sL \"https://gstreamer.freedesktop.org/download/\")",
       "WebFetch(domain:gstreamer.freedesktop.org)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npx tsc *)"
     ]
   }
 }

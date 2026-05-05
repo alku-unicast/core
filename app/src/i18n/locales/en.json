@@ -103,6 +103,25 @@
       "repo": "GitHub"
     }
   },
+  "network": {
+    "no_network": "No network connection. Please enable Wi-Fi and connect to Eduroam.",
+    "local_only": "No internet access. Showing cached rooms.",
+    "cache_age": "updated {{min}} min ago",
+    "refreshing": "Refreshing room list...",
+    "manual_connect": "Manual Connection",
+    "offline_mode": "Offline",
+    "ip_placeholder": "e.g. 10.50.0.113",
+    "connect": "Connect",
+    "invalid_ip": "Please enter a valid IP address.",
+    "manual_hint": "Enter the IP address shown on the target room's screen."
+  },
+  "linux_warning": {
+    "title": "Window Mode Warning",
+    "description": "For the best experience on Linux, set your window to the desired size before starting the stream. Resizing the window during a stream may cause it to disconnect.",
+    "tip": "You can press F11 to enter fullscreen mode.",
+    "dont_show_again": "Don't show again",
+    "understood": "Got it"
+  },
   "streaming_bar": {
     "mode_fullscreen": "Full Screen",
     "mode_window": "Window",

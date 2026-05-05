@@ -78,11 +78,13 @@ export function StreamingBarApp() {
       }
     }).then((fn) => fns.push(fn));
 
-    // Auto-close bar when stream stops (Rust or main window signals this)
-    listen("stream-stopped", () => {
-      import("@tauri-apps/api/webviewWindow").then(({ getCurrentWebviewWindow }) => {
-        getCurrentWebviewWindow().hide();
-      });
+    // Auto-close bar when stream stops — but NOT on error reason (auto-restart keeps bar visible)
+    listen<{ reason: string }>("stream-stopped", (ev) => {
+      if (ev.payload.reason !== "error") {
+        import("@tauri-apps/api/webviewWindow").then(({ getCurrentWebviewWindow }) => {
+          getCurrentWebviewWindow().hide();
+        });
+      }
     }).then((fn) => fns.push(fn));
 
     return () => fns.forEach((f) => f());

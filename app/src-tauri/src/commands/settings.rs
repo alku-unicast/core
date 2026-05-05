@@ -13,6 +13,8 @@ pub struct Settings {
     pub appearance: AppearanceSettings,
     #[serde(rename = "streamingBar")]
     pub streaming_bar: StreamingBarSettings,
+    #[serde(rename = "hideLinuxWindowWarning", default)]
+    pub hide_linux_window_warning: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -98,6 +100,7 @@ impl Default for Settings {
                 bar_opacity: 0.9,
             },
             streaming_bar: StreamingBarSettings { enabled: true },
+            hide_linux_window_warning: false,
         }
     }
 }

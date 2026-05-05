@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
 // Token Cache: (idToken, expiry_instant)
@@ -38,8 +38,11 @@ pub async fn fetch_firebase_rooms() -> Result<HashMap<String, RawRoom>, String> 
     }
     drop(cache); // Release lock before DB request
 
-    // 2. Fetch rooms using the token
-    let client = reqwest::Client::new();
+    // 2. Fetch rooms using the token (3s timeout to detect LOCAL_ONLY state)
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .map_err(|e| e.to_string())?;
     let response = client.get(format!("{}?auth={}", db_url, id_token))
         .send()
         .await

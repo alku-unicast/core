@@ -36,6 +36,7 @@ export interface Settings {
   streamingBar: {
     enabled: boolean;
   };
+  hideLinuxWindowWarning: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -74,4 +75,5 @@ export const DEFAULT_SETTINGS: Settings = {
   streamingBar: {
     enabled: true,
   },
+  hideLinuxWindowWarning: false,
 };

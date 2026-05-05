@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useConnectionStore } from "../stores/connectionStore";
 import { useSystemStore }     from "../stores/systemStore";
 import { useSettingsStore }   from "../stores/settingsStore";
+import { LinuxWarningModal }  from "../components/modals/LinuxWarningModal";
 
 import { StreamModeSelector }   from "../components/connection/StreamModeSelector";
 import { AudioToggle }          from "../components/connection/AudioToggle";
@@ -56,12 +57,13 @@ export function ConnectionSetup() {
     detectEncoder,
   } = useSystemStore();
 
-  const { profiles, audio: globalAudio, encoder, updateSettings } = useSettingsStore();
+  const { profiles, audio: globalAudio, encoder, updateSettings, hideLinuxWindowWarning } = useSettingsStore();
 
   /* ── Local UI state ──────────────────────────────────────────────────────── */
   const [pin, setPin]                   = useState("");
   const [windowsLoading, setWindowsLoading] = useState(false);
   const [waking, setWaking]             = useState(false);
+  const [linuxWarningOpen, setLinuxWarningOpen] = useState(false);
 
   /* ── Bootstrap on mount ──────────────────────────────────────────────────── */
   useEffect(() => {
@@ -128,6 +130,16 @@ export function ConnectionSetup() {
 
     return () => { unlisten?.(); };
   }, [navigate, reset, resetStream]);
+
+  /* ── Linux window-mode warning modal ────────────────────────────────────── */
+  useEffect(() => {
+    const isLinux = /linux/i.test(navigator.userAgent);
+    if (isLinux && streamMode === "window" && !hideLinuxWindowWarning) {
+      setLinuxWarningOpen(true);
+    } else {
+      setLinuxWarningOpen(false);
+    }
+  }, [streamMode, hideLinuxWindowWarning]);
 
   /* ── Wake Projeksiyon HDMI ────────────────────────────────────────────────── */
   const wakeAndProgress = useCallback(async () => {
@@ -222,6 +234,12 @@ export function ConnectionSetup() {
   return (
     <div className="flex flex-col h-screen bg-[var(--bg-primary)] overflow-hidden">
 
+      {/* ── Linux window-mode warning modal ──────────────────────────────── */}
+      <LinuxWarningModal
+        isOpen={linuxWarningOpen}
+        onClose={() => setLinuxWarningOpen(false)}
+      />
+
       {/* ── Top bar ────────────────────────────────────────────────────────── */}
       <header className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
         <button
@@ -304,15 +322,6 @@ export function ConnectionSetup() {
 
         {/* ── Stream mode selection ──────────────────────────────────── */}
         <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-4">
-          {/* Scaling Hint: Addresses the dynamic resize limitation in X11 window capture (Linux-only) */}
-          {streamMode === "window" && /linux/i.test(navigator.userAgent) && (
-            <div className="mb-4 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 flex gap-2 items-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <p className="text-[10px] text-amber-500 font-bold">
-                {t("connection.window_hint", "ÖNEMLİ: En iyi görüntü için pencerenizi (Tam Ekran vb.) yayını başlatmadan önce ayarlayın. Yayın sırasında pencere boyutunu değiştirmek (Tam ekrandan çıkmak vb.) hataya sebep olabilir.")}
-              </p>
-            </div>
-          )}
 
           <StreamModeSelector
             mode={streamMode}

@@ -4,6 +4,39 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use serde::Serialize;
 
+#[derive(Debug, Serialize)]
+pub struct LocalNetworkInfo {
+    pub has_local_interface: bool,
+    pub local_ip: Option<String>,
+}
+
+/// Detects the device's local network IP without sending any real packets.
+/// Connects a UDP socket to Google DNS to discover which interface the OS would use.
+#[tauri::command]
+pub async fn get_network_info() -> Result<LocalNetworkInfo, String> {
+    tokio::task::spawn_blocking(|| {
+        match UdpSocket::bind("0.0.0.0:0") {
+            Ok(socket) => match socket.connect("8.8.8.8:80") {
+                Ok(_) => match socket.local_addr() {
+                    Ok(addr) => {
+                        let ip = addr.ip().to_string();
+                        if ip.starts_with("127.") {
+                            Ok(LocalNetworkInfo { has_local_interface: false, local_ip: None })
+                        } else {
+                            Ok(LocalNetworkInfo { has_local_interface: true, local_ip: Some(ip) })
+                        }
+                    }
+                    Err(e) => Err(format!("local_addr error: {}", e)),
+                },
+                Err(_) => Ok(LocalNetworkInfo { has_local_interface: false, local_ip: None }),
+            },
+            Err(e) => Err(format!("socket bind error: {}", e)),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 // Current target IP for RTT pings — updated by connection store
 static TARGET_IP: std::sync::OnceLock<Arc<Mutex<Option<String>>>> =
     std::sync::OnceLock::new();
