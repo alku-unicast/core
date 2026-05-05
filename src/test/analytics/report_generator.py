@@ -1,7 +1,11 @@
 """
-report_generator_v5.py
+report_generator.py
 ======================
-Final Scientific Revision: Multi-Scenario Selectors and High Fidelity Line Charts
+UniCast Bilimsel Rapor Üretici
+
+Kullanım:
+  python report_generator.py 10   → Ortalama ± SD (tek iterasyon, bilimsel)
+  python report_generator.py 50   → Ham akış (5 iterasyon arka arkaya)
 """
 
 import pandas as pd
@@ -10,7 +14,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import stats
 import os
-import datetime
+import sys
 
 class ScientificReportGenerator:
     def __init__(self, benchmark_csv="../receiver/benchmark_log.csv", latency_csv=None):
@@ -121,7 +125,11 @@ class ScientificReportGenerator:
         html += "</tbody></table>"
         return html
 
-    def generate_report(self):
+    # ═════════════════════════════════════════════════════════════════════
+    #  RAPOR OLUŞTURMA
+    # ═════════════════════════════════════════════════════════════════════
+
+    def generate_report(self, view_mode=10):
         df, df_lat = self.load_data()
         if df is None: return
 
@@ -130,7 +138,7 @@ class ScientificReportGenerator:
         s2 = self._build_stats_table("2. Çözünürlük Etkisi", "1080p", "720p", self.run_ttest(df, "Resolution", "1080p", "720p", ["ContentType", "AudioStatus"]))
         s3 = self._build_stats_table("3. İçerik Etkisi", "slayt", "video", self.run_ttest(df, "ContentType", "slayt", "video", ["Resolution", "AudioStatus"]))
 
-        # 2. GRAFIKLER — Ortalama ± SD (tüm iterasyonlar üzerinden)
+        # 2. GRAFIKLER
         metrics = [
             ("FPS", "FPS Akışı"), ("Video_Jitter(ms)", "Video Jitter (ms)"),
             ("CPU_Usage(%)", "CPU Kullanımı (%)"), ("Throughput(kbps)", "Net Trafiği (kbps)"),
@@ -139,122 +147,147 @@ class ScientificReportGenerator:
         ]
         
         fig = make_subplots(rows=4, cols=2, vertical_spacing=0.08, subplot_titles=[m[1] for m in metrics])
-        
         modes = sorted(df["Mode"].unique())
         colors = [
             "#2196F3", "#E91E63", "#4CAF50", "#FF9800",
             "#9C27B0", "#00BCD4", "#FF5722", "#607D8B"
         ]
+
+        if view_mode == 10:
+            self._build_mean_sd_charts(fig, df, df_lat, metrics, modes, colors)
+            mode_label = "10dk Ortalama ± SD"
+            desc = "Her çizgi 5 iterasyonun ortalamasını, gölge ±1 standart sapmayı gösterir."
+        else:
+            self._build_timeline_charts(fig, df, df_lat, metrics, modes, colors)
+            mode_label = "50dk Ham Akış"
+            desc = "5 iterasyon arka arkaya gösterilmektedir."
+
+        final_html = self._wrap_html(s1 + s2 + s3, fig.to_html(full_html=False, include_plotlyjs="cdn"), mode_label, desc)
         
-        # Her mod için her metrikte 2 trace: mean çizgi + SD gölge
-        TRACES_PER_MODE = 2  # mean + fill
+        with open(self.output_file, "w", encoding="utf-8") as f:
+            f.write(final_html)
+        print(f"Rapor basariyla olusturuldu: {self.output_file} ({mode_label})")
+
+    # ─── MOD 10: Ortalama ± SD ───────────────────────────────────────────
+    def _build_mean_sd_charts(self, fig, df, df_lat, metrics, modes, colors):
+        TRACES_PER_MODE = 2  # SD fill + mean line
         total_traces = 0
         
-        for i, (m_col, m_title) in enumerate(metrics):
-            row = (i // 2) + 1
-            col = (i % 2) + 1
+        for i, (m_col, _) in enumerate(metrics):
+            row, col = (i // 2) + 1, (i % 2) + 1
             
             for mi, mode in enumerate(modes):
                 color = colors[mi % len(colors)]
-                x_time = None
-                y_mean = None
-                y_upper = None
-                y_lower = None
+                iter_data, max_len = self._collect_iter_data(df, df_lat, m_col, mode)
                 
-                if m_col == "RTT_ms":
-                    # RTT: latency_log'dan, iterasyon bazlı ortalama
-                    if df_lat is not None:
-                        lat_mode = df_lat[df_lat["Mode"] == mode]
-                        if not lat_mode.empty:
-                            iters = lat_mode["Iteration"].unique()
-                            if len(iters) > 0:
-                                # Her iterasyonu aynı zaman eksenine hizala
-                                iter_data = []
-                                min_len = None
-                                for it in sorted(iters):
-                                    vals = lat_mode[lat_mode["Iteration"] == it]["RTT_ms"].values
-                                    iter_data.append(vals)
-                                    if min_len is None or len(vals) < min_len:
-                                        min_len = len(vals)
-                                
-                                if min_len and min_len > 0:
-                                    # Tüm iterasyonları aynı uzunluğa kes
-                                    aligned = np.array([d[:min_len] for d in iter_data])
-                                    y_mean = aligned.mean(axis=0)
-                                    y_std = aligned.std(axis=0)
-                                    y_upper = y_mean + y_std
-                                    y_lower = np.maximum(y_mean - y_std, 0)
-                                    secs = np.arange(min_len)
-                                    x_time = [f"{int(s//60)}:{int(s%60):02d}" for s in secs]
-                
-                elif m_col in df.columns:
-                    sub_mode = df[df["Mode"] == mode]
-                    if not sub_mode.empty:
-                        iters = sub_mode["Iteration"].unique()
-                        iter_data = []
-                        min_len = None
-                        for it in sorted(iters):
-                            vals = sub_mode[sub_mode["Iteration"] == it][m_col].values
-                            iter_data.append(vals)
-                            if min_len is None or len(vals) < min_len:
-                                min_len = len(vals)
-                        
-                        if min_len and min_len > 0:
-                            aligned = np.array([d[:min_len] for d in iter_data])
-                            y_mean = aligned.mean(axis=0)
-                            y_std = aligned.std(axis=0)
-                            y_upper = y_mean + y_std
-                            y_lower = np.maximum(y_mean - y_std, 0)
-                            secs = np.arange(min_len) * 5  # ~5sn aralıklı ölçüm
-                            x_time = [f"{int(s//60)}:{int(s%60):02d}" for s in secs]
-                
-                # Trace ekle (her zaman 2 trace: mean + fill)
-                if x_time is not None and y_mean is not None:
-                    # 1) SD gölge (fill)
+                if max_len > 0 and iter_data:
+                    aligned = np.full((len(iter_data), max_len), np.nan)
+                    for k, d in enumerate(iter_data):
+                        aligned[k, :len(d)] = d
+                    y_mean = np.nanmean(aligned, axis=0)
+                    y_std = np.nanstd(aligned, axis=0)
+                    y_upper = y_mean + y_std
+                    y_lower = np.maximum(y_mean - y_std, 0)
+                    secs = np.arange(max_len)
+                    x_time = [f"{int(s//60)}:{int(s%60):02d}" for s in secs]
+                    
+                    rgba = self._hex_to_rgba(color, 0.15)
                     fig.add_trace(go.Scatter(
                         x=list(x_time) + list(reversed(x_time)),
                         y=list(y_upper) + list(reversed(y_lower)),
-                        fill='toself', fillcolor=color.replace(")", ",0.15)").replace("rgb", "rgba") if "rgb" in color else f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.15)",
-                        line=dict(width=0),
-                        name=f"{mode} (±SD)",
-                        showlegend=False,
-                        visible=True,
-                        hoverinfo='skip'
+                        fill='toself', fillcolor=rgba, line=dict(width=0),
+                        name=f"{mode} (±SD)", showlegend=False, visible=True, hoverinfo='skip'
                     ), row=row, col=col)
-                    
-                    # 2) Ortalama çizgi
                     fig.add_trace(go.Scatter(
-                        x=x_time, y=y_mean,
-                        mode='lines',
-                        line=dict(color=color, width=2),
-                        name=mode,
-                        visible=True
+                        x=x_time, y=y_mean, mode='lines',
+                        line=dict(color=color, width=2), name=mode, visible=True
                     ), row=row, col=col)
                 else:
-                    # Boş trace'ler (visibility indeksleri için)
                     fig.add_trace(go.Scatter(x=[], y=[], showlegend=False, visible=True), row=row, col=col)
                     fig.add_trace(go.Scatter(x=[], y=[], showlegend=False, visible=True), row=row, col=col)
-                
                 total_traces += TRACES_PER_MODE
 
-        # SEÇİCİ MENÜ (Dropdown)
+        self._add_dropdown(fig, modes, metrics, total_traces, TRACES_PER_MODE)
+
+    # ─── MOD 50: Ham akış (5 iterasyon arka arkaya) ──────────────────────
+    def _build_timeline_charts(self, fig, df, df_lat, metrics, modes, colors):
+        TRACES_PER_MODE = 1
+        total_traces = 0
+        
+        for i, (m_col, _) in enumerate(metrics):
+            row, col = (i // 2) + 1, (i % 2) + 1
+            
+            for mi, mode in enumerate(modes):
+                color = colors[mi % len(colors)]
+                iter_data, _ = self._collect_iter_data(df, df_lat, m_col, mode)
+                
+                if iter_data and any(len(d) > 0 for d in iter_data):
+                    all_y = []
+                    all_x = []
+                    offset = 0
+                    for d in iter_data:
+                        secs = np.arange(len(d)) + offset
+                        x_labels = [f"{int(s//60)}:{int(s%60):02d}" for s in secs]
+                        all_x.extend(x_labels)
+                        all_y.extend(d.tolist())
+                        offset += len(d)
+                    
+                    fig.add_trace(go.Scatter(
+                        x=all_x, y=all_y, mode='lines',
+                        line=dict(color=color, width=1.5), name=mode, visible=True
+                    ), row=row, col=col)
+                else:
+                    fig.add_trace(go.Scatter(x=[], y=[], showlegend=False, visible=True), row=row, col=col)
+                total_traces += TRACES_PER_MODE
+
+        self._add_dropdown(fig, modes, metrics, total_traces, TRACES_PER_MODE)
+
+    # ─── Yardımcı fonksiyonlar ────────────────────────────────────────────
+    def _collect_iter_data(self, df, df_lat, m_col, mode):
+        """Bir mod×metrik için iterasyon bazlı veri toplar. (iter_data_list, max_len) döndürür."""
+        iter_data = []
+        max_len = 0
+        
+        if m_col == "RTT_ms":
+            if df_lat is not None:
+                lat_mode = df_lat[df_lat["Mode"] == mode]
+                if not lat_mode.empty:
+                    for it in sorted(lat_mode["Iteration"].unique()):
+                        vals = lat_mode[lat_mode["Iteration"] == it]["RTT_ms"].values
+                        iter_data.append(vals)
+                        if len(vals) > max_len:
+                            max_len = len(vals)
+        elif m_col in df.columns:
+            sub_mode = df[df["Mode"] == mode]
+            if not sub_mode.empty:
+                for it in sorted(sub_mode["Iteration"].unique()):
+                    vals = sub_mode[sub_mode["Iteration"] == it][m_col].values
+                    iter_data.append(vals)
+                    if len(vals) > max_len:
+                        max_len = len(vals)
+        
+        return iter_data, max_len
+
+    def _hex_to_rgba(self, hex_color, alpha):
+        r = int(hex_color[1:3], 16)
+        g = int(hex_color[3:5], 16)
+        b = int(hex_color[5:7], 16)
+        return f"rgba({r},{g},{b},{alpha})"
+
+    def _add_dropdown(self, fig, modes, metrics, total_traces, traces_per_mode):
         n_modes = len(modes)
         n_metrics = len(metrics)
-        traces_per_metric = n_modes * TRACES_PER_MODE  # Her metrikte toplam trace
+        traces_per_metric = n_modes * traces_per_mode
         
-        buttons = []
-        buttons.append(dict(
-            label="Tüm Senaryolar", method="update",
-            args=[{"visible": [True] * total_traces}]
-        ))
+        buttons = [dict(label="Tüm Senaryolar", method="update", args=[{"visible": [True] * total_traces}])]
         
         for mi, m in enumerate(modes):
             visibility = [False] * total_traces
             for j in range(n_metrics):
-                # Her metrikte bu mod'un 2 trace'i (fill + line)
-                base = j * traces_per_metric + mi * TRACES_PER_MODE
-                visibility[base] = True      # SD fill
-                visibility[base + 1] = True  # Mean line
+                base = j * traces_per_metric + mi * traces_per_mode
+                for t in range(traces_per_mode):
+                    if base + t < total_traces:
+                        visibility[base + t] = True
             buttons.append(dict(label=m, method="update", args=[{"visible": visibility}]))
 
         fig.update_layout(
@@ -263,19 +296,11 @@ class ScientificReportGenerator:
             legend=dict(orientation="h", y=-0.05),
             margin=dict(t=150)
         )
-        
-        # X ekseni etiketleri
         for i in range(1, n_metrics + 1):
             axis_name = f"xaxis{i}" if i > 1 else "xaxis"
             fig.update_layout(**{axis_name: dict(title="Süre (dk:sn)")})
 
-        final_html = self._wrap_html(s1 + s2 + s3, fig.to_html(full_html=False, include_plotlyjs="cdn"))
-        
-        with open(self.output_file, "w", encoding="utf-8") as f:
-            f.write(final_html)
-        print(f"Rapor basariyla olusturuldu: {self.output_file}")
-
-    def _wrap_html(self, stats_tables, chart_html):
+    def _wrap_html(self, stats_tables, chart_html, mode_label="", desc=""):
         return f"""<!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -294,6 +319,16 @@ class ScientificReportGenerator:
     .sig-yes {{ color: #27ae60; font-weight: bold; }}
     .sig-no {{ color: #e74c3c; }}
     .chart-box {{ background: white; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-top: 20px; }}
+    .mode-badge {{ display: inline-block; background: #3498db; color: white; padding: 4px 14px; border-radius: 12px; font-size: 14px; margin-left: 10px; }}
+    .sys-footer {{ margin-top: 60px; border-top: 3px solid #2c3e50; padding-top: 20px; }}
+    .sys-footer h2 {{ color: #2c3e50; }}
+    .sys-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }}
+    .sys-card {{ background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 18px; }}
+    .sys-card h4 {{ margin: 0 0 12px 0; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; font-size: 15px; }}
+    .sys-card table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+    .sys-card td {{ padding: 5px 8px; border-bottom: 1px solid #eee; }}
+    .sys-card td:first-child {{ color: #7f8c8d; width: 40%; font-weight: 500; }}
+    .sys-card td:last-child {{ font-family: 'Consolas', monospace; color: #2c3e50; }}
   </style>
 </head>
 <body>
@@ -307,14 +342,80 @@ class ScientificReportGenerator:
     </div>
 
     <div class="chart-box">
-      <h2>2. ZAMANSAL PERFORMANS AKIŞI</h2>
-      <p style="color:#7f8c8d;">* Yukarıdaki menüden bir senaryo seçerek 10 dakikalık (600s) akışı detaylı inceleyebilirsiniz. "Tüm Senaryolar" seçeneği ile kıyaslama yapabilirsiniz.</p>
+      <h2>2. ZAMANSAL PERFORMANS AKIŞI <span class="mode-badge">{mode_label}</span></h2>
+      <p style="color:#7f8c8d;">* {desc} Yukarıdaki menüden bir senaryo seçerek detaylı inceleyebilirsiniz.</p>
       {chart_html}
+    </div>
+
+    <div class="sys-footer">
+      <h2>3. TEST ORTAMI</h2>
+      <div class="sys-grid">
+        <div class="sys-card">
+          <h4>🖥️ Gönderici (Windows)</h4>
+          <table>
+            <tr><td>İşletim Sistemi</td><td>Windows 10 Pro (10.0.19045)</td></tr>
+            <tr><td>Sistem</td><td>FUJITSU ESPRIMO P756</td></tr>
+            <tr><td>İşlemci</td><td>Intel Core i7-6700 @ 3.40 GHz</td></tr>
+            <tr><td>Çekirdek / Thread</td><td>4 Çekirdek / 8 Thread</td></tr>
+            <tr><td>RAM</td><td>8 GB DDR4</td></tr>
+            <tr><td>GPU</td><td>Intel HD Graphics 530 (1 GB)</td></tr>
+            <tr><td>Ekran Çözünürlüğü</td><td>1366 × 768 @ 59 Hz</td></tr>
+            <tr><td>BIOS Modu</td><td>UEFI</td></tr>
+            <tr><td>Ekran Yakalama</td><td>DX9 Screen Capture (dx9screencapsrc)</td></tr>
+          </table>
+        </div>
+        <div class="sys-card">
+          <h4>📡 Alıcı (Raspberry Pi)</h4>
+          <table>
+            <tr><td>Model</td><td>Raspberry Pi 4 Model B</td></tr>
+            <tr><td>İşlemci</td><td>Broadcom BCM2711 @ 1.5 GHz</td></tr>
+            <tr><td>Çekirdek</td><td>4 Çekirdek (ARM Cortex-A72)</td></tr>
+            <tr><td>RAM</td><td>4 GB LPDDR4</td></tr>
+            <tr><td>İşletim Sistemi</td><td>Raspberry Pi OS (Debian)</td></tr>
+            <tr><td>Ağ Bağlantısı</td><td>Gigabit Ethernet (LAN)</td></tr>
+            <tr><td>Video Decoder</td><td>GStreamer (H.264 SW)</td></tr>
+          </table>
+        </div>
+        <div class="sys-card">
+          <h4>⚙️ Test Parametreleri</h4>
+          <table>
+            <tr><td>Senaryo Sayısı</td><td>8 (2 çözünürlük × 2 içerik × 2 ses)</td></tr>
+            <tr><td>İterasyon</td><td>5 tekrar / senaryo</td></tr>
+            <tr><td>Süre / İterasyon</td><td>600 saniye (10 dakika)</td></tr>
+            <tr><td>Toplam Test Süresi</td><td>~7 saat (40 tur)</td></tr>
+            <tr><td>Soğuma Arası</td><td>30 saniye</td></tr>
+            <tr><td>Senkronizasyon</td><td>TCP Handshake (PREPARE/READY/STOP)</td></tr>
+          </table>
+        </div>
+        <div class="sys-card">
+          <h4>📊 Akış Konfigürasyonu</h4>
+          <table>
+            <tr><td>Video Codec</td><td>H.264 (x264enc)</td></tr>
+            <tr><td>Audio Codec</td><td>Opus (128 kbps)</td></tr>
+            <tr><td>Slayt Modu</td><td>15 FPS / 5000 kbps</td></tr>
+            <tr><td>Video Modu</td><td>30 FPS / 4000 kbps</td></tr>
+            <tr><td>Çözünürlükler</td><td>1920×1080 / 1280×720</td></tr>
+            <tr><td>Protokol</td><td>RTP over UDP</td></tr>
+            <tr><td>RTT Ölçüm</td><td>UDP PING/PONG (1 sn aralık)</td></tr>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </body>
 </html>"""
 
 if __name__ == "__main__":
+    view = 10
+    if len(sys.argv) > 1:
+        try:
+            view = int(sys.argv[1])
+        except ValueError:
+            pass
+    if view not in (10, 50):
+        print("Kullanim: python report_generator.py [10|50]")
+        print("  10 = Ortalama +/- SD (bilimsel, varsayilan)")
+        print("  50 = Ham akis (5 iterasyon arka arkaya)")
+        sys.exit(1)
     gen = ScientificReportGenerator()
-    gen.generate_report()
+    gen.generate_report(view_mode=view)

@@ -1,9 +1,0 @@
-{
-  "iterations": 2,
-  "duration_s": 70,
-  "pi_ip": "10.50.21.183",
-  "video_port": 5000,
-  "audio_port": 5002,
-  "echo_port": 5005,
-  "control_port": 5010
-}
