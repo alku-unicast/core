@@ -132,9 +132,13 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
               await bar.setFocus();
               // Give bar a moment to mount before sending mode info
               setTimeout(() => {
+                const state = get();
                 bar.emit("stream-mode-info", { 
                   mode: config.streamMode, 
-                  targetIp: get().targetRoom?.ip 
+                  targetIp: state.targetRoom?.ip,
+                  audioEnabled: config.audioEnabled,
+                  volume: state.streamVolume,
+                  isMuted: state.isMuted
                 });
               }, 500);
             }

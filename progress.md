@@ -729,6 +729,18 @@ Pi bağlantı kesildiğinde `pi_ip: "No network"` yazıyor ama bu da internet ge
 **Uygulama Tarafı Önlemi:** `"No network"` string'ini `offline` olarak işle (BUG-02 düzeltmesi), kullanıcıya doğru durumu göster.  
 **İlgili Dosyalar:** Pi `agent.py` (alıcı cihaz), `services/roomService.ts`
 
+### May 6: Stabilization (Part 2) - Audio & Visual Polish
+- **Receiver Agent:**
+    - Integrated GStreamer `volume` element into the audio pipeline for precise, hardware-independent volume control.
+    - Updated UDP handler to map `VOLUME:X` commands directly to the GStreamer element's properties (0.0 to 1.0).
+- **Visuals & Capture:**
+    - **Issue Resolved:** The "Black Strip" (large black rectangle) in the stream caused by `WDA_MONITOR` is gone.
+    - **New Approach:** Removed capture exclusion. The streaming bar is now captured as part of the screen, but its 200px transparency allows the underlying content to show through perfectly, leaving only the small pill visible in the projector.
+    - **UI Fix:** Adjusted `ConnectionSetup.tsx` to prevent the streaming status icon (orange wifi-like pulse) from being clipped at the top.
+- **UX & Control Sync:**
+    - Implemented `audioEnabled` state syncing. If a user starts a silent broadcast, all audio controls are hidden in both the main window and the streaming bar.
+    - Enhanced `stream-mode-info` event to include initial volume and mute status for the streaming bar window.
+
 ---
 
 ### BUG-04 — Uygulama Açılışında ve Yayın Sırasında CMD Penceresi Geliyor

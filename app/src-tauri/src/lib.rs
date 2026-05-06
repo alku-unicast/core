@@ -14,7 +14,6 @@ use commands::network::start_rtt_monitor;
 
 #[cfg(target_os = "windows")]
 use utils::capture_exclusion::exclude_from_capture;
-
 #[tauri::command]
 fn log_frontend(level: String, message: String) {
     match level.as_str() {
@@ -57,36 +56,9 @@ pub fn run() {
             // Cache
             commands::cache::read_rooms_cache,
             commands::cache::write_rooms_cache,
-            // Capture exclusion
-            commands::capture::set_bar_capture_exclusion,
             // Debug
             log_frontend,
         ])
-        .setup(|app| {
-            // ── Streaming bar: apply WDA_EXCLUDEFROMCAPTURE (Windows) ────────
-            #[cfg(target_os = "windows")]
-            {
-                if let Some(bar) = app.get_webview_window("streaming-bar") {
-                    if let Ok(hwnd) = bar.hwnd() {
-                        exclude_from_capture(hwnd.0 as isize);
-                    }
-                }
-            }
-
-            // ── macOS: streaming bar capture exclusion ──────────────────────
-            #[cfg(target_os = "macos")]
-            {
-                if let Some(bar) = app.get_webview_window("streaming-bar") {
-                    if let Ok(ns_window) = bar.ns_window() {
-                        use objc2::runtime::AnyObject;
-                        unsafe {
-                            let window: *mut AnyObject = ns_window as *mut _;
-                            let _: () = objc2::msg_send![&*window, setSharingType: 0usize];
-                        }
-                    }
-                }
-            }
-
             // ── System tray ─────────────────────────────────────────────────
             let handle = app.handle().clone();
             let quit = MenuItem::with_id(app, "quit", "Çıkış", true, None::<&str>)?;

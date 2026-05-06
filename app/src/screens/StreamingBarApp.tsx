@@ -46,6 +46,7 @@ export function StreamingBarApp() {
   const [audioPopupOpen, setAudioPopupOpen] = useState(false);
   const [streamMode, setStreamMode]         = useState<"fullscreen" | "window">("fullscreen");
   const [targetIp, setTargetIp]             = useState<string | null>(null);
+  const [audioEnabled, setAudioEnabled]     = useState(true);
   const [stopping, setStopping]             = useState(false);
 
   /* ── Timer ────────────────────────────────────────────────────────────── */
@@ -70,7 +71,7 @@ export function StreamingBarApp() {
     }).then((fn) => fns.push(fn));
 
     // Stream mode info sent from main window when stream starts
-    listen<{ mode: string; targetIp?: string }>("stream-mode-info", (ev) => {
+    listen<{ mode: string; targetIp?: string; audioEnabled?: boolean; volume?: number; isMuted?: boolean }>("stream-mode-info", (ev) => {
       setElapsed(0); // reset timer when stream is newly started
       setStopping(false);
       setAudioPopupOpen(false);
@@ -79,6 +80,15 @@ export function StreamingBarApp() {
       }
       if (ev.payload.targetIp) {
         setTargetIp(ev.payload.targetIp);
+      }
+      if (ev.payload.audioEnabled !== undefined) {
+        setAudioEnabled(ev.payload.audioEnabled);
+      }
+      if (ev.payload.volume !== undefined) {
+        setVolume(ev.payload.volume);
+      }
+      if (ev.payload.isMuted !== undefined) {
+        setIsMuted(ev.payload.isMuted);
       }
     }).then((fn) => fns.push(fn));
 
@@ -135,19 +145,7 @@ export function StreamingBarApp() {
     // Disabled in Mini Bar: Window selection is complex, just used as indicator now.
   }, []);
 
-  /* ── Capture Exclusion: Hide bar from GStreamer (Windows) ──── */
-  useEffect(() => {
-    const applyExclusion = async () => {
-      try {
-        const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-        const win = getCurrentWebviewWindow();
-        await invoke("set_bar_capture_exclusion", { label: win.label });
-      } catch (e) {
-        console.warn("[StreamingBar] Failed to set capture exclusion:", e);
-      }
-    };
-    applyExclusion();
-  }, []);
+  /* ── Volume icon helper ───────────────────────────────────────────────── */
 
   /* ── Volume icon helper ───────────────────────────────────────────────── */
   const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume > 0.5 ? Volume2 : Volume1;
@@ -212,31 +210,33 @@ export function StreamingBarApp() {
       <div className="flex-1 min-w-0" data-tauri-drag-region />
 
       {/* ── Audio control ──────────────────────────────────────────────── */}
-      <div className="relative shrink-0">
-        <button
-          id="btn-bar-audio"
-          onClick={() => setAudioPopupOpen((o) => !o)}
-          title={t("streaming_bar.audio_control")}
-          className="
-            w-8 h-8 flex items-center justify-center rounded-lg
-            bg-white/10 hover:bg-white/20
-            transition-colors duration-150
-          "
-          style={{ color: isMuted ? "#ef4444" : "var(--bar-text)" }}
-        >
-          <VolumeIcon size={15} />
-        </button>
+      {audioEnabled && (
+        <div className="relative shrink-0">
+          <button
+            id="btn-bar-audio"
+            onClick={() => setAudioPopupOpen((o) => !o)}
+            title={t("streaming_bar.audio_control")}
+            className="
+              w-8 h-8 flex items-center justify-center rounded-lg
+              bg-white/10 hover:bg-white/20
+              transition-colors duration-150
+            "
+            style={{ color: isMuted ? "#ef4444" : "var(--bar-text)" }}
+          >
+            <VolumeIcon size={15} />
+          </button>
 
-        {audioPopupOpen && (
-          <AudioPopup
-            volume={volume}
-            isMuted={isMuted}
-            onVolumeChange={handleVolumeChange}
-            onMuteToggle={handleMuteToggle}
-            onClose={() => setAudioPopupOpen(false)}
-          />
-        )}
-      </div>
+          {audioPopupOpen && (
+            <AudioPopup
+              volume={volume}
+              isMuted={isMuted}
+              onVolumeChange={handleVolumeChange}
+              onMuteToggle={handleMuteToggle}
+              onClose={() => setAudioPopupOpen(false)}
+            />
+          )}
+        </div>
+      )}
 
       {/* ── Stop button ────────────────────────────────────────────────── */}
       <button

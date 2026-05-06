@@ -1,3 +1,13 @@
+
+devam eden sorunlar:
+
+ses açma kapatma çalışıyor ama ses seviyesi ayarı yapılamıyor slider çalışmıyor.
+ayırca bir ux sorunu var eğer kullanıcı sessiz yayın yapacaksa slider ayarına ses ayarlarına erişmesine hiç gerek yok zaten onlar gözükmemeli hem mini ada hem mini ada olmadan.
+mini ada olmadan yayın yapııldığında wifi sembolüne benzeyen yayın başlatılıyor yazısının üstündeki turuncu sembol taşıyor üstü de kesik gözüküyor oranın ayar daha düzgün yapılmalı. 
+asıl sorun midi ada, mini ada yayına kocaman siyah şerit gönderiyor. Eğer bu böyle devam edecekse tam ekran modunda yayını olduğu gibi aktarsak da sadece mini ada gözükse kocamaan siyah şerit yerine olur mu?
+
+onun dışında agent tarafına ethernet'i çekince çevrimdışı dedi oldu yani.
+
 # UniCast — UI & System Issues (Saha Testi, May 5 2026)
 
 Tüm sorunlar saha testinden türetilmiştir. Her biri için köken analizi, etkilenen dosyalar ve önerilen çözüm verilmiştir.

@@ -45,7 +45,7 @@ FIREBASE_DB_URL   = "https://unicast-8a705-default-rtdb.europe-west1.firebasedat
 
 HEARTBEAT_TIMEOUT = 5    # seconds
 GRACE_PERIOD      = 20   # seconds
-FIREBASE_INTERVAL = 60   # seconds
+FIREBASE_INTERVAL = 30   # seconds (Pi heartbeat to Firebase; frontend offline threshold = 2min)
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -65,6 +65,7 @@ class UniCastReceiver:
         self.idle_pipe  = None
         self.video_pipe = None
         self.audio_pipe = None
+        self.vol_element = None
 
         # Core state
         self.current_state  = State.IDLE
@@ -310,11 +311,19 @@ class UniCastReceiver:
         a_pipeline = (
             'udpsrc port=5002 caps="application/x-rtp, media=audio, '
             'clock-rate=48000, encoding-name=OPUS, payload=96" ! '
-            'rtpopusdepay ! opusdec ! audioconvert ! alsasink sync=true'
+            'rtpopusdepay ! opusdec ! audioconvert ! '
+            'volume name=vol ! alsasink sync=true'
         )
 
         self.video_pipe = Gst.parse_launch(v_pipeline)
         self.audio_pipe = Gst.parse_launch(a_pipeline)
+        
+        # Get volume element reference
+        self.vol_element = self.audio_pipe.get_by_name("vol")
+        if self.vol_element:
+            # Initialize with full volume (or we could store last volume)
+            self.vol_element.set_property("volume", 1.0)
+
         self.video_pipe.set_state(Gst.State.PLAYING)
         self.audio_pipe.set_state(Gst.State.PLAYING)
         self.current_state = State.STREAMING
@@ -413,9 +422,19 @@ class UniCastReceiver:
                     vol_str = msg.split(":")[1]
                     vol = int(vol_str)
                     vol = max(0, min(100, vol)) # Clamp 0-100
-                    # Use amixer to set system volume (standard on Raspberry Pi OS)
-                    result = subprocess.run(["amixer", "-q", "sset", "Master", f"{vol}%"], capture_output=True)
-                    if result.returncode == 0:
+                    
+                    # 1. Update system volume as fallback (optional)
+                    subprocess.run(["amixer", "-q", "sset", "Master", f"{vol}%"], capture_output=True)
+
+                    # 2. Update GStreamer volume element directly for instant/accurate response
+                    if self.vol_element:
+                        # GStreamer volume is 0.0 to 1.0
+                        self.vol_element.set_property("volume", vol / 100.0)
+                        print(f"[Audio] GStreamer volume updated to {vol}%")
+                    else:
+                        print(f"[Audio] Volume element not found in active pipeline")
+                    
+                    if res.returncode == 0:
                         print(f"[Audio] Volume set to {vol}% by {ip}")
                     else:
                         print(f"[Audio] amixer failed (rc={result.returncode}) for {vol}% from {ip}")

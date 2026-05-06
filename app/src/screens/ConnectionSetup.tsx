@@ -340,7 +340,7 @@ export function ConnectionSetup() {
         {/* ── PIN entry or Streaming Active ─────────────────────────────────── */}
         {isStreaming ? (
           <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-6 flex flex-col items-center justify-center gap-5 min-h-[220px]">
-            <div className="w-16 h-16 rounded-[2rem] bg-[var(--status-streaming)] flex items-center justify-center animate-[pulse_2s_ease-in-out_infinite] shadow-lg shadow-[var(--status-streaming)]/20">
+            <div className="w-16 h-16 rounded-[2rem] bg-[var(--status-streaming)] flex items-center justify-center animate-[pulse_2s_ease-in-out_infinite] shadow-lg shadow-[var(--status-streaming)]/20 mt-2">
               <Wifi size={28} className="text-white" />
             </div>
             
@@ -354,13 +354,14 @@ export function ConnectionSetup() {
             </div>
 
             {/* UI Parity: Simple controls when mini-bar is disabled */}
-            {!useSettingsStore.getState().streamingBar.enabled && (
+            {!useSettingsStore.getState().streamingBar.enabled && audioEnabled && (
                <div className="w-full max-w-xs flex items-center gap-4 px-4 py-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border)]">
                   <div className="flex items-center gap-2 flex-1">
                      <Volume2 size={14} className="text-[var(--text-muted)]" />
                      <input 
                        type="range"
                        min={0} max={1} step={0.01}
+                       value={isMuted ? 0 : useConnectionStore.getState().streamVolume}
                        className="w-full h-1.5 accent-[var(--accent)]"
                        onChange={(e) => useConnectionStore.getState().setStreamVolume(Number(e.target.value))}
                      />
