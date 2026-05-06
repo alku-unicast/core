@@ -437,7 +437,7 @@ class UniCastReceiver:
                     if res.returncode == 0:
                         print(f"[Audio] Volume set to {vol}% by {ip}")
                     else:
-                        print(f"[Audio] amixer failed (rc={result.returncode}) for {vol}% from {ip}")
+                        print(f"[Audio] amixer failed (rc={res.returncode}) for {vol}% from {ip}")
                 except Exception as e:
                     print(f"[Audio] Volume command error: {e}")
 
