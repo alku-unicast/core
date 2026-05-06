@@ -329,6 +329,12 @@ fn is_element_available(app: &AppHandle, name: &str) -> bool {
     // SINGLE SOURCE OF TRUTH: Use the centralized environment setup
     apply_gstreamer_env_to_cmd(app, &mut cmd);
 
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
     let output = cmd.arg(name).output();
     
     match output {

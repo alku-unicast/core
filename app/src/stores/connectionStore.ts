@@ -132,12 +132,21 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
               await bar.setFocus();
               // Give bar a moment to mount before sending mode info
               setTimeout(() => {
-                bar.emit("stream-mode-info", { mode: config.streamMode });
+                bar.emit("stream-mode-info", { 
+                  mode: config.streamMode, 
+                  targetIp: get().targetRoom?.ip 
+                });
               }, 500);
             }
           } catch (e) {
             console.warn("[connectionStore] Could not show streaming bar:", e);
           }
+        }
+
+        // ── ISSUE-06: Mute local speakers if setting is enabled ──────────
+        const { audio } = useSettingsStore.getState();
+        if (audio.muteLocal) {
+          invoke("mute_system_audio", { mute: true }).catch(console.warn);
         }
 
         // ── Minimize main window to tray ─────────────────────────────────
@@ -210,6 +219,8 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("stop_stream");
+      // ISSUE-06: Always unmute on stop
+      await invoke("mute_system_audio", { mute: false }).catch(console.warn);
     } catch (e) {
       console.error("[connectionStore] stopStream failed:", e);
     }
@@ -222,9 +233,13 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ isMuted: next });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("set_stream_volume", { volume: streamVolume, mute: next });
+      const { targetRoom } = get();
+      await invoke("set_stream_volume", { 
+        volume: streamVolume, 
+        mute: next, 
+        targetIp: targetRoom?.ip ?? null 
+      });
     } catch (e) {
-      // Revert on error
       set({ isMuted: !next });
     }
   },
@@ -233,8 +248,12 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ streamVolume: volume });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const { isMuted } = get();
-      await invoke("set_stream_volume", { volume, mute: isMuted });
+      const { isMuted, targetRoom } = get();
+      await invoke("set_stream_volume", { 
+        volume, 
+        mute: isMuted, 
+        targetIp: targetRoom?.ip ?? null 
+      });
     } catch (e) {
       console.error("[connectionStore] setStreamVolume failed:", e);
     }

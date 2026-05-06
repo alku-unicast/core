@@ -45,6 +45,7 @@ export function StreamingBarApp() {
   const [volume, setVolume]                 = useState(1.0);
   const [audioPopupOpen, setAudioPopupOpen] = useState(false);
   const [streamMode, setStreamMode]         = useState<"fullscreen" | "window">("fullscreen");
+  const [targetIp, setTargetIp]             = useState<string | null>(null);
   const [stopping, setStopping]             = useState(false);
 
   /* ── Timer ────────────────────────────────────────────────────────────── */
@@ -69,12 +70,15 @@ export function StreamingBarApp() {
     }).then((fn) => fns.push(fn));
 
     // Stream mode info sent from main window when stream starts
-    listen<{ mode: string }>("stream-mode-info", (ev) => {
+    listen<{ mode: string; targetIp?: string }>("stream-mode-info", (ev) => {
       setElapsed(0); // reset timer when stream is newly started
       setStopping(false);
       setAudioPopupOpen(false);
       if (ev.payload.mode === "fullscreen" || ev.payload.mode === "window") {
-        setStreamMode(ev.payload.mode);
+        setStreamMode(ev.payload.mode as "fullscreen" | "window");
+      }
+      if (ev.payload.targetIp) {
+        setTargetIp(ev.payload.targetIp);
       }
     }).then((fn) => fns.push(fn));
 
@@ -107,11 +111,11 @@ export function StreamingBarApp() {
     const next = !isMuted;
     setIsMuted(next);
     try {
-      await invoke("set_stream_volume", { volume, mute: next });
+      await invoke("set_stream_volume", { volume, mute: next, targetIp });
     } catch {
       setIsMuted(!next); // revert on error
     }
-  }, [isMuted, volume]);
+  }, [isMuted, volume, targetIp]);
 
   const handleVolumeChange = useCallback(
     async (v: number) => {
@@ -119,12 +123,12 @@ export function StreamingBarApp() {
       const shouldMute = v === 0;
       if (shouldMute !== isMuted) setIsMuted(shouldMute);
       try {
-        await invoke("set_stream_volume", { volume: v, mute: shouldMute });
+        await invoke("set_stream_volume", { volume: v, mute: shouldMute, targetIp });
       } catch (e) {
         console.error("[StreamingBar] volume change failed:", e);
       }
     },
-    [isMuted]
+    [isMuted, targetIp]
   );
 
   const handleModeToggle = useCallback(async () => {

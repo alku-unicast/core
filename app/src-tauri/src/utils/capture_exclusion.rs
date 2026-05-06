@@ -5,12 +5,13 @@ pub fn exclude_from_capture(hwnd: isize) -> bool {
     use windows::Win32::Foundation::HWND;
     use windows::Win32::UI::WindowsAndMessaging::SetWindowDisplayAffinity;
     use windows::Win32::UI::WindowsAndMessaging::WINDOW_DISPLAY_AFFINITY;
-    const WDA_EXCLUDEFROMCAPTURE: u32 = 0x00000011;
+    const WDA_MONITOR: u32 = 0x00000001;
+    // WDA_MONITOR makes the window transparent to capture, showing the background instead of black.
 
     unsafe {
         SetWindowDisplayAffinity(
             HWND(hwnd as isize),
-            WINDOW_DISPLAY_AFFINITY(WDA_EXCLUDEFROMCAPTURE),
+            WINDOW_DISPLAY_AFFINITY(WDA_MONITOR),
         )
         .map(|_| true)
         .unwrap_or(false)

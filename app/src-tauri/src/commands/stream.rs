@@ -220,8 +220,10 @@ pub fn stop_stream_internal() -> bool {
         let pid = child.id();
         #[cfg(target_os = "windows")]
         {
+            use std::os::windows::process::CommandExt;
             let _ = std::process::Command::new("taskkill")
                 .args(["/F", "/T", "/PID", &pid.to_string()])
+                .creation_flags(0x08000000) // CREATE_NO_WINDOW
                 .output();
         }
         #[cfg(not(target_os = "windows"))]
@@ -248,16 +250,25 @@ pub async fn switch_stream_mode(
 }
 
 #[tauri::command]
-pub async fn set_stream_volume(volume: f32, mute: bool) -> Result<bool, String> {
-    log::info!("[stream] set_stream_volume: volume={volume}, mute={mute}");
+pub async fn set_stream_volume(
+    volume: f32, 
+    mute: bool, 
+    target_ip: Option<String>
+) -> Result<bool, String> {
+    log::info!("[stream] set_stream_volume: volume={volume}, mute={mute}, target={target_ip:?}");
     
-    // Attempt to send a UDP signal to the receiver if we know its IP
-    // For now, we'll try to find the last target_ip used.
-    // In a real scenario, we'd store the current stream config.
-    
-    // MVP Approach: Just log for now, but the frontend state is updated.
-    // Real Fix: If we wanted to control GStreamer, we'd need a different launcher.
-    // But since the user wants to test Linux stability, this is a placeholder.
+    if let Some(ip) = target_ip {
+        let addr = format!("{}:5001", ip);
+        let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| e.to_string())?;
+        
+        let msg = if mute {
+            "VOLUME:0".to_string()
+        } else {
+            format!("VOLUME:{}", (volume * 100.0) as u32)
+        };
+
+        let _ = socket.send_to(msg.as_bytes(), &addr);
+    }
     
     Ok(true)
 }

@@ -324,7 +324,7 @@ macOS: Framework path expansion
 - **Linux Runtime Issue:** On some Linux environments (especially Wayland/Live Ubuntu), the stream would fail with `no element "ximagesrc"`.
 - **CI/CD Quality:** 7 warnings in Linux builds due to improperly gated Windows-specific code.
 
-**Implemented Strategy (Verified with Claude):**
+**Implemented Strategy:**
 
 1. **Windows Race Condition Fix:**
    - Modified `RoomDiscovery.tsx` to properly await `initFirebase` (with its 5s timeout) before starting the room listener. Added `isMounted` safety to prevent state updates on unmounted components.
@@ -396,6 +396,33 @@ macOS: Framework path expansion
 - **The Gap:** `get_open_windows` was previously returning an empty list on Linux.
 - **The Solution:** Implemented X11 window enumeration in `windows.rs` using the `wmctrl` utility.
 - **Result:** Users can now select and stream specific windows on Linux (X11).
+
+- [x] **ISSUE-01: Duplicate UI (RoomGrid)**: Removed redundant ManualConnect from RoomGrid.
+- [x] **ISSUE-02: ManualConnect Visibility**: Section now hides when online and rooms are found.
+- [x] **ISSUE-03: IP Validation**: Strict regex implemented for `pi_ip` to catch "No network" artifacts.
+- [x] **ISSUE-04: Pi IP Update (Logic)**: Defined the sentinel loop (last_registered_ip) for the Pi agent.
+- [x] **ISSUE-05: CMD Window Flashes**: Applied `CREATE_NO_WINDOW` globally to Rust `Command` calls.
+- [x] **ISSUE-06: Mute Sync**: Wired `mute_system_audio` to start/stop stream lifecycle.
+- [x] **ISSUE-07: Black Capture Strip**: Swapped `WDA_EXCLUDEFROMCAPTURE` for `WDA_MONITOR` (Transparency fix).
+- [x] **ISSUE-08: Bar Audio Controls**: Wired `targetIp` to Bar window for UDP command routing.
+- [x] **ISSUE-09: AudioPopup Clipping**: Increased bar window height to 200px (transparent buffer).
+- [x] **ISSUE-10: Linux Modal Polish**: Bold/Uppercase emphasis on "TAM EKRANA GETİRİN".
+
+---
+
+### May 6, 2026 - Saha Testi Stabilizasyonu & Pi Agent Güçlendirme
+
+**Pi Agent (Receiver) İyileştirmeleri:**
+- [x] **Network Sentinel Loop:** IP adresi değişimlerini (kopma/yeniden bağlanma) anlık takip eden ve Firebase'i güncelleyen sentinel döngüsü eklendi.
+- [x] **Uzaktan Ses Kontrolü (ISSUE-08):** `amixer sset Master` entegrasyonu ile UDP üzerinden Pi sistem sesini kontrol etme özelliği eklendi.
+- [x] **Thread Safety:** Arka plan thread'lerinden gelen GStreamer state değişimleri `GLib.idle_add` ile ana loop'a bağlanarak güvenli hale getirildi.
+- [x] **Resource Management:** IP kontrolü sırasında kullanılan UDP soketlerinin sızıntı yapmaması için `socket.close()` protokolü eklendi.
+
+**Sender (Tauri/Windows/Linux) İyileştirmeleri:**
+- [x] **Kritik Build Fix:** Frontend'deki syntax hataları (setTimeout) ve eksik `invoke` importları temizlendi.
+- [x] **ManualConnect Reversion:** Senin isteğin üzerine manuel IP girişi ONLINE modda da görünür kılındı.
+- [x] **Windows Siyah Bar Fix:** `WDA_EXCLUDEFROMCAPTURE` yerine `WDA_MONITOR` kullanılarak Windows 11'deki siyah kutu sorunu masaüstü arka planı gösterilerek "görünmez" kılındı.
+- [x] **Derleme Doğrulaması:** `tsc` ve `cargo check` ile build bütünlüğü onaylandı.
 
 ---
 
@@ -519,4 +546,275 @@ macOS: Framework path expansion
 
 **Last Updated:** May 3, 2026 (20:00)  
 **Total Sessions:** 49 | **Stability:** Production-Ready (With Documented Constraints)
+
+---
+
+## 🚀 Recent Progress (May 4-5, 2026)
+
+### May 4-5: Implementation Plan Analizi, Mimari Düzeltmeler & Yeni Özellikler
+
+**Tarih:** 2026-05-05  
+
+
+---
+
+#### 1. Unicast_Implementation_Plan.md — 16 Mimari Hata Tespit Edildi ve Düzeltildi
+
+`Unicast_Implementation_Plan.md` detaylı analiz edildi. 16 sorun bulundu; tüm özellikler doğru mimariyle sıfırdan implemente edildi.
+
+**Kritik Hatalar (Çalışmaz veya Veri Bozardı):**
+| # | Hata | Düzeltme |
+|---|------|----------|
+| 1 | `invoke<Room[]>('fetch_firebase_rooms')` — yanlış return tipi | Mevcut `roomService.ts` `parseRoom()` pipeline'ı korundu (`HashMap<String,RawRoom>` → `Room`) |
+| 2 | `invoke('send_wake_signal')` — komut yok | `ManualConnectSection` → `connectionStore.connect()` + `navigate('/connect')` (mevcut `wake_pi_hdmi` akışı) |
+| 3 | `mergeWithFavorites → lastSeen: Date.now()` | 4-tier status sistemini bozardı. `parseRoom()` gerçek Firebase `last_seen` timestamp'i kullanıyor |
+| 4 | `DETACHED_PROCESS (0x00000008)` | `child.kill()` ve `child.try_wait()` bozulurdu. Sadece `CREATE_NO_WINDOW (0x08000000)` kullanıldı |
+| 5 | Room tipi: `name`, `building`, `floor: number` | Gerçek tip: `label`, `floor: string`. Hiç değiştirilmedi |
+
+**Mimari Çatışmalar:**
+| # | Hata | Düzeltme |
+|---|------|----------|
+| 6 | Çift favori kaynağı (`roomStore.favoriteRoomIds` + `settingsStore.favorites`) | Yeni `favoriteRoomIds` hiç oluşturulmadı. Mevcut `settingsStore.favorites` korundu |
+| 7 | Çift Firebase fetch (yeni `roomStore.initializeRooms` + mevcut `roomService.ts` poll) | Tek kaynak: `roomService.ts`. Plan'ın `initializeRooms` yazılmadı |
+| 8 | Çift persistence (`plugin-store` + Rust `write_settings`) | `plugin-store` hiç eklenmedi. `hideLinuxWindowWarning` mevcut Rust settings sistemine eklendi |
+| 9 | `useNetworkStore` StreamingBarApp'ta (Zustand cross-window paylaşımı yok) | StreamingBarApp'a networkStore eklenmedi |
+| 10 | Prematüre `ONLINE` state (`checkNetworkState` hemen `ONLINE` dönüyordu) | `checkLocalNetwork()` sadece interface varlığını kontrol ediyor; `ONLINE`/`LOCAL_ONLY` `roomService` set ediyor |
+
+**Eksik Kurulum / Tutarsızlıklar:**
+| # | Hata | Düzeltme |
+|---|------|----------|
+| 11-12 | `@tauri-apps/plugin-store`, `@tauri-apps/plugin-os` dependency kurulumu yok | Hiç kullanılmadı. Cache: Rust komutları. Linux tespiti: `navigator.userAgent` |
+| 13 | `network.rs` "yeni dosya" diye tanımlanmış, ama zaten var | Mevcut dosyaya `get_network_info` eklendi |
+| 14 | Plain CSS (`status-banner`, `modal-overlay`) — proje Tailwind kullanıyor | Tüm component'ler Tailwind utility class ile yazıldı |
+| 15 | Manuel çeviri objesi (`translations[language]`) — proje `react-i18next` kullanıyor | `useTranslation()` + `t("key")` kullanıldı |
+| 16 | `displayMode` settingsStore'da yok | `streamMode` (connectionStore'dan) kullanıldı |
+
+---
+
+#### 2. Eklenen Yeni Özellikler (Doğru Mimariyle)
+
+**Rust Backend (yeni/değiştirilen):**
+- `commands/cache.rs` — YENİ: `read_rooms_cache` / `write_rooms_cache` (appdata JSON, plugin-store dependency yok)
+- `commands/network.rs` — `get_network_info` eklendi (UDP trick, gerçek paket göndermez, Google DNS'e route sorar)
+- `commands/firebase.rs` — 3 saniyelik `reqwest` timeout eklendi (LOCAL_ONLY tespiti için)
+- `commands/stream.rs` — Windows'ta `CREATE_NO_WINDOW (0x08000000)` — sadece bu, `DETACHED_PROCESS` yok
+- `commands/settings.rs` — `hideLinuxWindowWarning: bool` + `#[serde(rename="hideLinuxWindowWarning", default)]` (eski settings.json uyumlu)
+- `commands/mod.rs` — `pub mod cache` eklendi
+- `lib.rs` — `get_network_info`, `read_rooms_cache`, `write_rooms_cache` register edildi
+
+**TypeScript (yeni/değiştirilen):**
+- `types/network.ts` — YENİ: `NetworkState = 'CHECKING' | 'ONLINE' | 'LOCAL_ONLY' | 'NO_NETWORK'`
+- `types/settings.ts` — `hideLinuxWindowWarning: boolean` eklendi
+- `stores/networkStore.ts` — YENİ: sadece lokal interface kontrol eder, prematüre ONLINE yok
+- `stores/settingsStore.ts` — `setHideLinuxWindowWarning()` aksiyonu, `saveToDisk` payload güncellendi
+- `stores/roomStore.ts` — `isRefreshing: boolean`, `lastCacheUpdate: number | null` eklendi
+- `stores/index.ts` — `useNetworkStore` export eklendi
+- `services/roomService.ts` — TAM YENİDEN YAZILDI: cache yükle → anında göster → Firebase fetch → networkState güncelle → cache kaydet → 30s poll
+- `components/layout/StatusBanner.tsx` — YENİ (Tailwind + i18next): NO_NETWORK=kırmızı, LOCAL_ONLY=sarı, refresh=mavi spinner
+- `components/rooms/ManualConnectSection.tsx` — YENİ (Tailwind + i18next): IP gir → `connectionStore.connect()` → `/connect` sayfasına git
+- `components/modals/LinuxWarningModal.tsx` — YENİ (Tailwind + i18next): "Bir daha gösterme" checkbox, `settingsStore` persist
+- `screens/RoomDiscovery.tsx` — `StatusBanner` + `ManualConnectSection` eklendi
+- `screens/ConnectionSetup.tsx` — inline amber uyarı banner kaldırıldı, `LinuxWarningModal` eklendi; `streamMode` (connectionStore) + `hideLinuxWindowWarning` (settingsStore) kullanıyor
+- `screens/StreamingBarApp.tsx` — **BUG DÜZELTİLDİ:** `stream-stopped` listener artık reason kontrol ediyor
+- `i18n/locales/tr.json` — `network.*` ve `linux_warning.*` keyleri eklendi
+- `i18n/locales/en.json` — `network.*` ve `linux_warning.*` keyleri eklendi
+
+---
+
+#### 3. StreamingBarApp.tsx — Kritik Bug Düzeltmesi
+
+**Sorun:** `stream-stopped` listener, `reason === "error"` (auto-restart) durumunda da bar'ı gizliyordu. Auto-restart sırasında bar kayboluyordu, `ConnectionSetup.tsx`'teki `willRestart` mantığı etkisiz kalıyordu.
+
+```typescript
+// ÖNCE (bug — unconditional hide):
+listen("stream-stopped", () => {
+  getCurrentWebviewWindow().hide();
+})
+
+// SONRA (düzeltildi):
+listen<{ reason: string }>("stream-stopped", (ev) => {
+  if (ev.payload.reason !== "error") {
+    getCurrentWebviewWindow().hide(); // Auto-restart → bar açık kalır
+  }
+})
+```
+
+---
+
+#### 4. Stale-While-Revalidate Cache — Network State Akışı
+
+```
+startRoomListener() çağrılır
+  → checkLocalNetwork() → NO_NETWORK veya hasLocalInterface=true (CHECKING kalır)
+  → loadCache() → varsa anında UI'a yükle (isLoading=false, oda listesi görünür)
+  → fetchRooms() → başarılı: ONLINE + cache güncelle | hata/timeout: LOCAL_ONLY
+  → 30s'de bir fetchRooms() tekrarı
+```
+
+**StatusBanner görünüm kuralları:**
+- `NO_NETWORK` → kırmızı banner, WifiOff ikonu
+- `LOCAL_ONLY` → sarı banner, önbellek yaşı (dakika)
+- `ONLINE + isRefreshing` → gri spinner (arka planda güncelleme)
+- `ONLINE` → hiçbir şey gösterme
+
+---
+
+#### 5. Build Durumu (May 5, 2026)
+
+- **TypeScript:** 0 hata
+- **Rust:** 0 hata (sadece 2 `unused_mut` warning — `path_setup.rs`'de önceden var, bu değişikliklerle ilgisiz)
+- **Commit edilmedi** — tüm değişiklikler working tree'de
+
+---
+
+## 📊 Project Status Summary (May 5, 2026)
+**Phase:** Phase 6 Active — Yeni Özellikler Eklendi (Cache, Network Layer, UI)  
+**Build Status:** ✅ TypeScript 0 hata | ✅ Rust 0 hata | ⏳ Commit bekliyor  
+**Yeni Özellikler:** Stale-While-Revalidate cache, 3-tier network state, StatusBanner, ManualConnect, LinuxWarningModal, Windows CMD fix, Firebase timeout  
+**Açık Sorunlar:** Aşağıda (May 5 - Saha Testi Bulguları) listelenecek
+
+**Last Updated:** May 5, 2026  
+**Total Sessions:** 50 | **Stability:** Feature-Complete, Saha Testleri Devam Ediyor
+
+---
+
+## 🐛 Saha Testi Bulguları (May 5, 2026)
+
+Aşağıdaki sorunlar saha testinde tespit edilmiştir. Henüz düzeltilmemiştir.
+
+---
+
+### BUG-01 — Manuel Bağlantı Çift Gösteriliyor (UI Çakışması)
+
+**Durum:** Ağ bağlantısı olmasına rağmen `ManualConnectSection` (yeni eklenen) gösteriliyor.  
+**Ek Sorun:** Eskiden `RoomGrid.tsx`'e eklenmiş "Direct Connection" alanı hâlâ aktif — şu an ekranda iki ayrı manuel bağlantı bölümü var.  
+**Kök Neden:** Mayıs 2026'da yapılan Apr 29 güncellemesinde `RoomGrid.tsx`'e bir fallback manuel IP alanı eklenmişti. Yeni `ManualConnectSection` bileşeni bu eski alanı kaldırmadan eklendi.  
+**Çözüm Önerisi:** `RoomGrid.tsx`'teki eski "Direct Connection" / fallback UI'ı kaldır; tek kaynak olarak `ManualConnectSection` kalsın. Ayrıca `ManualConnectSection`'ın `networkState === 'CHECKING'` veya `ONLINE` olsa bile gösterilmesi gerekmediğini değerlendirmek gerekiyor (belki sadece `LOCAL_ONLY` durumunda belirgin, `ONLINE`'da küçük/gizli).  
+**İlgili Dosyalar:** `components/rooms/RoomGrid.tsx`, `components/rooms/ManualConnectSection.tsx`
+
+---
+
+### BUG-02 — Pi `pi_ip: "No network"` Durumunda Yanlış Status
+
+**Durum:** Pi ethernet kablosu çekilince Firebase'e `pi_ip: "No network"`, `pi_status: "idle"` yazıyor. Uygulama bu odayı `idle` veya `offline` olarak gösteriyor — `unconfigured` olarak göstermesi gerekirdi.  
+**Firebase Örneği:**
+```json
+"213": {
+  "floor": "2",
+  "last_seen": 1777984950,
+  "name": "213",
+  "pi_ip": "No network",
+  "pi_status": "idle"
+}
+```
+**Kök Neden:** `roomService.ts` → `parseRoom()` içindeki `unconfigured` kontrolü şu an sadece boş string (`""`) kontrol ediyor:
+```typescript
+if (!raw.pi_ip || raw.pi_ip.trim() === "") { status = "unconfigured"; }
+```
+`"No network"` boş string değil; dolayısıyla `unconfigured`'a düşmüyor.  
+**Çözüm Önerisi:** `parseRoom()` içinde `pi_ip` değeri `"No network"` veya boş/boşluk ise → `unconfigured` veya `offline` göster (tartışılacak — Pi bağlantısı kesildiğinde oda gerçekten "offline" sayılmalı mı yoksa "unconfigured" mı?).  
+**Önerilen Mantık:** `pi_ip` = `"No network"` → `offline` (oda tanımlı ama Pi şu an internetsiz). Bu, "unconfigured"dan (Pi hiç yapılandırılmamış) farklı bir durum.  
+**İlgili Dosyalar:** `services/roomService.ts` → `parseRoom()`
+
+---
+
+### BUG-03 — Pi İnternet Kesildiğinde / Geri Geldiğinde Durum Güncellenmiyor
+
+**Durum:** Pi'nin ethernet kablosu çekilip geri takılıyor. Firebase ve uygulama ekranı "No network" / stale durumda kalıyor, yeni IP'yi görmüyor.  
+**Bileşen 1 — Pi Agent (Alıcı Taraf):**  
+Pi internet yokken Firebase'e yazamaz. Bağlantı gelince agent'in kendi IP'sini ve `pi_status`'ü güncellemesi lazım. Bu Pi'deki `agent.py`/`agent` kodunu ilgilendiriyor.  
+**Bileşik 2 — "No network" Pi tarafında yazılıyor:**  
+Pi bağlantı kesildiğinde `pi_ip: "No network"` yazıyor ama bu da internet gerektiriyor — paradoks. Muhtemelen Pi kapatılırken ya da önceki oturumda bu değeri yazdı.  
+**Tartışma Konusu:** İnternet yokken Pi hiçbir şey yazamaz — bu normal davranış. Önemli olan Pi internet geldiğinde IP'sini ve `pi_status: "idle"`'ı hızlıca güncellemesi. Bu uygulama tarafında değil Pi agent tarafında bir düzeltme.  
+**Uygulama Tarafı Önlemi:** `"No network"` string'ini `offline` olarak işle (BUG-02 düzeltmesi), kullanıcıya doğru durumu göster.  
+**İlgili Dosyalar:** Pi `agent.py` (alıcı cihaz), `services/roomService.ts`
+
+---
+
+### BUG-04 — Uygulama Açılışında ve Yayın Sırasında CMD Penceresi Geliyor
+
+**Durum:** Windows'ta;
+- Uygulama açılırken CMD ekranı anlık görünüyor
+- Yayın ekranına girildiğinde CMD ~5-6 saniye görünüp git-gel yapıyor
+- Ayarlar ekranına girildiğinde de CMD geliyor  
+
+**Not:** `CREATE_NO_WINDOW` düzeltmesi `stream.rs`'e eklendi ama henüz commit edilmedi (working tree'de). Bu düzeltme sadece GStreamer spawn'ını kapsıyor.  
+**Kök Neden Analizi:**  
+1. Commit edilmemiş değişiklikler çalışmıyor olabilir (geliştirme build'i farklı davranabilir)  
+2. Uygulama açılışındaki CMD: GStreamer dışı başka bir `Command::spawn()` çağrısı olabilir (`gst-inspect`, `pactl`, `wmctrl` vb.)  
+3. Ayarlar ekranındaki CMD: Encoder detection (`detect_encoder`) — `gst-inspect-1.0.exe` spawn ediyor, bu da `CREATE_NO_WINDOW` gerektiriyor  
+**Çözüm Önerisi:** `CREATE_NO_WINDOW` tüm `Command::spawn()` çağrılarına uygulanmalı — sadece `stream.rs` değil, `encoder.rs` (`gst-inspect`), ve diğer Windows process spawn noktaları.  
+**İlgili Dosyalar:** `commands/stream.rs`, `commands/encoder.rs`, tüm `Command::spawn()` kullanımları
+
+---
+
+### BUG-05 — "Yayın Sırasında Sesi Kapat" Butonu Çalışmıyor
+
+**Durum:** Ayarlarda "Yayın sırasında hoparlörü kapat" (`muteLocal`) aktif edildiğinde gönderici cihazın hoparlörü kapanmıyor.  
+**Beklenen Davranış:** Yayın başladığında gönderici bilgisayarın hoparlörü susturulur (kullanıcı kendi sesini duymaz). Alıcı ekranda (projektör/Pi) ses çalmaya devam eder.  
+**Mevcut Davranış:** Kullanıcının bilgisayarında ses çalmaya devam ediyor.  
+**Kök Neden:** `globalAudio.muteLocal` ayarı var ama stream başladığında sistem sesini mute eden kod çağrılmıyor ya da `mute_system_audio` komutu stream lifecycle'ına bağlı değil.  
+**Çözüm Önerisi:** `connectionStore.startStream()` başarılı olduğunda, `muteLocal === true` ise `invoke("mute_system_audio", { mute: true })` çağır. `stopStream()` çağrıldığında da `mute_system_audio(false)` ile geri aç.  
+**İlgili Dosyalar:** `stores/connectionStore.ts` → `startStream()` / `stopStream()`, `commands/audio.rs` → `mute_system_audio`
+
+---
+
+### BUG-06 — Tam Ekran Yakalamada Minik Ada Siyah Gözüküyor (Windows)
+
+**Durum:** Windows'ta tam ekran (fullscreen) yayın yaparken streaming bar (minik ada) projektörde siyah kutu olarak görünüyor.  
+**Linux Durumu:** Linux'ta minik adanın yayına girmemesi gerekiyor — eğer engellenemiyorsa belirtilmeli.  
+**Mevcut Çözüm:** `WDA_EXCLUDEFROMCAPTURE` (`set_bar_capture_exclusion`) uygulanmış ama etkisiz görünüyor.  
+**Olası Nedenler:**  
+- D3D11 fullscreen capture, `WDA_EXCLUDEFROMCAPTURE` flag'ini atlıyor olabilir  
+- Capture exclusion bar window açılmadan önce uygulanıyor, sonra etki etmiyor olabilir  
+- GDI/DX9 fallback'te exclusion desteklenmiyor olabilir  
+**İlgili Dosyalar:** `commands/capture.rs`, `utils/capture_exclusion.rs`, `lib.rs` setup bloğu
+
+---
+
+### BUG-07 — Minik Ada Ses Kontrolleri Çalışmıyor
+
+**Durum:** Streaming bar'daki ses butonu ve volume slider'ı işe yaramıyor.  
+**Çözüm Önerisi:** `StreamingBarApp.tsx`'teki `handleVolumeChange` ve `handleMuteToggle` → `invoke("set_stream_volume")` çağrısını debug et. Bar ayrı bir Tauri penceresi olduğu için invoke permission'ları kontrol edilmeli.  
+**İlgili Dosyalar:** `screens/StreamingBarApp.tsx`, `tauri.conf.json` (capability/permission), `commands/stream.rs` → `set_stream_volume`
+
+---
+
+### BUG-08 — Ses Popup'u Windows'ta Yarı Kesik
+
+**Durum:** Minik ada'daki ses ikonuna tıklandığında açılan popup, Windows'ta ekranın dışına taşıyor / yarı kesik görünüyor.  
+**Linux Durumu:** Sorun yok (bounding box daha büyük).  
+**Kök Neden:** Popup muhtemelen bar'ın üstüne (`bottom`) doğru açılıyor ama bar ekranın en altında olduğu için taşıyor. Ya da popup konumu bar'ın pozisyonunu hesaba katmıyor.  
+**Çözüm Önerisi:** `AudioPopup` bileşenini `position: absolute; bottom: 100%` yerine ekran sınırlarını kontrol eden bir mantıkla aç. Ya da bar penceresinin yüksekliğini artır.  
+**İlgili Dosyalar:** `components/streaming-bar/AudioPopup.tsx`, `screens/StreamingBarApp.tsx`
+
+---
+
+### BUG-09 — Linux Modal: F11 İpucu Kaldırılmalı, Uyarı Metni Güçlendirilmeli
+
+**Durum:** `LinuxWarningModal`'daki alt "💡" ipucu kutusunda "F11 tuşuna basabilirsiniz" yazıyor — kaldırılmalı.  
+**Ana Uyarı Metni:** "istediğiniz boyuta getirin" yerine daha güçlü bir ifade kullanılmalı.  
+**İstenen Değişiklik:**
+- `linux_warning.tip` i18n key'i kaldırılacak (veya boş bırakılacak, kutunun tamamı kaldırılacak)
+- `linux_warning.description` güncelleme: ana mesajda **"TAM EKRANA GETİRİN"** kalın/büyük harflerle vurgulanacak  
+**İlgili Dosyalar:** `components/modals/LinuxWarningModal.tsx`, `i18n/locales/tr.json`, `i18n/locales/en.json`
+
+---
+
+## 📊 Açık Sorun Özeti (May 5, 2026)
+
+| # | Sorun | Öncelik | İlgili Dosya |
+|---|-------|---------|--------------|
+| BUG-01 | Çift manuel bağlantı UI | 🔴 Yüksek | `RoomGrid.tsx`, `ManualConnectSection.tsx` |
+| BUG-02 | `pi_ip: "No network"` yanlış status | 🔴 Yüksek | `roomService.ts` → `parseRoom()` |
+| BUG-03 | Pi internet kesilince stale durum | 🟠 Orta | Pi `agent.py` (alıcı taraf) |
+| BUG-04 | CMD penceresi tüm spawn'larda | 🔴 Yüksek | `encoder.rs`, `stream.rs`, tüm spawn'lar |
+| BUG-05 | `muteLocal` stream'e bağlı değil | 🟠 Orta | `connectionStore.ts` |
+| BUG-06 | Fullscreen'de bar siyah (Windows) | 🟠 Orta | `capture_exclusion.rs` |
+| BUG-07 | Bar ses kontrolleri çalışmıyor | 🔴 Yüksek | `StreamingBarApp.tsx`, permissions |
+| BUG-08 | Ses popup'u kesik (Windows) | 🟡 Düşük | `AudioPopup.tsx` |
+| BUG-09 | Linux modal metni güncellenmeli | 🟡 Düşük | `LinuxWarningModal.tsx`, i18n |
+
+**Last Updated:** May 5, 2026  
+**Total Sessions:** 50 | **Stability:** Feature-Complete, Bug Fixes Needed
 

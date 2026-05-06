@@ -160,12 +160,22 @@ class UniCastReceiver:
             print(f"[Firebase] DB Update failed: {e}")
 
     def _firebase_heartbeat(self):
-        """Background daemon: refreshes last_seen every FIREBASE_INTERVAL seconds."""
+        """Background daemon: refreshes last_seen and monitors IP changes."""
         while True:
             time.sleep(FIREBASE_INTERVAL)
+            
+            # ISSUE-04: Network Sentinel Loop
+            new_ip = self._get_ip()
+            if new_ip != self.ip_address:
+                print(f"[Network] IP address changed: {self.ip_address} -> {new_ip}")
+                self.ip_address = new_ip
+                # Refresh idle screen to show new IP safely on main thread
+                if self.current_state == State.IDLE:
+                    GLib.idle_add(self.setup_idle_screen)
+
             if self.current_state != State.OFFLINE:
                 self._fb_write_status(self.current_state)
-                print(f"[Firebase] Heartbeat — status: {self.current_state}")
+                print(f"[Firebase] Heartbeat — status: {self.current_state}, IP: {self.ip_address}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Utilities
@@ -175,11 +185,17 @@ class UniCastReceiver:
         return str(random.randint(1000, 9999))
 
     def _get_ip(self) -> str:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
-            return s.getsockname()[0]
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
         except Exception:
+            try:
+                s.close()
+            except Exception:
+                pass
             return "No network"
 
     def _get_cpu_temp(self) -> str:
@@ -390,6 +406,21 @@ class UniCastReceiver:
             elif msg == "STOP":
                 self.stop_streaming(immediate_new_pin=False)
                 self.last_heartbeat = time.time()
+
+            # ── VOLUME:<0-100> (ISSUE-08) ───────────────────────────────────
+            elif msg.startswith("VOLUME:"):
+                try:
+                    vol_str = msg.split(":")[1]
+                    vol = int(vol_str)
+                    vol = max(0, min(100, vol)) # Clamp 0-100
+                    # Use amixer to set system volume (standard on Raspberry Pi OS)
+                    result = subprocess.run(["amixer", "-q", "sset", "Master", f"{vol}%"], capture_output=True)
+                    if result.returncode == 0:
+                        print(f"[Audio] Volume set to {vol}% by {ip}")
+                    else:
+                        print(f"[Audio] amixer failed (rc={result.returncode}) for {vol}% from {ip}")
+                except Exception as e:
+                    print(f"[Audio] Volume command error: {e}")
 
             else:
                 print(f"[Auth] Unknown message from {ip}: {msg!r}")

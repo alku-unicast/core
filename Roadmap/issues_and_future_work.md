@@ -96,3 +96,62 @@ Mevcut `agent.py` bir benchmarking prototipdir. Üretime geçiş için şu eklen
 - **BUSY Yanıtı:** Yayın devam ederken yeni bağlantı isteklerini reddetme (`b"BUSY"`)
 - **Session Token:** Çökme sonrası PIN'siz reconnect desteği (5 dakika penceresi)
 
+
+## 6. İmzalama Mevzuları
+
+### 1. Zaman veya Sayı Değil, "Sürüm" Önemlidir
+SmartScreen'de itibar kazanmak için net bir zaman yoktur; **indirme ve sorunsuz çalışma sayısına** bakar (genellikle binlerce indirme gerekir). Okul projesi ölçeğinde (örneğin 100-200 kişi) bu eşiğe organik olarak ulaşmak neredeyse imkansızdır.
+
+Daha da kötüsü: İtibar (reputation) dosyanın **Hash değerine (matematiksel izine)** verilir. Yani sen uygulamada ufak bir bug bulup sürümü `v1.0.1` yaptığında ve yeni bir `.exe` derlediğinde dosyanın hash'i değişir. **Bütün itibar sıfırlanır ve uyarı ekranı geri döner.** (Sadece ücretli sertifikalarda itibar sertifikaya tanımlanır, dosyaya değil).
+
+### 2. Self-Signed (Öz-İmzalı) Sertifika Dağıtmak Riskli Olabilir
+Kişisel bilgisayarlara öz-imzalı (self-signed) bir uygulama gönderdiğinde, Windows Defender bunu imzasız bir uygulamadan **daha şüpheli** bulabilir. Çünkü zararlı yazılım üretenler genellikle sahte/öz-imzalı sertifikalarla güvenlik duvarlarını kandırmaya çalışırlar.
+
+
+### Peki Öğrenci/Açık Kaynak Projelerinde Gerçek Çözüm Nedir?
+
+Github'daki binlerce bağımsız geliştiricinin (indie) ve öğrencinin yaptığı **en standart ve kabul gören yol şudur:**
+
+#### A. Kurulum Kılavuzu (Kabul Edilmiş Standart)
+Uygulamayı **hiç imzalamadan** (olduğu gibi) GitHub'a yüklersiniz. GitHub'daki Readme dosyasına veya indirme sayfasına büyük bir **"Kurulum Uyarısı"** eklersiniz. 
+
+Kullanıcılara şunu netçe gösterirsiniz (mümkünse 3 saniyelik bir GIF ile):
+1. *"Windows Kişisel Bilgisayarınızı Korudu"* uyarısı çıktığında **Ek Bilgi (More Info)** yazısına tıklayın.
+2. Çıkan **Yine de Çalıştır (Run Anyway)** butonuna basın.
+*Açıklama olarak da: "Uygulamamız açık kaynaklı bir üniversite projesi olduğu için ücretli ticari sertifikaya sahip değildir. Kaynak kodlarının tamamı GitHub'da açıktır ve güvenlidir."* yazmanız fazlasıyla yeterli ve profesyoneldir. Hocalar da, mühendislik öğrencileri de bu duruma çok aşıktır.
+
+#### B. Microsoft'a "False Positive" (Yanlış Alarm) Bildirimi (Opsiyonel)
+Projenin tamamen bittiği, artık kod değiştirmeyeceğiniz o **"Final Sürümünü" (v1.0.0)** derlediğinizde:
+1. Microsoft'un [Security Intelligence Gönderim Portalı](https://www.microsoft.com/en-us/wdsi/filesubmission)'na gidin.
+2. Geliştirici olarak `.msi` veya `.exe` dosyanızı "Yazılım Geliştiricisiyim, dosyam virüs değil ama SmartScreen engelliyor" seçeneğiyle yükleyin.
+3. Microsoft'un otomatik analiz araçları dosyanızda zararlı bir kod olmadığını (sadece GStreamer vb. araçlar çağırdığını) görüp **o spesifik dosyayı** güvenli listesine (whitelist) alabilir. Bu işlem genelde 1-2 gün sürer. Eğer onaylanırsa, o dosya için uyarı kalıcı olarak kalkar.
+
+**Özetle:** İmza işleriyle ve itibar kasmakla vakit kaybetmeyin. Uygulamayı imzasız bırakın, GitHub sayfanıza şık bir "Nasıl Kurulur" açıklaması ekleyin. Hedef kitleniz üniversite olduğu için herkes o uyarıyı nasıl geçeceğini anlayacaktır.
+
+Harika bir soru! Haklısın, Bilgi İşlem (BİDB) kesinlikle kendi kurumsal sertifikasını (ve şifresini) uygulamanın içine gömmeniz için size **vermez**. Zaten süreç böyle işlemiyor.
+
+Sertifikalama işlemi **kod yazarken veya build alırken değil, build (derleme) bittikten SONRA** yapılır. 
+
+1. Seçenek (Üniversite IT'sinin imzalaması) tam olarak şu şekilde işler:
+
+### 1. Siz Build Alırsınız (İmzasız)
+Uygulamanızın geliştirmesini bitirirsiniz. Kendi bilgisayarınızda `npm run tauri build` komutunu çalıştırırsınız. Çıktı olarak oluşan `UniCast_1.0.0_x64.msi` veya `.exe` dosyasını (tamamen imzasız haliyle) bir flash belleğe atar veya buluta yüklersiniz.
+
+### 2. IT Departmanına Gidersiniz
+Dosyayı Bilgi İşlem yetkilisine teslim edersiniz ve *"Okul bilgisayarlarında sorunsuz çalışması için bunu okulun sertifikasıyla imzalamanızı rica ediyoruz"* dersiniz.
+
+### 3. IT Departmanı Kendi Güvenli Ortamında İmzalar
+Yetkili kişi, kendi güvenli bilgisayarında Windows'un sunduğu `signtool.exe` (İmza Aracı) programını açar. Sizin `.msi` veya `.exe` dosyanızı seçer ve **sadece onlarda bulunan** şifreli sertifikayı kullanarak dosyayı mühürler (imzalar).
+
+Yaptıkları işlem terminalde şuna benzer:
+`signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a "Sizin_Uygulama.exe"`
+
+### 4. İmzalı Dosyayı Size Geri Verirler
+Mühürleme işlemi saniyeler sürer. IT personeli, imzalanmış o dosyayı size geri verir. Siz de o dosyayı alıp GitHub Release sayfasına veya öğrencilerin/hocaların indireceği yere koyarsınız. 
+
+İnsanlar o dosyayı indirdiğinde Windows, dosyanın üzerindeki "Alanya Üniversitesi Bilgi İşlem" (veya okulunuzun adı neyse) mührünü görür ve **"Bu kurum güvenilirdir"** diyerek hiçbir uyarı çıkarmadan programı açar.
+
+### Tek Dezavantajı:
+Uygulamada ufak bir bug buldunuz ve `v1.0.1` versiyonunu derlediniz diyelim. Bu yeni dosya yine imzasız olacaktır. Yeni güncellemeyi yayınlamadan önce o dosyayı alıp **tekrar** Bilgi İşlem'e götürmeniz ve imzalattırmanız gerekir. 
+
+İşte tam da bu yüzden sertifikalama işlemi, projenin **tamamen bittiği, hocaya sunulacak final sürümünde (v1.0.0)** yapılır. Geliştirme aşamasındaki testler için sertifika ile uğraşılmaz.

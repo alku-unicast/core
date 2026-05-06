@@ -116,9 +116,10 @@
     "manual_hint": "Enter the IP address shown on the target room's screen."
   },
   "linux_warning": {
-    "title": "Window Mode Warning",
-    "description": "For the best experience on Linux, set your window to the desired size before starting the stream. Resizing the window during a stream may cause it to disconnect.",
-    "tip": "You can press F11 to enter fullscreen mode.",
+    "title": "Window Mode Notice",
+    "description_prefix": "For the best experience in window mode on Linux, please",
+    "description_emphasis": "GO FULLSCREEN",
+    "description_suffix": "before starting the stream. Resizing the window during streaming may interrupt the feed.",
     "dont_show_again": "Don't show again",
     "understood": "Got it"
   },

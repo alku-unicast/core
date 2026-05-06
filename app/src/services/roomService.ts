@@ -40,7 +40,10 @@ function parseRoom(id: string, raw: RawRoom): Room {
   const now = Date.now();
   const OFFLINE_THRESHOLD = 5 * 60 * 1000;
 
-  if (!raw.pi_ip || raw.pi_ip.trim() === "") {
+  // ISSUE-03 Fix: Use regex to validate actual IPv4 address
+  // This catches "No network", "N/A", or any other invalid placeholder from the Pi
+  const IP_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (!raw.pi_ip || !IP_PATTERN.test(raw.pi_ip.trim())) {
     status = "unconfigured";
   } else if (lastSeenMs > 0 && now - lastSeenMs > OFFLINE_THRESHOLD) {
     status = "offline";

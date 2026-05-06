@@ -44,13 +44,13 @@ export function LinuxWarningModal({ isOpen, onClose }: Props) {
         <h2 className="text-base font-semibold text-[var(--text-primary)] mb-2">
           {t("linux_warning.title")}
         </h2>
-        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-3">
-          {t("linux_warning.description")}
+        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-6">
+          {t("linux_warning.description_prefix")}{" "}
+          <span className="font-bold text-[var(--text-primary)] uppercase">
+            {t("linux_warning.description_emphasis")}
+          </span>
+          {". "}{t("linux_warning.description_suffix")}
         </p>
-        <div className="flex items-start gap-2 rounded-xl bg-[var(--bg-tertiary)] px-3 py-2.5 mb-5">
-          <span className="text-sm">💡</span>
-          <p className="text-xs text-[var(--text-muted)]">{t("linux_warning.tip")}</p>
-        </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3">

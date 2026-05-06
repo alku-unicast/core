@@ -50,13 +50,12 @@ pub async fn detect_encoder(app: tauri::AppHandle) -> Result<EncoderResult, Stri
         let result = {
             #[cfg(target_os = "windows")]
             {
-                // Split the pipeline into separate arguments to avoid syntax errors on Windows
-                tokio::process::Command::new(&gst_launch)
-                    .args(["-q"])
+                let mut cmd = tokio::process::Command::new(&gst_launch);
+                cmd.args(["-q"])
                     .args(pipeline.split_whitespace())
                     .current_dir(&bin_dir)
-                    .output()
-                    .await
+                    .creation_flags(0x08000000); // CREATE_NO_WINDOW
+                cmd.output().await
             }
             #[cfg(not(target_os = "windows"))]
             {

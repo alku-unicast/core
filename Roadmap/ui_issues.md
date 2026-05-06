@@ -1,160 +1,400 @@
-yayın ekranına geldikten sonra uyarı ekranı çıktı: "
-gst-launch-1.0.exe- Giriş Noktası Bulunamadı
-X
-_std_parallel_algorithms_hw_threads yordam giriş noktası, C:\Users\ALKU/AP \AppData\Local\UniCast\GSTREA~1\windows\bi n\d3dcompiler 47.dll dinamik bağlantı kitaplığında bulunamadı.
-Tamam"
-yayın başlata tıkladım ama  yine aynı hatayı verdi tamam'a bastım terminal ekranında  yayın başlıyor gibi oluyor ama tabii gerçekte yok: 
-"
-** (gst-launch-1.0:7048): WARNING **: 14:50:46.782: "dx9screencapsrc" is deprecated and will be removedin the future. Use "d3d11screencapturesrc" element instead
-Use Windows high-resolution clock, precision: 1 ms
-Setting pipeline to PAUSED ...
-Pipeline is live and does not need PREROLL ...
-Pipeline is PREROLLED ...
-Setting pipeline to PLAYING ...
-New clock: GstSystemClock
-Redistribute latency...
-Redistribute latency...
-0:01:28.1 / 99:99:99."
+# UniCast — UI & System Issues (Saha Testi, May 5 2026)
 
-şu da log doasyası: "0:00:01.928969800  1880 0000020F508750C0 FIXME                default gstutils.c:4090:gst_element_decorate_stream_id_internal:<dx9screencapsrc0> Creating random stream-id, consider implementing a deterministic way of creating a stream-id
-9F30 WARN             d3d12device gstd3d12device.cpp:738:gst_d3d12_device_new_internal: Could not find adapter, hr: 0x887a0002
-0:00:00.303755200  5712 000001D43FAB9F30 WARN                 default ges-meta-container.c:237:_set_value:<GESAsset@000001D443FC05C0> Could not set value on item: format-version
-0:00:00.303823000  5712 000001D43FAB9F30 WARN                 default ges-meta-container.c:237:_set_value:<GESAsset@000001D443FC0640> Could not set value on item: format-version
-0:00:00.303871600  5712 000001D43FAB9F30 WARN                 default ges-meta-container.c:237:_set_value:<GESAsset@000001D443FC06C0> Could not set value on item: format-version
-0:00:00.304504200  5712 000001D43FAB9F30 WARN               structure gststructure.c:2371:priv_gst_structure_parse_fields: Failed to find delimiter, r=mimetype
-0:00:00.333391600  5712 000001D43FAB9F30 WARN                 default gstjackloader.c:187:gst_jack_load_library: Could not open library libjack64.dll, 'libjack64.dll': Belirtilen modül bulunamadı.
-0:00:00.333434600  5712 000001D43FAB9F30 WARN                 default gstjack.c:108:plugin_init: Failed to load jack library
-0:00:00.338299400  5712 000001D43FAB9F30 WARN                  ladspa gstladspa.c:509:plugin_init:<plugin113> no LADSPA plugins found, check LADSPA_PATH
-0:00:00.943842900  5712 000001D43FAB9F30 WARN             mftransform gstmftransform.cpp:1223:gst_mf_transform_set_output_type: MediaFoundation call failed: 0xc00d36b4, Medya türü için belirtilen veri geçersiz, tutarsız veya bu nesne tarafından desteklenmiyor.
-0:00:00.960293500  5712 000001D443FB8580 WARN             mftransform gstmftransform.cpp:513:gst_mf_transform_thread_func:<mftransform3> No available device at index 0
-0:00:00.984684700  5712 000001D443FB85C0 WARN             mftransform gstmftransform.cpp:513:gst_mf_transform_thread_func:<mftransform4> No available device at index 0
-0:00:01.016537600  5712 000001D443FB8540 WARN             mftransform gstmftransform.cpp:513:gst_mf_transform_thread_func:<mftransform7> No available device at index 1
-0:00:01.024165100  5712 000001D443FB84C0 WARN             mftransform gstmftransform.cpp:513:gst_mf_transform_thread_func:<mftransform9> No available device at index 1
-0:00:01.030535000  5712 000001D443FB84C0 WARN             mftransform gstmftransform.cpp:920:gst_mf_transform_open_internal: MediaFoundation call failed: 0x80004002, Böyle bir arabirim desteklenmiyor
-0:00:01.030579600  5712 000001D443FB84C0 WARN             mftransform gstmftransform.cpp:921:gst_mf_transform_open_internal:<mftransform10> ICodecAPI is unavailable
-0:00:01.033754700  5712 000001D443FB8500 WARN             mftransform gstmftransform.cpp:920:gst_mf_transform_open_internal: MediaFoundation call failed: 0x80004002, Böyle bir arabirim desteklenmiyor
-0:00:01.033793300  5712 000001D443FB8500 WARN             mftransform gstmftransform.cpp:921:gst_mf_transform_open_internal:<mftransform11> ICodecAPI is unavailable
-0:00:01.055391500  5712 000001D43FAB9F30 WARN              cudaloader gstcudaloader.cpp:233:gst_cuda_load_library_once_func: Could not open library nvcuda.dll, 'nvcuda.dll': Belirtilen modül bulunamadı.
-"
+Tüm sorunlar saha testinden türetilmiştir. Her biri için köken analizi, etkilenen dosyalar ve önerilen çözüm verilmiştir.
 
-şu da yine güncel everything çıktısı (arama inputuna d3d11 yazınca):'"Adı","Yol","Boyut","Değiştirme Tarihi"
-"amd64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_cf7277d2411029e4","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6456.1.21",,2026-04-14 18:47:09
-"amd64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_cf7277d2411029e4","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0",,2026-04-14 19:44:47
-"wow64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_d9c722247570ebdf","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6456.1.21",,2026-04-14 18:47:09
-"wow64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_d9c722247570ebdf","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0",,2026-04-14 19:44:47
-"amd64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_cf7277d2411029e4.manifest","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6456.1.21",1955,2025-10-04 00:55:04
-"amd64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_cf7277d2411029e4.manifest","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0",1955,2025-11-02 22:48:46
-"d3d11.dll","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0\amd64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.5794_none_644b48c68303069f\f",120287,2025-04-08 17:46:32
-"d3d11.dll","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0\wow64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.5794_none_6e9ff318b763c89a\f",56801,2025-04-08 15:51:10
-"d3d11.dll","C:\Windows\System32",2504160,2026-04-14 18:51:23
-"d3d11.dll","C:\Windows\SysWOW64",1963320,2026-04-14 18:52:16
-"d3d11.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.3636_none_644fe59a83008b98",2504040,2023-12-04 05:45:58
-"d3d11.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.3636_none_644fe59a83008b98\f",117114,2023-12-04 05:45:44
-"d3d11.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.3636_none_644fe59a83008b98\r",115566,2023-12-04 05:45:44
-"d3d11.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.5794_none_644b48c68303069f",2504160,2026-04-14 18:51:23
-"d3d11.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.5794_none_644b48c68303069f\f",120287,2025-04-08 17:46:32
-"d3d11.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.5794_none_644b48c68303069f\r",435570,2026-04-14 18:51:23
-"d3d11.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.3636_none_6ea48fecb7614d93",1964392,2023-12-04 05:46:45
-"d3d11.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.3636_none_6ea48fecb7614d93\f",45660,2023-12-04 05:46:43
-"d3d11.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.3636_none_6ea48fecb7614d93\r",45147,2023-12-04 05:46:43
-"d3d11.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.5794_none_6e9ff318b763c89a",1963320,2026-04-14 18:52:16
-"d3d11.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.5794_none_6e9ff318b763c89a\f",56801,2025-04-08 15:51:10
-"d3d11.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11_31bf3856ad364e35_10.0.19041.5794_none_6e9ff318b763c89a\r",291094,2026-04-14 18:52:16
-"d3d11_3sdklayers.dll","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6456.1.21\amd64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_cf7277d2411029e4\f",18396,2025-04-08 17:46:28
-"d3d11_3sdklayers.dll","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6456.1.21\wow64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_d9c722247570ebdf\f",8116,2025-04-08 15:51:00
-"d3d11_3sdklayers.dll","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0\amd64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_cf7277d2411029e4\f",18396,2025-04-08 17:46:28
-"d3d11_3sdklayers.dll","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0\wow64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_d9c722247570ebdf\f",8116,2025-04-08 15:51:00
-"d3d11on12.dll","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0\amd64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.5794_none_706a945efccf6941\f",26586,2025-04-08 17:46:28
-"d3d11on12.dll","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0\wow64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.5794_none_7abf3eb131302b3c\f",19640,2025-04-08 15:51:04
-"d3d11on12.dll","C:\Windows\System32",597160,2026-04-14 18:51:23
-"d3d11on12.dll","C:\Windows\SysWOW64",464408,2026-04-14 18:52:16
-"d3d11on12.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.3636_none_706f3132fcccee3a",596024,2023-12-04 05:45:58
-"d3d11on12.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.3636_none_706f3132fcccee3a\f",24958,2023-12-04 05:45:44
-"d3d11on12.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.3636_none_706f3132fcccee3a\r",23228,2023-12-04 05:45:44
-"d3d11on12.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.5794_none_706a945efccf6941",597160,2026-04-14 18:51:23
-"d3d11on12.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.5794_none_706a945efccf6941\f",26586,2025-04-08 17:46:28
-"d3d11on12.dll","C:\Windows\WinSxS\amd64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.5794_none_706a945efccf6941\r",70895,2026-04-14 18:51:23
-"d3d11on12.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.3636_none_7ac3db85312db035",463840,2023-12-04 05:46:45
-"d3d11on12.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.3636_none_7ac3db85312db035\f",13668,2023-12-04 05:46:43
-"d3d11on12.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.3636_none_7ac3db85312db035\r",12664,2023-12-04 05:46:43
-"d3d11on12.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.5794_none_7abf3eb131302b3c",464408,2026-04-14 18:52:16
-"d3d11on12.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.5794_none_7abf3eb131302b3c\f",19640,2025-04-08 15:51:04
-"d3d11on12.dll","C:\Windows\WinSxS\wow64_microsoft-windows-directx-direct3d11on12_31bf3856ad364e35_10.0.19041.5794_none_7abf3eb131302b3c\r",66351,2026-04-14 18:52:16
-"gstd3d11-1.0-0.dll","C:\Users\ALKU\AppData\Local\UniCast\gstreamer\windows\bin",2514432,2025-06-16 18:43:42
-"gstd3d11.dll","C:\Users\ALKU\AppData\Local\UniCast\gstreamer\windows\lib\gstreamer-1.0",1292288,2025-06-16 18:44:16
-"wow64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_d9c722247570ebdf.manifest","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6456.1.21",1955,2025-10-04 00:55:16
-"wow64_microsoft-windows-d..tx-d3d11_3sdklayers_31bf3856ad364e35_10.0.19041.5794_none_d9c722247570ebdf.manifest","C:\Windows\servicing\LCU\Package_for_RollupFix~31bf3856ad364e35~amd64~~19041.6466.1.0",1955,2025-11-02 22:49:00
-' 
+---
 
-en son bunu yapmıştık git'ten bakabilirsin claude bir şeyler yaptı ama anlamadım kontrol edebilirsen iyi olur
-ama birkaç hata var sanırım mesela pencere modunu seçtim tüm ekran geliyor o pencere değil bütün ekranı yansıtıyor.
-ayrıca ses de yok hiçbir şekilde ses gelmiyor.
+## ISSUE-01 — Çift Manuel Bağlantı Bölümü
 
-terminal ekranı çıkıyor uygulamada. ki bu şu an için gayet iyi ama ileride kapatmamız lazım **şu an kesinlikle kapatmıyoruz**.
-şu yaptığım birkaç denemeden sonraki log dosyası: "0:00:00.176700200  2332 0000019F6DAD1CC0 FIXME                default gstutils.c:4090:gst_element_decorate_stream_id_internal:<wasapi2src0> Creating random stream-id, consider implementing a deterministic way of creating a stream-id
-0:00:00.195583800  2332 0000019F6DAD1D40 FIXME                default gstutils.c:4090:gst_element_decorate_stream_id_internal:<dx9screencapsrc0> Creating random stream-id, consider implementing a deterministic way of creating a stream-id
-"
+**Durum:** Yüksek Öncelik  
+**Tür:** Görsel hata / kopya bileşen
 
-bahsettiğim terminal ekranında da yyına başlayınca şu yazıyor: "1.0:10972): WARNING **: 18:58:02.721: "dx9screencapsrc" is deprecated and will be removedin the future. Use "d3d11screencapturesrc" element instead
-Use Windows high-resolution clock, precision: 1 ms
-Setting pipeline to PAUSED ...
-Pipeline is live and does not need PREROLL ...
-Pipeline is PREROLLED ...
-Setting pipeline to PLAYING ...
-Redistribute latency...
-Redistribute latency...
-New clock: GstAudioSrcClock
-Redistribute latency...
-Redistribute latency...
-Redistribute latency...
-0:00:07.6 / 99:99:99."
+### Belirtiler
+- Oda listesi ekranında "Direct Connection" ve "Manuel Bağlantı" olarak iki ayrı IP giriş alanı görünüyor.
 
-ses için ayarlara girdim oradan ses giriş cihazı 'system default' yazıyordu ona tıklaıdm ve 'device 0' seçtim sonra yayına girdim hata verdi log'u kontrol edin dedi
-ben de log'a baktım bu yazıyordu: "0:00:00.203277000  2116 0000024CA2C94180 WARN           wasapi2client gstwasapi2client.cpp:1005:gst_wasapi2_client_activate_async:<wasapi2client0> Couldn't find target device
-0:00:00.204186800  2116 0000024CA2D21180 WARN       wasapi2ringbuffer gstwasapi2ringbuffer.cpp:352:gst_wasapi2_ring_buffer_post_open_error:<wasapi2src0> error: Failed to open device
-"
- 
+### Kök Neden
+`app/src/components/rooms/RoomGrid.tsx` eski `ManualConnect` bileşenini **üç yerde** render ediyor: yüklenirken, hata/boş durumda ve oda listesinin altında.  
+`app/src/screens/RoomDiscovery.tsx` aynı zamanda yeni `ManualConnectSection`'ı `<main>` içine ekliyor.  
+İki farklı bileşen (`ManualConnect` + `ManualConnectSection`) aynı anda ekranda oluyor.
 
-ada eskiden oldupu gibi yayına siyah bant olarak gidiyor, minik ada aslında o kadar mink olmadığı giden siyah bant sayesinde anlayabiliiyorum.
-arka planda aslında bizim görmediğimiz kocaman bir dikdörtgen. Burada kocaman bir dikdörtgen olması sorunu yüzünden kullanıcı farkında olmadan,
-adanın altındaki bir butona tıklamak istiyor mesela adanın altında chrome'da bir buton var ona tıklayacak ama tıklayamıyor çünkü orada kocaman,
-görünmez bir dikdörtgen var. Bunu çözemeliyiz.
-Tarayıcıdan bile yüklerken virüs olarak algılayıp ben 2 kez hayır sakla diyip açıyorum,
-windows mavi ekranda kurulum aşamasında uyarıyor bak virüs olabilir diye.
-micorosoft defender'ı kapattım öyle indirebildim bunlar da sorun üstüne tartışılması gereken.
+### Çözüm
+`RoomGrid.tsx`'ten `ManualConnect` import ve kullanımlarını tamamen kaldır. Yeni `ManualConnectSection` zaten `RoomDiscovery.tsx` seviyesinde her zaman mevcut.
 
-şu an önceliğimiz tabii ufak arayüz detayları değil ama bunları yazmam lazım ki unutmayalım.
+### Etkilenen Dosyalar
+- `app/src/components/rooms/RoomGrid.tsx` — ManualConnect import/render kaldırılacak
+- `app/src/components/rooms/ManualConnect.tsx` — artık kullanılmıyor; silinebilir
 
-şu ana kadar bu hataları buldum.
+---
 
+## ISSUE-02 — Manuel Bağlantı Bölümü Her Zaman Görünüyor (İnternet Varken de)
 
-daha sonra kendi bilgisayarımda denemek için termianlde şunu yazdım: "PS D:\Okul Belgeleri\4. Sınıf\Bitirme\yeni\core> cd .\app\        
-PS D:\Okul Belgeleri\4. Sınıf\Bitirme\yeni\core\app> npm run tauri dev           
+**Durum:** Orta Öncelik  
+**Tür:** UX tasarım sorunu
 
-> unicast@0.1.0 tauri
-> tauri dev
+### Belirtiler
+- Hem network hem internet bağlıyken `ManualConnectSection` yine de altta görünüyor.
 
-     Running BeforeDevCommand (`npm run dev`)
-     Running DevCommand (`cargo  run --no-default-features --color always --`)
-        Info Watching D:\Okul Belgeleri\4. Sınıf\Bitirme\yeni\core\app\src-tauri for changes...
+### Kök Neden
+`app/src/components/rooms/ManualConnectSection.tsx` satır 23:
+```tsx
+if (networkState === "NO_NETWORK" || !hasLocalInterface) return null;
+```
+Sadece `NO_NETWORK` durumunda gizleniyor. `ONLINE` durumunda `hasLocalInterface=true` olduğu için her zaman render ediliyor.  
+Tasarım amacı "her zaman fallback mevcut olsun" iken kullanıcı deneyimi "oda listesi varken gereksiz alan" olarak algılanıyor.
 
-> unicast@0.1.0 dev
-> vite
+### Tartışma / Çözüm Seçenekleri
+**A) ONLINE + odalar varken gizle:**  
+`ManualConnectSection` içinde `const { rooms } = useRoomStore()` ekle; `Object.keys(rooms).length > 0 && networkState === "ONLINE"` ise `return null` döndür.
 
-error when starting dev server:
-Error: Port 5173 is already in use
-    at Server.onError (file:///D:/Okul%20Belgeleri/4.%20S%C4%B1n%C4%B1f/Bitirme/yeni/core/app/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:45596:18)
-    at Server.emit (node:events:524:28)
-    at emitErrorNT (node:net:1973:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
-       Error The "beforeDevCommand" terminated with a non-zero status code."
+**B) Daima göster ama minimize et:**  
+`ONLINE` durumunda küçük bir link/düğme olarak göster ("IP ile bağlan →"), genişletince input görünür.
 
-daha sonra fresh windwowstaki exe'yi kendi bilgisayarıma kurdum: sunum ekranına gelir gelmez bu uyarıyı verdi: "gst-plugin-scanner.exe - Giriş Noktası Bulunamadı
-g_once_init_leave_pointer yordam giriş noktası, C:program
-Filesigstreamerkl I - I ,û-û.dll dinamik
-bağlantı kitaplığında bulunamadı,
-Tamam
-x", daha sonra tamam'a bastım sürekli bu uyarıyı vermeye devam etti. yayın bile başlatamadım.
-bu da benim makinedeki log dosyası: "0:00:08.073172300  5920 0000014FAB9B69F0 WARN      GST_PLUGIN_LOADING gstplugin.c:883:_priv_gst_plugin_load_file_for_registry: module_open failed: Belirtilen yordam bulunamadı.
-0:00:08.073725000  5920 0000014FAB9B69F0 WARN      GST_PLUGIN_LOADING gstpluginloader-win32.c:622:win32_plugin_loader_write_packet_async: Operation failed with 0xe8 (Boru kapatılıyor.)
-"
+**C) Mevcut tasarımı koru:**  
+Bazı kullanıcıların Firebase'de kayıtlı olmayan ekranlara bağlanması gerekebilir — fallback her zaman görünür mantıklı. ISSUE-01 çözülünce çift görünüm sorunu ortadan kalkar.
+
+**Öneri:** A seçeneği — ONLINE + oda varken gizle, sorun yaşandığında otomatik göster.
+
+### Etkilenen Dosyalar
+- `app/src/components/rooms/ManualConnectSection.tsx`
+- `app/src/stores/roomStore.ts`
+
+---
+
+## ISSUE-03 — pi_ip: "No network" Durumunda Yanlış Oda Statüsü
+
+**Durum:** Yüksek Öncelik  
+**Tür:** Veri doğruluk hatası
+
+### Belirtiler
+Firebase'de `pi_ip: "No network"` olan oda `idle` (bağlanılabilir) olarak listeleniyor. Bağlantı denemesi başarısız oluyor.
+
+### Firebase Verisi (Gerçek)
+```json
+{
+  "213": {
+    "floor": "2",
+    "last_seen": 1777984950,
+    "name": "213",
+    "pi_ip": "No network",
+    "pi_status": "idle"
+  }
+}
+```
+
+### Kök Neden
+`app/src/services/roomService.ts` içinde `parseRoom()` satır 43:
+```typescript
+if (!raw.pi_ip || raw.pi_ip.trim() === "") {
+  status = "unconfigured";
+}
+```
+Sadece boş string kontrolü var. `"No network"` boş değil → `unconfigured` branch'e girmiyor → `idle` olarak işaretleniyor.
+
+### Çözüm
+Boş string yerine gerçek IPv4 regex doğrulaması kullan:
+```typescript
+const IP_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
+if (!raw.pi_ip || !IP_PATTERN.test(raw.pi_ip.trim())) {
+  status = "unconfigured";
+}
+```
+Bu yaklaşım `""`, `"No network"`, `"N/A"`, `"unknown"` ve diğer tüm geçersiz değerleri yakalar.
+
+### Etkilenen Dosyalar
+- `app/src/services/roomService.ts` — `parseRoom()` satır 43
+
+---
+
+## ISSUE-04 — Pi Ağa Yeniden Bağlandığında Firebase Güncellenmiyor
+
+**Durum:** Orta Öncelik  
+**Tür:** Pi agent davranış hatası (backend/Pi-side)
+
+### Belirtiler
+1. Pi internet bağlantısı kesildiğinde `pi_ip: "No network"` ve `pi_status: "idle"` Firebase'e yazılıyor.
+2. Ethernet kablosu yeniden takıldığında Pi gerçek IP adresini Firebase'e **güncellemiyor** — `"No network"` kalıyor.
+3. Bağlantı yokken açılan uygulama `LOCAL_ONLY` durumunda kalıyor, ağ geri gelince `ONLINE` durumuna geçmiyor (30s polling sayesinde aslında geçiyor — test tekrar edilmeli).
+
+### Kök Neden
+**Pi tarafı:** `agent.py` muhtemelen sadece başlangıçta IP alarak Firebase'e yazıyor. Ağ tekrar geldiğinde tetikleyici (network-reconnect event veya polling) yok.  
+**Frontend tarafı:** `roomService.ts` 30 saniyelik polling yapıyor — ağ geri gelince Firebase'i tekrar deneyecek ve `ONLINE` durumuna geçecek. Bu kısım doğru çalışıyor; sorun Pi agent'ta.
+
+### Çözüm (UYGULANDI)
+**Pi agent.py'ye eklenen mantık:**
+1. **Sentinel Loop:** `last_registered_ip` değişkeni ile periyodik kontrol.
+2. **Değişim Algılama:** IP `None`'dan bir adrese geçtiğinde veya adresten `None`'a düştüğünde Firebase güncellenir.
+3. **Zaman Damgası:** Her başarılı kontrolde `last_seen` güncellenerek "online" durumu korunur.
+
+**Not:** Frontend tarafında ISSUE-03 fix'i sayesinde geçersiz IP'ler artık `unconfigured` olarak filtreleniyor.
+
+### Etkilenen Dosyalar
+- `pi/agent.py` (Pi tarafı)
+
+---
+
+## ISSUE-05 — CMD Penceresi Anlık Görünüp Kayboluyor
+
+**Durum:** Yüksek Öncelik  
+**Tür:** Windows process oluşturma hatası
+
+### Belirtiler
+- Uygulama açılırken siyah CMD penceresi anlık geliyor.
+- "Bağlantı" ekranına girildiğinde CMD penceresi ~5-6 saniye kalıyor, birkaç kez göstergiliyor.
+- Ayarlar modalına girildiğinde de CMD penceresi görünüyor.
+
+### Kök Neden
+Windows'ta `CREATE_NO_WINDOW (0x08000000)` flag'i **sadece** `app/src-tauri/src/commands/stream.rs`'teki `start_stream` komutuna eklendi.
+
+Diğer GStreamer süreçleri hâlâ pencere açıyor:
+
+1. **`app/src-tauri/src/commands/encoder.rs` satır 55** — `detect_encoder()` `tokio::process::Command` kullanıyor, `creation_flags` yok.  
+   Tetiklendiği yer: Ayarlar modalı açılırken + bağlantı ekranı ilk yüklenirken.
+
+2. Uygulama açılışında tetiklenen herhangi bir GStreamer komutu.
+
+### Çözüm
+Windows'ta tüm `tokio::process::Command` ve `std::process::Command` çağrılarına `creation_flags(0x08000000)` ekle.
+
+**encoder.rs** (tokio::process::Command için):
+```rust
+// tokio::process::Command da std::os::windows::process::CommandExt trait'ini kullanır
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+// detect_encoder() içinde Windows bloku:
+#[cfg(target_os = "windows")]
+{
+    tokio::process::Command::new(&gst_launch)
+        .args(["-q"])
+        .args(pipeline.split_whitespace())
+        .current_dir(&bin_dir)
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
+        .output()
+        .await
+}
+```
+
+**Kontrol edilecek diğer dosyalar:**
+```
+grep -r "Command::new" app/src-tauri/src/
+```
+
+### Etkilenen Dosyalar
+- `app/src-tauri/src/commands/encoder.rs` — `detect_encoder()` düzeltilecek
+- `app/src-tauri/src/commands/stream.rs` — mevcut diğer spawn'lar kontrol edilecek
+
+---
+
+## ISSUE-06 — "Yayın Sırasında Sesi Kapat" Ayarı Çalışmıyor
+
+**Durum:** Yüksek Öncelik  
+**Tür:** Özellik bağlantısı eksik
+
+### Belirtiler
+Ayarlarda "Yayın sırasında hoparlörü kapat" butonu aktif görünüyor ancak yayın başlayınca gönderen cihazda ses çalmaya devam ediyor.
+
+### Kök Neden
+`audio.muteLocal` ayarı `app/src/types/settings.ts` içinde tanımlı, varsayılan `true`.  
+`app/src-tauri/src/commands/audio.rs` içinde `mute_system_audio(mute: bool)` komutu hazır ve tüm platformlarda çalışıyor:
+- Windows: IAudioEndpointVolume (Windows API)
+- macOS: `osascript -e 'set volume output muted'`
+- Linux: `pactl set-sink-mute @DEFAULT_SINK@`
+
+**Ancak** `app/src/stores/connectionStore.ts` `startStream()` başarılıyken ve `stopStream()` tamamlandığında bu komutu **hiç çağırmıyor**.
+
+### Çözüm
+`connectionStore.ts` `startStream()` içinde `result.success` bloğuna ekle:
+```typescript
+// Mute local speakers if setting is enabled
+const { audio } = useSettingsStore.getState();
+if (audio.muteLocal) {
+  invoke("mute_system_audio", { mute: true }).catch(console.warn);
+}
+```
+
+`stopStream()` içine ekle (her durumda unmute — ayar değişmiş olabilir):
+```typescript
+invoke("mute_system_audio", { mute: false }).catch(console.warn);
+```
+
+**Dikkat:** Sistem hoparlörünü kapatır, alıcı (Raspberry Pi) tarafındaki ses etkilenmez.
+
+### Etkilenen Dosyalar
+- `app/src/stores/connectionStore.ts` — `startStream()` ve `stopStream()` içine `mute_system_audio` çağrısı eklenecek
+
+---
+
+## ISSUE-07 — Streaming Bar Fullscreen Yakalamada Siyah Görünüyor (Windows)
+
+**Durum:** Orta Öncelik  
+**Tür:** Windows API davranışı / platform sınırı
+
+### Belirtiler
+Windows'ta tam ekran yakalama (d3d11screencapturesrc) yapıldığında, streaming bar Raspberry Pi ekranında siyah dikdörtgen olarak görünüyor.
+
+### Kök Neden
+`app/src-tauri/src/commands/capture.rs` `WDA_EXCLUDEFROMCAPTURE (0x11)` flag'i kullanıyor.  
+Bu flag'in **tasarım gereği davranışı**: yakalama ekranında pencere içeriği siyah olarak değiştirilir (Windows 11+). Pencereyi hiç göstermemek yerine siyah maskeleme yapıyor.
+
+Bu Microsoft'un resmi API davranışıdır — içerik gizlenir ama pencere alanı siyah kalır.
+
+### Çözüm (UYGULANDI)
+**WDA_MONITOR (0x01) Çözümü:**
+- `app/src-tauri/src/utils/capture_exclusion.rs` içinde `WDA_EXCLUDEFROMCAPTURE` (0x11) yerine `WDA_MONITOR` (0x01) kullanıldı.
+- **Sonuç:** Windows 10/11'de bar alanı siyah kutu yerine masaüstü arka planını (veya yakalanan ekranın altını) gösterir. Bu, projeksiyon ortamında siyah şeridi neredeyse görünmez kılar.
+
+**Linux Notu:** Linux'ta `ximagesrc` doğası gereği her şeyi yakalar. Barın görünmesi "beklenen davranış" olarak dökümante edildi.
+
+### Etkilenen Dosyalar
+- `app/src-tauri/src/commands/capture.rs`
+- `app/src-tauri/src/gstreamer/pipeline.rs`
+
+---
+
+## ISSUE-08 — Bar Ses Kontrolleri Çalışmıyor
+
+**Durum:** Orta Öncelik  
+**Tür:** IPC / invoke hatası — kök neden belirsiz, teşhis gerekli
+
+### Belirtiler
+Streaming bar'daki ses ikonu ve slider'a tıklanınca ses değişmiyor.
+
+### Olası Kök Nedenler
+
+**1. set_stream_volume'da alıcı IP eksik:**  
+`app/src-tauri/src/commands/stream.rs` satır 254'te `set_stream_volume` alıcı Pi IP'sine UDP sinyal gönderiyor. Bar penceresi ayrı bir Tauri window — `connectionStore` paylaşılmıyor, dolayısıyla alıcı IP bilinmiyor.
+
+**2. Capabilities:**  
+`app/src-tauri/capabilities/default.json` hem "main" hem "streaming-bar" pencerelerini kapsıyor — izin sorunu olmamalı.
+
+**3. invoke hatası sessizce yutuluyor:**  
+`StreamingBarApp.tsx` `handleVolumeChange` ve `handleMuteToggle` içindeki `invoke` hataları `console.error` ile loglanıyor ama kullanıcıya gösterilmiyor.
+
+### Teşhis Adımları
+1. Tauri dev modunda `streaming-bar` penceresinin devtools'unu aç (`"devtools": true` var).
+2. Ses butonuna tıkla, console'da error loglarına bak.
+3. Eğer `set_stream_volume` çağrısında alıcı IP undefined/null ise kök neden 1'dir.
+
+### Çözüm (Kök Neden 1 ise)
+`stream-mode-info` eventi ile birlikte Pi IP'sini de bar'a gönder:
+```typescript
+// connectionStore.ts — startStream() içinde:
+bar.emit("stream-mode-info", { mode: config.streamMode, targetIp: targetRoom?.ip });
+```
+Bar'da bu değeri state'te sakla, `set_stream_volume` çağrısında kullan.
+
+### Etkilenen Dosyalar
+- `app/src/screens/StreamingBarApp.tsx`
+- `app/src/stores/connectionStore.ts`
+- `app/src-tauri/src/commands/stream.rs`
+
+---
+
+## ISSUE-09 — AudioPopup Windows'ta Yarısı Kesik Görünüyor
+
+**Durum:** Yüksek Öncelik  
+**Tür:** Window boyutu / CSS pozisyonlama hatası
+
+### Belirtiler
+Windows'ta ses butonuna tıklandığında açılan popup (volume slider + mute toggle) yarısı görünüyor, yarısı kayboluyor.  
+Linux'ta sorun yok.
+
+### Kök Neden
+`streaming-bar` penceresinin yüksekliği `app/src-tauri/tauri.conf.json` satır 32'de **80px**.
+
+`app/src/components/streaming-bar/AudioPopup.tsx` satır 41:
+```tsx
+className="absolute bottom-[calc(100%+8px)] right-[-12px] ..."
+```
+Bu `position: absolute` ile ana butonun 8px üstüne konumlanıyor.  
+Popup ~48px yüksekliğinde + 8px boşluk = **56px yukarıda başlıyor**.  
+Ama pencere sadece 80px → popup, pencere sınırında kesiliyor.
+
+**Linux'ta neden sorun yok:** Linux pencere yöneticisi bazı durumlarda WebView içeriğinin pencere sınırı dışına taşmasına izin veriyor. Windows WebView2 daha katı.
+
+### Çözüm
+`tauri.conf.json`'da `streaming-bar` penceresinin yüksekliğini **80 → 200px** yap.  
+Bar bileşeni `flex items-end pb-3` ile pencerenin altına yerleşiyor — üstteki boş alan şeffaf kalır ve popup oraya açılır.
+
+```json
+{
+  "label": "streaming-bar",
+  "width": 380,
+  "height": 200
+}
+```
+
+**Dikkat:** Pencere büyüdüğünde `set_bar_capture_exclusion` daha geniş şeffaf alan hariç tutacak. Popup kapalıyken boş şeffaf alan görünmeyecek (transparent window sayesinde).
+
+### Etkilenen Dosyalar
+- `app/src-tauri/tauri.conf.json` — height: 80 → 200
+
+---
+
+## ISSUE-10 — Linux Uyarı Modalı İçerik Düzeltmeleri
+
+**Durum:** Düşük Öncelik  
+**Tür:** UI metin/tasarım düzeltmesi
+
+### Belirtiler
+1. Modalın altındaki "💡 Tam ekrana geçmek için F11 tuşuna basabilirsiniz." kutusu kaldırılmalı.
+2. Ana açıklama metni "istediğiniz boyuta getirin" yerine **"TAM EKRANA GETİRİN"** (kalın, büyük harf) olmalı.
+
+### Kök Neden
+`app/src/components/modals/LinuxWarningModal.tsx` satır 50-53'te tip kutusu mevcut.  
+`app/src/i18n/locales/tr.json` `linux_warning.tip` ve `linux_warning.description` metinleri güncellenmeli.
+
+### Çözüm
+
+**LinuxWarningModal.tsx** — tip bloğunu tamamen kaldır (satır 50-53).
+
+**tr.json** güncelle — tip key'i kaldır, description güncelle:
+```json
+"linux_warning": {
+  "title": "Pencere Modu Uyarısı",
+  "description_prefix": "Linux'ta pencere modunda yayın yaparken en iyi deneyim için yayını başlatmadan önce",
+  "description_emphasis": "TAM EKRANA GETİRİN",
+  "description_suffix": "Yayın sırasında pencereyi yeniden boyutlandırmak akışın kesilmesine neden olabilir.",
+  "dont_show_again": "Bir daha gösterme",
+  "understood": "Anladım"
+}
+```
+
+Modal JSX'ini güncelle (kalın metin için):
+```tsx
+<p className="text-sm text-[var(--text-muted)] leading-relaxed mb-5">
+  {t("linux_warning.description_prefix")}{" "}
+  <strong className="text-[var(--text-primary)] font-bold uppercase">
+    {t("linux_warning.description_emphasis")}
+  </strong>
+  {". "}{t("linux_warning.description_suffix")}
+</p>
+```
+
+### Etkilenen Dosyalar
+- `app/src/components/modals/LinuxWarningModal.tsx`
+- `app/src/i18n/locales/tr.json`
+- `app/src/i18n/locales/en.json`
+
+---
+
+## Özet Tablo
+
+| ID | Başlık | Durum | Tür | Çözüm |
+|----|--------|---------|-----|--------|
+| ISSUE-01 | Çift Manuel Bağlantı UI | **ÇÖZÜLDÜ** | Frontend | RoomGrid temizlendi |
+| ISSUE-02 | ManualConnect ONLINE'da görünüyor | **ÇÖZÜLDÜ** | Frontend | Akıllı gizleme eklendi |
+| ISSUE-03 | pi_ip "No network" yanlış idle | **ÇÖZÜLDÜ** | Frontend | IPv4 Regex eklendi |
+| ISSUE-04 | Pi ağa döndüğünde güncellemiyor | **ÇÖZÜLDÜ** | Pi agent | Sentinel Loop mantığı |
+| ISSUE-05 | CMD penceresi yanıp sönüyor | **ÇÖZÜLDÜ** | Rust/Windows | CREATE_NO_WINDOW |
+| ISSUE-06 | muteLocal ses kapatmıyor | **ÇÖZÜLDÜ** | Frontend | Lifecycle bağlantısı |
+| ISSUE-07 | Bar fullscreen'de siyah (Win) | **ÇÖZÜLDÜ** | Rust/Windows | WDA_MONITOR |
+| ISSUE-08 | Bar ses kontrolleri çalışmıyor | **ÇÖZÜLDÜ** | IPC/Frontend | targetIp + UDP implementasyonu |
+| ISSUE-09 | AudioPopup yarısı kesik (Win) | **ÇÖZÜLDÜ** | Window config | 200px Buffer |
+| ISSUE-10 | Linux modal metin düzeltmesi | **ÇÖZÜLDÜ** | i18n/JSX | İçerik temizliği |
+
+**Önerilen sıra:** ISSUE-01 → ISSUE-03 → ISSUE-05 → ISSUE-09 → ISSUE-06 → ISSUE-02 → ISSUE-10 → ISSUE-08 → ISSUE-07 → ISSUE-04
+
+---
+
+*Oluşturulma: May 5, 2026*

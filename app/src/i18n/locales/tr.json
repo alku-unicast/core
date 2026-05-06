@@ -117,8 +117,9 @@
   },
   "linux_warning": {
     "title": "Pencere Modu Uyarısı",
-    "description": "Linux'ta en iyi deneyim için yayın başlatmadan önce pencerenizi istediğiniz boyuta getirin. Yayın sırasında pencereyi yeniden boyutlandırmak akışın kesilmesine neden olabilir.",
-    "tip": "Tam ekrana geçmek için F11 tuşuna basabilirsiniz.",
+    "description_prefix": "Linux'ta pencere modunda yayın yaparken en iyi deneyim için yayını başlatmadan önce",
+    "description_emphasis": "TAM EKRANA GETİRİN",
+    "description_suffix": "Yayın sırasında pencereyi yeniden boyutlandırmak akışın kesilmesine neden olabilir.",
     "dont_show_again": "Bir daha gösterme",
     "understood": "Anladım"
   },
