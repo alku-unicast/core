@@ -39,6 +39,7 @@ export function ConnectionSetup() {
     reset,
     resetStream,
     isRestarting,
+    isMuted,
   } = useConnectionStore();
 
   const isStreaming = phase === "streaming";

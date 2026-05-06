@@ -424,7 +424,7 @@ class UniCastReceiver:
                     vol = max(0, min(100, vol)) # Clamp 0-100
                     
                     # 1. Update system volume as fallback (optional)
-                    subprocess.run(["amixer", "-q", "sset", "Master", f"{vol}%"], capture_output=True)
+                    res = subprocess.run(["amixer", "-q", "sset", "Master", f"{vol}%"], capture_output=True)
 
                     # 2. Update GStreamer volume element directly for instant/accurate response
                     if self.vol_element:

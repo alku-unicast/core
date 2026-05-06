@@ -12,8 +12,6 @@ use tauri::{
 };
 use commands::network::start_rtt_monitor;
 
-#[cfg(target_os = "windows")]
-use utils::capture_exclusion::exclude_from_capture;
 #[tauri::command]
 fn log_frontend(level: String, message: String) {
     match level.as_str() {
@@ -59,6 +57,7 @@ pub fn run() {
             // Debug
             log_frontend,
         ])
+        .setup(|app| {
             // ── System tray ─────────────────────────────────────────────────
             let handle = app.handle().clone();
             let quit = MenuItem::with_id(app, "quit", "Çıkış", true, None::<&str>)?;
