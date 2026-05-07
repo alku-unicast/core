@@ -46,6 +46,9 @@ FIREBASE_DB_URL   = "https://unicast-8a705-default-rtdb.europe-west1.firebasedat
 HEARTBEAT_TIMEOUT = 5    # seconds
 GRACE_PERIOD      = 20   # seconds
 FIREBASE_INTERVAL = 30   # seconds (Pi heartbeat to Firebase; frontend offline threshold = 2min)
+ 
+CEC_ENABLED           = False  # Set to True if projector supports HDMI-CEC
+IDLE_DISPLAY_TIMEOUT  = 300    # 5 minutes (300s) until HDMI signal is cut
 
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -73,6 +76,9 @@ class UniCastReceiver:
         self.ip_address     = self._get_ip()
         self.last_heartbeat = 0
         self.pin_attempts: dict[str, int] = {}  # ip -> failed attempts
+ 
+        self.display_on     = True             # Track HDMI signal status
+        self.idle_since     = time.time()       # Countdown for display sleep
 
         # Firebase reference
         self._fb_ref = None
@@ -259,7 +265,30 @@ class UniCastReceiver:
 
         img.save(self._idle_image)
 
+    def _display_power(self, on: bool):
+        """Controls HDMI output power via vcgencmd."""
+        cmd = "1" if on else "0"
+        print(f"[UniCast] Setting display power to: {on}")
+        try:
+            # vcgencmd display_power 0/1 works on Pi 4/5
+            res = subprocess.run(["vcgencmd", "display_power", cmd], capture_output=True, timeout=3)
+            if res.returncode == 0:
+                self.display_on = on
+                if not on:
+                    # If turning off, stop the idle pipeline to release display resources
+                    if self.idle_pipe:
+                        self.idle_pipe.set_state(Gst.State.NULL)
+                print(f"[UniCast] Display power {on} success")
+            else:
+                print(f"[UniCast] vcgencmd failed: {res.stderr.decode().strip()}")
+        except Exception as e:
+            print(f"[UniCast] Display power toggle error: {e}")
+
     def setup_idle_screen(self):
+        # Don't try to build/run pipeline if display is off
+        if not self.display_on:
+            return
+
         self._create_idle_image()
         if self.idle_pipe:
             self.idle_pipe.set_state(Gst.State.NULL)
@@ -276,44 +305,46 @@ class UniCastReceiver:
 
     def _cec_power_on(self):
         """Attempts to wake up the projector/TV via HDMI-CEC using multiple methods."""
+        if not CEC_ENABLED: return
         print("[CEC] Attempting to wake display...")
-        
-        # Method 1: cec-client (Most compatible, handles config internally)
+
+        # Method 1: cec-client (most compatible — handles adapter config internally)
         try:
-            subprocess.run('echo "on 0" | cec-client -s -d 1', shell=True, timeout=5, capture_output=True)
-            subprocess.run('echo "as" | cec-client -s -d 1', shell=True, timeout=5, capture_output=True)
-            print("[CEC] Power-on commands sent via cec-client")
-            return
+            r1 = subprocess.run(["cec-client", "-s", "-d", "1"], input=b"on 0\n", timeout=5, capture_output=True)
+            subprocess.run(["cec-client", "-s", "-d", "1"], input=b"as\n", timeout=5, capture_output=True)
+            if r1.returncode == 0:
+                print("[CEC] Power-on sent via cec-client")
+                return
         except Exception:
             pass
 
-        # Method 2: cec-ctl (Fallback, needs --playback to configure adapter)
+        # Method 2: cec-ctl fallback (needs --playback to configure adapter first)
         try:
-            # First ensure adapter is configured as a playback device
             subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--playback"], capture_output=True, timeout=3)
-            # Then send 'Image View On' (standard wake)
             subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--to", "0", "--image-view-on"], capture_output=True, timeout=3)
-            print("[CEC] Power-on command sent via cec-ctl")
+            print("[CEC] Power-on sent via cec-ctl")
         except Exception as e:
             print(f"[CEC] All power-on methods failed: {e}")
 
     def _cec_standby(self):
         """Attempts to put the projector/TV into standby mode."""
+        if not CEC_ENABLED: return
         print("[CEC] Attempting to standby display...")
-        
+
         # Method 1: cec-client
         try:
-            subprocess.run('echo "standby 0" | cec-client -s -d 1', shell=True, timeout=5, capture_output=True)
-            print("[CEC] Standby command sent via cec-client")
-            return
+            r = subprocess.run(["cec-client", "-s", "-d", "1"], input=b"standby 0\n", timeout=5, capture_output=True)
+            if r.returncode == 0:
+                print("[CEC] Standby sent via cec-client")
+                return
         except Exception:
             pass
 
-        # Method 2: cec-ctl
+        # Method 2: cec-ctl fallback
         try:
             subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--playback"], capture_output=True, timeout=3)
             subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--to", "0", "--standby"], capture_output=True, timeout=3)
-            print("[CEC] Standby command sent via cec-ctl")
+            print("[CEC] Standby sent via cec-ctl")
         except Exception as e:
             print(f"[CEC] All standby methods failed: {e}")
 
@@ -325,6 +356,10 @@ class UniCastReceiver:
         if self.current_state == State.STREAMING:
             return
         print("[UniCast] Starting AV stream...")
+
+        # Ensure display is on before starting pipeline
+        if not self.display_on:
+            self._display_power(True)
 
         if self.idle_pipe:
             self.idle_pipe.set_state(Gst.State.NULL)
@@ -371,6 +406,7 @@ class UniCastReceiver:
             self.pin = self._generate_pin()
             self.pin_attempts.clear()
             self.current_state = State.IDLE
+            self.idle_since    = time.time()  # Start countdown for display sleep
             print(f"[UniCast] Stream stopped | New PIN: {self.pin}")
             self._fb_write_status(State.IDLE)
         else:
@@ -378,7 +414,8 @@ class UniCastReceiver:
             print("[UniCast] Stream paused — grace period started (PIN unchanged)")
             self._fb_write_status(State.IDLE)   # Show idle to sender UI
 
-        self.setup_idle_screen()
+        if self.display_on:
+            self.setup_idle_screen()
 
     # ─────────────────────────────────────────────────────────────────────────
     # UDP Listener — port 5001
@@ -403,9 +440,18 @@ class UniCastReceiver:
 
             # ── WAKE ─────────────────────────────────────────────────────────
             if msg == "WAKE":
+                was_off = not self.display_on
+                if was_off:
+                    self._display_power(True)
+                    # Delay idle setup for HDMI handshake, then run on main thread
+                    def delayed_idle():
+                        time.sleep(1.5)
+                        GLib.idle_add(self.setup_idle_screen)
+                    threading.Thread(target=delayed_idle, daemon=True).start()
+                
                 self._cec_power_on()
                 self.udp_sock.sendto(b"READY", addr)
-                print(f"[Auth] WAKE from {ip}")
+                print(f"[Auth] WAKE from {ip} (display was {'OFF' if was_off else 'ON'})")
 
             # ── PIN:<code> ────────────────────────────────────────────────────
             elif msg.startswith("PIN:"):
@@ -505,8 +551,16 @@ class UniCastReceiver:
                     self.pin = self._generate_pin()
                     self.pin_attempts.clear()
                     self.current_state = State.IDLE
+                    self.idle_since    = now      # Start countdown for display sleep
                     self._fb_write_status(State.IDLE)
-                    self.setup_idle_screen()
+                    if self.display_on:
+                        self.setup_idle_screen()
+            
+            # ── Display Sleep Monitor (Plan B) ──────────────────────────────
+            if self.current_state == State.IDLE and self.display_on:
+                if now - self.idle_since > IDLE_DISPLAY_TIMEOUT:
+                    print("[UniCast] Idle timeout reached — powering off display")
+                    GLib.idle_add(lambda: self._display_power(False))
 
     # ─────────────────────────────────────────────────────────────────────────
     # Graceful Shutdown

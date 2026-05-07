@@ -740,14 +740,17 @@ Pi bağlantı kesildiğinde `pi_ip: "No network"` yazıyor ama bu da internet ge
     - Silent broadcasts (`audioEnabled: false`) now automatically hide all audio sliders/buttons in both windows.
     - `stream-mode-info` event now syncs initial volume/mute state to the streaming bar.
 
-### May 6: Stabilization (Part 3) - Code Review & Integrity
-- **Rust Backend:**
-    - Fixed a critical compile error where the `.setup(|app| {` closure was accidentally removed during cleanup.
-    - Removed unused `exclude_from_capture` imports on Windows.
-- **Frontend:**
-    - Fixed a TypeScript error in `ConnectionSetup.tsx` where `isMuted` was used without being destructured from the store.
-- **Receiver Agent:**
-    - Fixed a `NameError` in the VOLUME UDP handler where a response variable was referenced before assignment.
+### May 7: Stabilization (Part 4) - Linux Audio, UI & CEC
+- **Linux Audio Fix:**
+    - Modified `mute_system_audio` to be a no-op on Linux. This prevents the broadcast audio from being silenced when 'Mute Local Speakers' is enabled, as PulseAudio/PipeWire monitor sources are tied to sink mute status.
+- **UI & UX Refinement:**
+    - **Issue Resolved:** Fixed clipping of the orange streaming icon and overflow of the "Stop Broadcast" button.
+    - **Fix:** Switched to `h-auto` container layout with optimized padding and flex spacing in `ConnectionSetup.tsx`.
+    - **Visibility:** Ensured the volume slider in the main window is hidden during silent broadcasts (`audioEnabled: false`).
+- **CEC Infrastructure Hardening:**
+    - Updated `agent.py` to prioritize `cec-client` (libcec) for better hardware compatibility (BenQ, Epson, etc.).
+    - Added mandatory `--playback` configuration flag to `cec-ctl` fallback to prevent "Adapter unconfigured" errors.
+    - Added `as` (Active Source) command to the power-on sequence.
 
 ---
 
@@ -766,7 +769,14 @@ Pi bağlantı kesildiğinde `pi_ip: "No network"` yazıyor ama bu da internet ge
 **Çözüm Önerisi:** `CREATE_NO_WINDOW` tüm `Command::spawn()` çağrılarına uygulanmalı — sadece `stream.rs` değil, `encoder.rs` (`gst-inspect`), ve diğer Windows process spawn noktaları.  
 **İlgili Dosyalar:** `commands/stream.rs`, `commands/encoder.rs`, tüm `Command::spawn()` kullanımları
 
----
+### May 7: Stabilization (Part 5) - Smart Display Sleep (Plan B)
+- **HDMI Power Management:**
+    - Replaced unreliable CEC power-on with `vcgencmd display_power 0/1` logic.
+    - **Mechanism:** The Pi now cuts the HDMI signal (TMDS) after 5 minutes of inactivity in the IDLE state. This triggers the projector's native "Auto Power Off" or "Auto Input Switch" features.
+    - **Wake-up:** Upon receiving a `WAKE` UDP packet, the display is powered on immediately, followed by a 1.5s delay (for HDMI handshake) before the idle screen is re-initialized.
+    - **Guards:** Added safety checks in `start_streaming` and `stop_streaming` to handle cases where the display is powered off.
+- **CEC Hardening:**
+    - Gated all CEC functions behind a `CEC_ENABLED` flag (default: `False`). Improved compatibility with `cec-client` fallback logic.
 
 ### BUG-05 — "Yayın Sırasında Sesi Kapat" Butonu Çalışmıyor
 
