@@ -730,16 +730,24 @@ Pi bağlantı kesildiğinde `pi_ip: "No network"` yazıyor ama bu da internet ge
 **İlgili Dosyalar:** Pi `agent.py` (alıcı cihaz), `services/roomService.ts`
 
 ### May 6: Stabilization (Part 2) - Audio & Visual Polish
-- **Receiver Agent:**
-    - Integrated GStreamer `volume` element into the audio pipeline for precise, hardware-independent volume control.
-    - Updated UDP handler to map `VOLUME:X` commands directly to the GStreamer element's properties (0.0 to 1.0).
-- **Visuals & Capture:**
-    - **Issue Resolved:** The "Black Strip" (large black rectangle) in the stream caused by `WDA_MONITOR` is gone.
-    - **New Approach:** Removed capture exclusion. The streaming bar is now captured as part of the screen, but its 200px transparency allows the underlying content to show through perfectly, leaving only the small pill visible in the projector.
-    - **UI Fix:** Adjusted `ConnectionSetup.tsx` to prevent the streaming status icon (orange wifi-like pulse) from being clipped at the top.
+- **Receiver Agent (Audio Fix):**
+    - Switched from system-wide `amixer` control to GStreamer-internal `volume` element.
+    - Added `volume name=vol` to the audio pipeline. This performs digital scaling (0.0 to 1.0) of audio samples, ensuring reliable volume control regardless of Pi hardware/ALSA mixer quirks.
+- **Visuals & Capture (The "Black Strip" Solution):**
+    - **Issue Resolved:** Removed hardware-level capture exclusion (`WDA_MONITOR`).
+    - **New Approach:** The streaming bar (200px tall) is now captured by GStreamer. However, because the window is truly transparent, the projector only sees the small pill widget, while the rest of the 200px area is invisible, showing the screen content behind it.
 - **UX & Control Sync:**
-    - Implemented `audioEnabled` state syncing. If a user starts a silent broadcast, all audio controls are hidden in both the main window and the streaming bar.
-    - Enhanced `stream-mode-info` event to include initial volume and mute status for the streaming bar window.
+    - Silent broadcasts (`audioEnabled: false`) now automatically hide all audio sliders/buttons in both windows.
+    - `stream-mode-info` event now syncs initial volume/mute state to the streaming bar.
+
+### May 6: Stabilization (Part 3) - Code Review & Integrity
+- **Rust Backend:**
+    - Fixed a critical compile error where the `.setup(|app| {` closure was accidentally removed during cleanup.
+    - Removed unused `exclude_from_capture` imports on Windows.
+- **Frontend:**
+    - Fixed a TypeScript error in `ConnectionSetup.tsx` where `isMuted` was used without being destructured from the store.
+- **Receiver Agent:**
+    - Fixed a `NameError` in the VOLUME UDP handler where a response variable was referenced before assignment.
 
 ---
 

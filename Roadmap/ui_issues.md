@@ -8,6 +8,14 @@ asıl sorun midi ada, mini ada yayına kocaman siyah şerit gönderiyor. Eğer b
 
 onun dışında agent tarafına ethernet'i çekince çevrimdışı dedi oldu yani.
 
+yukarıda yazan sorunlar çözülmek üzere implementasyonlar yapıldı.kalan bazı sorunlar şunlar:
+"abi ses kısımında şöyle mini adada ses olmadan başlattığı zaman mini adada olması gerektiği gibi ses ayarı gidiyor ama mini ada kapalıyken ve ses olmadan yayın yapıldığı zaman ses ayar kısmı kaybolmuyor.
+öte yandan windowsta tam istediğimiz gibi ses kapalı ama yayına ses giderken linuxta sesli yayın yapsan da sesi kapatıyor sessiz yayın yapsan da sesi kapatıyor ve daha kötüsü ses kapalı olduğu için yayına ses gtmiyor.
+bir ufak mevzu da,
+abi o turuncu buton hala tam gözükmüyor üst kısım biraz yularıda kalmış biraz aşağı inmesi lazım, aşağıdaki yayını durdur da taşmış,
+aslında dışındaki konteyner büyüse biraz sorun çözülür gibi, şu anda değil sorunları not edip hdmi cec ile yarın yapalım
+"
+
 # UniCast — UI & System Issues (Saha Testi, May 5 2026)
 
 Tüm sorunlar saha testinden türetilmiştir. Her biri için köken analizi, etkilenen dosyalar ve önerilen çözüm verilmiştir.

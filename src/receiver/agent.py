@@ -275,18 +275,47 @@ class UniCastReceiver:
     # ─────────────────────────────────────────────────────────────────────────
 
     def _cec_power_on(self):
+        """Attempts to wake up the projector/TV via HDMI-CEC using multiple methods."""
+        print("[CEC] Attempting to wake display...")
+        
+        # Method 1: cec-client (Most compatible, handles config internally)
         try:
-            subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--to", "0", "--image-view-on"],
-                           timeout=5, capture_output=True)
-        except Exception:
-            pass  # CEC unavailable — non-fatal
-
-    def _cec_standby(self):
-        try:
-            subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--to", "0", "--standby"],
-                           timeout=5, capture_output=True)
+            subprocess.run('echo "on 0" | cec-client -s -d 1', shell=True, timeout=5, capture_output=True)
+            subprocess.run('echo "as" | cec-client -s -d 1', shell=True, timeout=5, capture_output=True)
+            print("[CEC] Power-on commands sent via cec-client")
+            return
         except Exception:
             pass
+
+        # Method 2: cec-ctl (Fallback, needs --playback to configure adapter)
+        try:
+            # First ensure adapter is configured as a playback device
+            subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--playback"], capture_output=True, timeout=3)
+            # Then send 'Image View On' (standard wake)
+            subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--to", "0", "--image-view-on"], capture_output=True, timeout=3)
+            print("[CEC] Power-on command sent via cec-ctl")
+        except Exception as e:
+            print(f"[CEC] All power-on methods failed: {e}")
+
+    def _cec_standby(self):
+        """Attempts to put the projector/TV into standby mode."""
+        print("[CEC] Attempting to standby display...")
+        
+        # Method 1: cec-client
+        try:
+            subprocess.run('echo "standby 0" | cec-client -s -d 1', shell=True, timeout=5, capture_output=True)
+            print("[CEC] Standby command sent via cec-client")
+            return
+        except Exception:
+            pass
+
+        # Method 2: cec-ctl
+        try:
+            subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--playback"], capture_output=True, timeout=3)
+            subprocess.run(["cec-ctl", "-d", "/dev/cec0", "--to", "0", "--standby"], capture_output=True, timeout=3)
+            print("[CEC] Standby command sent via cec-ctl")
+        except Exception as e:
+            print(f"[CEC] All standby methods failed: {e}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Streaming
