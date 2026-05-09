@@ -236,10 +236,6 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       await invoke("mute_system_audio", { mute: false }).catch(console.warn);
     }
     get().reset();
-
-    // Refresh room list so discovery immediately shows updated Pi status
-    const { refreshRoomsNow } = await import("../services/roomService");
-    refreshRoomsNow();
   },
 
   toggleMute: async () => {

@@ -129,6 +129,18 @@ export function ConnectionSetup() {
           reset();
           navigate("/", { replace: true });
         }
+
+        // Refresh room list so Pi's new status (idle) appears quickly.
+        // Delay 3s: gives Pi time to receive STOP and update Firebase.
+        // Delay 7s: fallback if STOP was delayed (heartbeat timeout path = 5s).
+        setTimeout(async () => {
+          const { refreshRoomsNow } = await import("../services/roomService");
+          refreshRoomsNow();
+        }, 3000);
+        setTimeout(async () => {
+          const { refreshRoomsNow } = await import("../services/roomService");
+          refreshRoomsNow();
+        }, 7000);
       }).then((fn) => { unlisten = fn; });
     });
 
