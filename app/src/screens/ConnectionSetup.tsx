@@ -111,6 +111,10 @@ export function ConnectionSetup() {
         } catch (_) {}
 
         if (event.payload.reason === "error") {
+          // Always unmute speakers on crash — mute_system_audio(false) is only
+          // called in stopStream(), not in resetStream(), so we do it here.
+          invoke("mute_system_audio", { mute: false }).catch(() => {});
+
           // Linux window-mode auto-restart logic
           const { attemptAutoRestart, resetStream } = useConnectionStore.getState();
           const isLinux = /linux/i.test(navigator.userAgent);
@@ -119,7 +123,6 @@ export function ConnectionSetup() {
           if (isLinux && isWindow) {
             attemptAutoRestart();
           } else {
-            // Stay on connection screen so user can see the error and retry
             resetStream("Akış beklenmedik şekilde durdu. Lütfen tekrar bağlanmayı deneyin.");
           }
         } else {
