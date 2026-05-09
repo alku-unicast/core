@@ -119,8 +119,9 @@ pub async fn mute_system_audio(mute: bool) -> Result<bool, String> {
     }
     #[cfg(target_os = "linux")]
     {
-        // PulseAudio/Pipewire monitor sources capture audio before the hardware mute stage,
-        // so muting the default sink does not affect the .monitor source GStreamer reads from.
+        // set-sink-mute mutes hardware output only; the monitor source (used by GStreamer
+        // pulsesrc) captures audio before the hardware mute stage and is unaffected.
+        // set-sink-volume would reduce the monitor source signal — do NOT use it.
         let arg = if mute { "1" } else { "0" };
         let ok = std::process::Command::new("pactl")
             .args(["set-sink-mute", "@DEFAULT_SINK@", arg])

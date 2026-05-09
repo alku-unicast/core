@@ -46,7 +46,7 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
 
   const isFavorite = favorites.includes(room.id);
   const statusLabel = t(`status.${room.status}`, room.status === "unconfigured" ? "Setup Pending" : "");
-  const canConnect = room.status === "idle" || room.status === "streaming";
+  const canConnect = room.status === "idle";
 
   const floorDisplay = room.floor === "0"
     ? t("discovery.floor_0")
@@ -175,7 +175,7 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
         ) : room.status === "streaming" ? (
           <>
             <Cast size={14} />
-            {t("discovery.connect")}
+            {t("status.in_progress")}
           </>
         ) : (
           <>

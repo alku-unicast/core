@@ -34,11 +34,13 @@ pub struct StreamProfile {
     pub audio_enabled: bool,
 }
 
+fn default_mute_local() -> bool { true }
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AudioSettings {
     #[serde(rename = "deviceId")]
     pub device_id: Option<String>,
-    #[serde(rename = "muteLocal")]
+    #[serde(rename = "muteLocal", default = "default_mute_local")]
     pub mute_local: bool,
 }
 

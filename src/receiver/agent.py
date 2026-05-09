@@ -423,6 +423,7 @@ class UniCastReceiver:
             print("[UniCast] Stream paused — grace period started (PIN unchanged)")
             self._fb_write_status(State.IDLE)   # Show idle to sender UI
  
+        self._blacken_display() # Quick black before idle screen
         self.setup_idle_screen()
 
     # ─────────────────────────────────────────────────────────────────────────
