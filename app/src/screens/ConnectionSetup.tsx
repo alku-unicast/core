@@ -142,6 +142,20 @@ export function ConnectionSetup() {
     }
   }, [streamMode, hideLinuxWindowWarning]);
 
+  /* ── Block browser history back ────────────────────────────────────────── */
+  useEffect(() => {
+    // Push a dummy state to history to enable popstate interception
+    window.history.pushState(null, "", window.location.href);
+
+    const handlePopState = () => {
+      // Re-push dummy state to stay on current page
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   /* ── Wake Projeksiyon HDMI ────────────────────────────────────────────────── */
   const wakeAndProgress = useCallback(async () => {
     if (!targetRoom) return;
@@ -243,18 +257,20 @@ export function ConnectionSetup() {
 
       {/* ── Top bar ────────────────────────────────────────────────────────── */}
       <header className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
-        <button
-          id="btn-back"
-          onClick={handleBack}
-          className="
-            flex items-center justify-center w-8 h-8 rounded-lg
-            text-[var(--text-muted)] hover:text-[var(--text-primary)]
-            hover:bg-[var(--bg-tertiary)] transition-colors duration-150
-          "
-          aria-label={t("common.back")}
-        >
-          <ArrowLeft size={18} />
-        </button>
+        {!isStreaming && (
+          <button
+            id="btn-back"
+            onClick={handleBack}
+            className="
+              flex items-center justify-center w-8 h-8 rounded-lg
+              text-[var(--text-muted)] hover:text-[var(--text-primary)]
+              hover:bg-[var(--bg-tertiary)] transition-colors duration-150
+            "
+            aria-label={t("common.back")}
+          >
+            <ArrowLeft size={18} />
+          </button>
+        )}
 
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-semibold text-[var(--text-primary)] truncate">
@@ -495,21 +511,23 @@ export function ConnectionSetup() {
       </main>
 
       {/* ── Cancel footer ────────────────────────────────────────────────── */}
-      <footer className="px-5 pb-5 pt-3 shrink-0">
-        <button
-          id="btn-cancel"
-          onClick={handleBack}
-          className="
-            w-full py-2.5 rounded-xl
-            text-sm text-[var(--text-muted)]
-            border border-[var(--border)]
-            hover:border-[var(--border-hover)] hover:text-[var(--text-primary)]
-            transition-colors duration-150
-          "
-        >
-          İptal
-        </button>
-      </footer>
+      {!isStreaming && (
+        <footer className="px-5 pb-5 pt-3 shrink-0">
+          <button
+            id="btn-cancel"
+            onClick={handleBack}
+            className="
+              w-full py-2.5 rounded-xl
+              text-sm text-[var(--text-muted)]
+              border border-[var(--border)]
+              hover:border-[var(--border-hover)] hover:text-[var(--text-primary)]
+              transition-colors duration-150
+            "
+          >
+            İptal
+          </button>
+        </footer>
+      )}
     </div>
   );
 }

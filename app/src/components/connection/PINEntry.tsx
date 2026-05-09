@@ -40,10 +40,12 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
 
   const localizedError = getLocalizedError(error);
 
-  // Auto-focus relies on React autoFocus prop now.
-
-  // ... rest of the logic stays same ...
-  // (internal helpers kept for brevity but I'll include them in the replace)
+  useEffect(() => {
+    if (!disabled) {
+      const timer = setTimeout(() => inputRefs.current[0]?.focus(), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [disabled]);
 
   const focusBox = (index: number) => {
     const el = inputRefs.current[Math.max(0, Math.min(3, index))];

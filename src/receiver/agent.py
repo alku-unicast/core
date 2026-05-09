@@ -111,6 +111,7 @@ class UniCastReceiver:
         self._init_firebase()
 
         # Build idle screen
+        self._blacken_display()   # must be first — blacks out TTY buffer before anything loads
         self._hide_tty_cursor()
         self.setup_idle_screen()
 
@@ -227,6 +228,24 @@ class UniCastReceiver:
         except Exception:
             pass
  
+    def _blacken_display(self):
+        """Writes zeros to /dev/fb0 so TTY appears black during transitions."""
+        try:
+            with open("/sys/class/graphics/fb0/virtual_size") as f:
+                w, h = map(int, f.read().strip().split(","))
+            with open("/sys/class/graphics/fb0/bits_per_pixel") as f:
+                bpp = int(f.read().strip())
+            size = w * h * (bpp // 8)
+            with open("/dev/fb0", "wb") as fb:
+                chunk = b'\x00' * (1024 * 1024)
+                written = 0
+                while written < size:
+                    to_write = min(len(chunk), size - written)
+                    fb.write(chunk[:to_write])
+                    written += to_write
+        except Exception:
+            pass
+ 
     # ─────────────────────────────────────────────────────────────────────────
     # Idle Screen
     # ─────────────────────────────────────────────────────────────────────────
@@ -286,7 +305,7 @@ class UniCastReceiver:
             self.idle_pipe.set_state(Gst.State.NULL)
         pipeline_str = (
             f"filesrc location={self._idle_image} ! pngdec ! imagefreeze ! "
-            f"videoconvert ! video/x-raw,width=1920,height=1080 ! kmssink sync=false"
+            f"videoconvert ! videoscale ! kmssink sync=false"
         )
         self.idle_pipe = Gst.parse_launch(pipeline_str)
         self.idle_pipe.set_state(Gst.State.PLAYING)
@@ -348,7 +367,9 @@ class UniCastReceiver:
         if self.current_state == State.STREAMING:
             return
         print("[UniCast] Starting AV stream...")
-
+ 
+        self._blacken_display()
+ 
         if self.idle_pipe:
             self.idle_pipe.set_state(Gst.State.NULL)
 
