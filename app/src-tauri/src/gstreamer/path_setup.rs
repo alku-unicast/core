@@ -251,22 +251,19 @@ pub fn get_best_linux_src(app: &AppHandle) -> String {
 
     log::info!("[gst] Linux element detection: ximagesrc={}, pipewiresrc={}, wayland={}", has_x11_src, has_wayland_src, is_wayland);
 
-    // If on X11, always prefer ximagesrc
+    // X11 session: ximagesrc is the stable, no-portal choice
     if !is_wayland && has_x11_src {
         return "ximagesrc".to_string();
     }
 
-    // On Wayland, we prefer ximagesrc (for XWayland) if portal logic isn't fully ready,
-    // but pipewiresrc is the "correct" way for native capture.
-    // For now, let's stick with ximagesrc if available as it's more stable for basic use.
-    if has_x11_src {
-        return "ximagesrc".to_string();
-    }
-
-    if has_wayland_src {
+    // Wayland session: pipewiresrc is mandatory — ximagesrc causes BadMatch on native windows
+    if is_wayland && has_wayland_src {
         return "pipewiresrc".to_string();
     }
 
+    // Fallbacks (should not be reached on a correctly-built AppImage)
+    if has_x11_src { return "ximagesrc".to_string(); }
+    if has_wayland_src { return "pipewiresrc".to_string(); }
     "ximagesrc".to_string()
 }
 

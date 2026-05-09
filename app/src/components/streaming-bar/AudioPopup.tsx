@@ -92,7 +92,7 @@ export function AudioPopup({
           style={{
             height: 4,
             accentColor: "var(--accent)",
-            background: "rgba(255,255,255,0.2)",
+            background: `linear-gradient(to right, var(--accent) ${pct}%, rgba(255,255,255,0.2) ${pct}%)`,
             borderRadius: 4,
           }}
           aria-label={t("streaming_bar.volume_hint")}

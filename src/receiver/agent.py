@@ -432,7 +432,7 @@ class UniCastReceiver:
     #   WAKE            → responds "READY" (HDMI-CEC power-on)
     #   PIN:<4digit>    → responds "OK" or "FAIL:<attempts_remaining>" or "BUSY"
     #   HEARTBEAT       → updates last_heartbeat timestamp
-    #   STOP            → enters grace period
+    #   STOP            → immediate new PIN (manual user action)
     # ─────────────────────────────────────────────────────────────────────────
 
     def _udp_listener(self):
@@ -490,7 +490,7 @@ class UniCastReceiver:
 
             # ── STOP (sender user request) ────────────────────────────────────
             elif msg == "STOP":
-                self.stop_streaming(immediate_new_pin=False)
+                self.stop_streaming(immediate_new_pin=True)
                 self.last_heartbeat = time.time()
 
             # ── VOLUME:<0-100> (ISSUE-08) ───────────────────────────────────

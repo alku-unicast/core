@@ -24,7 +24,9 @@
     "all": "All",
     "floor_n": "Floor {{n}}",
     "floor_0": "Ground Floor",
-    "connect": "Connect"
+    "connect": "Connect",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites"
   },
   "status": {
     "idle": "Idle",

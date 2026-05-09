@@ -212,7 +212,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     const timeout = setTimeout(async () => {
       console.log("[connectionStore] Executing auto-restart attempt", newCount);
       await get().startStream(lastStreamConfig);
-    }, 16500);
+    }, 3000);
 
     set({ restartTimeout: timeout });
   },

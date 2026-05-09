@@ -24,7 +24,9 @@
     "all": "Tümü",
     "floor_n": "{{n}}. Kat",
     "floor_0": "Zemin Kat",
-    "connect": "Bağlan"
+    "connect": "Bağlan",
+    "favorite": "Favorilere Ekle",
+    "unfavorite": "Favorilerden Çıkar"
   },
   "status": {
     "idle": "Boş",
