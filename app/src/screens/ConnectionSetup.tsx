@@ -247,7 +247,7 @@ export function ConnectionSetup() {
 
   /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
-    <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
+    <div className="flex flex-col h-screen overflow-hidden bg-[var(--bg-primary)]">
 
       {/* ── Linux window-mode warning modal ──────────────────────────────── */}
       <LinuxWarningModal
@@ -310,7 +310,7 @@ export function ConnectionSetup() {
       </header>
 
       {/* ── Scrollable body ──────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-5">
+      <main className="flex-1 min-h-0 overflow-y-auto px-5 py-5 flex flex-col gap-5">
 
         {/* ── Progress indicator ─────────────────────────────────────────── */}
         <section className="flex justify-center pt-2">
