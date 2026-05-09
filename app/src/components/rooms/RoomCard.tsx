@@ -9,9 +9,9 @@ const STATUS_VISUALS: Record<
   RoomStatus,
   { dot: string; pulse: boolean }
 > = {
-  idle:         { dot: "bg-[var(--status-idle)]",         pulse: true  },
-  streaming:    { dot: "bg-[var(--status-streaming)]",    pulse: false },
-  offline:      { dot: "bg-[var(--status-offline)]",      pulse: false },
+  idle: { dot: "bg-[var(--status-idle)]", pulse: true },
+  streaming: { dot: "bg-[var(--status-streaming)]", pulse: false },
+  offline: { dot: "bg-[var(--status-offline)]", pulse: false },
   unconfigured: { dot: "bg-[var(--status-unconfigured)]", pulse: false },
 };
 
@@ -61,8 +61,8 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
           flex flex-col items-center gap-2 p-3 w-24
           bg-[var(--bg-secondary)] border border-[var(--border)]
           rounded-xl shrink-0 transition-all duration-150
-          ${canConnect 
-            ? "cursor-pointer hover:border-[var(--border-hover)] hover:scale-[1.03]" 
+          ${canConnect
+            ? "cursor-pointer hover:border-[var(--border-hover)] hover:scale-[1.03]"
             : "cursor-default opacity-80"}
         `}
         onClick={() => canConnect && onConnect(room)}
@@ -84,8 +84,8 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
         group relative flex flex-col gap-3 p-4
         bg-[var(--bg-secondary)] border border-[var(--border)]
         rounded-2xl transition-all duration-150
-        ${canConnect 
-          ? "hover:border-[var(--border-hover)] hover:shadow-lg hover:scale-[1.02]" 
+        ${canConnect
+          ? "hover:border-[var(--border-hover)] hover:shadow-lg hover:scale-[1.02]"
           : "opacity-90"}
       `}
     >
@@ -113,11 +113,10 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
         >
           <Star
             size={18}
-            className={`transition-colors duration-150 ${
-              isFavorite
+            className={`transition-colors duration-150 ${isFavorite
                 ? "fill-[var(--accent-gold)] stroke-[var(--accent-gold)]"
                 : "stroke-[var(--text-muted)] group-hover:stroke-[var(--accent-gold)]"
-            }`}
+              }`}
           />
         </button>
       </div>
@@ -126,22 +125,20 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
       <div className="flex items-center gap-2">
         <StatusDot status={room.status} />
         <span
-          className={`text-xs font-medium ${
-            room.status === "idle"
+          className={`text-xs font-medium ${room.status === "idle"
               ? "text-[var(--status-idle)]"
               : room.status === "streaming"
-              ? "text-[var(--status-streaming)]"
-              : room.status === "unconfigured"
-              ? "text-[var(--status-unconfigured)]"
-              : "text-[var(--status-offline)]"
-          }`}
+                ? "text-[var(--status-streaming)]"
+                : room.status === "unconfigured"
+                  ? "text-[var(--status-unconfigured)]"
+                  : "text-[var(--status-offline)]"
+            }`}
         >
           {statusLabel}
         </span>
 
         {room.status === "streaming" && (
           <span className="ml-auto flex items-center gap-1 text-[10px] text-[var(--status-streaming)]">
-            <Cast size={11} />
             {t("status.in_progress")}
           </span>
         )}
@@ -155,10 +152,9 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
         className={`
           mt-1 w-full py-2 rounded-xl text-sm font-semibold flex items-center justify-center gap-2
           transition-all duration-150
-          ${
-            canConnect
-              ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] active:scale-95 cursor-pointer"
-              : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed"
+          ${canConnect
+            ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] active:scale-95 cursor-pointer"
+            : "bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed"
           }
         `}
       >
@@ -174,7 +170,6 @@ export function RoomCard({ room, onConnect, variant = "full" }: RoomCardProps) {
           </>
         ) : room.status === "streaming" ? (
           <>
-            <Cast size={14} />
             {t("status.in_progress")}
           </>
         ) : (

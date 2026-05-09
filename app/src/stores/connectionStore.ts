@@ -220,14 +220,15 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   stopStream: async () => {
     const { restartTimeout } = get();
     if (restartTimeout) clearTimeout(restartTimeout);
-    
+
+    const { invoke } = await import("@tauri-apps/api/core");
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
       await invoke("stop_stream");
-      // ISSUE-06: Always unmute on stop
-      await invoke("mute_system_audio", { mute: false }).catch(console.warn);
     } catch (e) {
       console.error("[connectionStore] stopStream failed:", e);
+    } finally {
+      // Always unmute — even if stop_stream throws, volume must be restored.
+      await invoke("mute_system_audio", { mute: false }).catch(console.warn);
     }
     get().reset();
   },

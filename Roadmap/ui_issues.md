@@ -1,6 +1,29 @@
 
 devam eden sorunlar:
 
+linux: "yayın başlatılamadı lütfen ağ bağlntısı ve eklentileri kontrol edin"
+ayrıca terminal de bu: "[gst] Building pipeline mode=presentation encoder=x264enc target=10.50.0.69:5000 fps=20 bitrate=3000
+[gst] Final Pipeline: ximagesrc ! queue ! videoconvert ! videoscale method=3 add-borders=true ! video/x-raw,width=1920,height=1080,pixel-aspect-ratio=1/1 ! videoconvert ! video/x-raw,format=NV12,framerate=20/1 ! queue ! x264enc bitrate=3000 tune=zerolatency speed-preset=ultrafast key-int-max=15 ! rtph264pay config-interval=1 ! queue ! udpsink host=10.50.0.69 port=5000
+[stream] gst_launch path: /tmp/.mount_UniCasBfPpcK/usr/lib/UniCast/gstreamer/linux/bin/gst-launch-1.0
+[stream] bin_dir (CWD): /tmp/.mount_UniCasBfPpcK/usr/lib/UniCast/gstreamer/linux/bin
+[stream] pipeline: ximagesrc ! queue ! videoconvert ! videoscale method=3 add-borders=true ! video/x-raw,width=1920,height=1080,pixel-aspect-ratio=1/1 ! videoconvert ! video/x-raw,format=NV12,framerate=20/1 ! queue ! x264enc bitrate=3000 tune=zerolatency speed-preset=ultrafast key-int-max=15 ! rtph264pay config-interval=1 ! queue ! udpsink host=10.50.0.69 port=5000
+[stream] Full command about to run: /tmp/.mount_UniCasBfPpcK/usr/lib/UniCast/gstreamer/linux/bin/gst-launch-1.0 ximagesrc ! queue ! videoconvert ! videoscale method=3 add-borders=true ! video/x-raw,width=1920,height=1080,pixel-aspect-ratio=1/1 ! videoconvert ! video/x-raw,format=NV12,framerate=20/1 ! queue ! x264enc bitrate=3000 tune=zerolatency speed-preset=ultrafast key-int-max=15 ! rtph264pay config-interval=1 ! queue ! udpsink host=10.50.0.69 port=5000
+DURDURULDU durumu için ardışık düzen ayarlamaları ...
+Boru hattı çalışıyor ve PREROLL ihtiyacı yok ...
+Boru hattı PREROLLED ...
+Boru hattı PLAYING olarak ayarlanıyor ...
+New clock: GstSystemClock
+Yeniden dağıtım gecikmesi...
+Yeniden dağıtım gecikmesi...
+X Error of failed request:  BadMatch (invalid parameter attributes)
+  Major opcode of failed request:  73 (X_GetImage)
+  Serial number of failed request:  62
+  Current serial number in output stream:  62
+[2026-05-09T14:01:21Z ERROR unicast_lib] [frontend] [connectionStore] startStream failed: GStreamer pipeline failed immediately (exit Some(1)). GST_PLUGIN_PATH="/tmp/.mount_UniCasBfPpcK/usr/lib/UniCast/gstreamer/linux/lib/gstreamer-1.0"  Log: "/home/un1c4on/.local/share/com.unicast.app/gst_debug.log"
+
+** (unicast:24868): WARNING **: 17:01:35.021: atk-bridge: get_device_events_reply: unknown signature"
+
+
 ses açma kapatma çalışıyor ama ses seviyesi ayarı yapılamıyor slider çalışmıyor.
 ayırca bir ux sorunu var eğer kullanıcı sessiz yayın yapacaksa slider ayarına ses ayarlarına erişmesine hiç gerek yok zaten onlar gözükmemeli hem mini ada hem mini ada olmadan.
 mini ada olmadan yayın yapııldığında wifi sembolüne benzeyen yayın başlatılıyor yazısının üstündeki turuncu sembol taşıyor üstü de kesik gözüküyor oranın ayar daha düzgün yapılmalı. 
