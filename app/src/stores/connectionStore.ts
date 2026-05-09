@@ -25,6 +25,9 @@ interface ConnectionStore {
   // Stream error (shown when pipeline fails to start)
   streamError: string | null;
 
+  // Session token — issued by Pi after PIN auth, required for all control commands
+  sessionToken: string | null;
+
   // Auto-restart logic
   lastStreamConfig: StreamConfig | null;
   restartAttempts: number;
@@ -63,6 +66,7 @@ const initialState = {
   networkQuality: "excellent" as NetworkQuality,
   lastRTT: null,
   streamError: null as string | null,
+  sessionToken: null as string | null,
   lastStreamConfig: null as StreamConfig | null,
   restartAttempts: 0,
   lastRestartTime: 0,
@@ -84,13 +88,13 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ phase: "authenticating" });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const result = await invoke<{ success: boolean; message: string; attemptsRemaining?: number }>(
+      const result = await invoke<{ success: boolean; message: string; attemptsRemaining?: number; sessionToken?: string }>(
         "verify_pin",
         { targetIp: targetRoom.ip, pin }
       );
 
       if (result.success) {
-        set({ phase: "streaming", pinError: null, pinAttempts: 0 });
+        set({ phase: "streaming", pinError: null, pinAttempts: 0, sessionToken: result.sessionToken ?? null });
         return true;
       } else {
         const used = get().pinAttempts + 1;
@@ -111,7 +115,8 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ streamError: null });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const result = await invoke<{ success: boolean; pid: number }>("start_stream", { config });
+      const { sessionToken } = get();
+      const result = await invoke<{ success: boolean; pid: number }>("start_stream", { config, sessionToken: sessionToken ?? "" });
       if (result.success) {
         set({
           streamPid: result.pid,
@@ -239,11 +244,12 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ isMuted: next });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const { targetRoom } = get();
-      await invoke("set_stream_volume", { 
-        volume: streamVolume, 
-        mute: next, 
-        targetIp: targetRoom?.ip ?? null 
+      const { targetRoom, sessionToken } = get();
+      await invoke("set_stream_volume", {
+        volume: streamVolume,
+        mute: next,
+        targetIp: targetRoom?.ip ?? null,
+        sessionToken: sessionToken ?? null,
       });
     } catch (e) {
       set({ isMuted: !next });
@@ -254,11 +260,12 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ streamVolume: volume });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const { isMuted, targetRoom } = get();
-      await invoke("set_stream_volume", { 
-        volume, 
-        mute: isMuted, 
-        targetIp: targetRoom?.ip ?? null 
+      const { isMuted, targetRoom, sessionToken } = get();
+      await invoke("set_stream_volume", {
+        volume,
+        mute: isMuted,
+        targetIp: targetRoom?.ip ?? null,
+        sessionToken: sessionToken ?? null,
       });
     } catch (e) {
       console.error("[connectionStore] setStreamVolume failed:", e);

@@ -16,25 +16,27 @@ fn gst_handle() -> &'static Arc<Mutex<Option<Child>>> {
     GST_PROCESS.get_or_init(|| Arc::new(Mutex::new(None)))
 }
 
-/// Spawns a background task that sends "HEARTBEAT" to the receiver every 2 seconds.
+/// Spawns a background task that sends "HEARTBEAT:<token>" to the receiver every 2 seconds.
 /// This prevents the Pi's safety timeout (5s) from kicking in.
-fn spawn_heartbeat(target_ip: String) {
+fn spawn_heartbeat(target_ip: String, session_token: String) {
     HEARTBEAT_RUNNING.store(true, std::sync::atomic::Ordering::SeqCst);
-    
+
     tokio::spawn(async move {
         let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok();
         let addr = format!("{}:5001", target_ip);
-        
+        let hb_msg = format!("HEARTBEAT:{}", session_token);
+        let stop_msg = format!("STOP:{}", session_token);
+
         while HEARTBEAT_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
             if let Some(ref sock) = socket {
-                let _ = sock.send_to(b"HEARTBEAT", &addr);
+                let _ = sock.send_to(hb_msg.as_bytes(), &addr);
             }
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         }
-        
-        // Final "STOP" signal for a graceful cleanup on Pi side
+
+        // Final "STOP:<token>" for graceful cleanup on Pi side
         if let Some(ref sock) = socket {
-            let _ = sock.send_to(b"STOP", &addr);
+            let _ = sock.send_to(stop_msg.as_bytes(), &addr);
         }
         log::info!("[heartbeat] Stopped for {}", target_ip);
     });
@@ -75,6 +77,7 @@ pub struct StartStreamResult {
 pub async fn start_stream(
     app: AppHandle,
     config: StreamConfig,
+    session_token: String,
 ) -> Result<StartStreamResult, String> {
     // Kill any existing stream first
     stop_stream_internal();
@@ -160,7 +163,7 @@ pub async fn start_stream(
     drop(guard);
 
     // Start heartbeat loop
-    spawn_heartbeat(config.target_ip.clone());
+    spawn_heartbeat(config.target_ip.clone(), session_token);
 
     // Emit stream-started event
     app.emit("stream-started", serde_json::json!({ "pid": pid }))
@@ -251,24 +254,22 @@ pub async fn switch_stream_mode(
 
 #[tauri::command]
 pub async fn set_stream_volume(
-    volume: f32, 
-    mute: bool, 
-    target_ip: Option<String>
+    volume: f32,
+    mute: bool,
+    target_ip: Option<String>,
+    session_token: Option<String>,
 ) -> Result<bool, String> {
     log::info!("[stream] set_stream_volume: volume={volume}, mute={mute}, target={target_ip:?}");
-    
-    if let Some(ip) = target_ip {
+
+    if let (Some(ip), Some(token)) = (target_ip, session_token) {
         let addr = format!("{}:5001", ip);
         let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| e.to_string())?;
-        
-        let msg = if mute {
-            "VOLUME:0".to_string()
-        } else {
-            format!("VOLUME:{}", (volume * 100.0) as u32)
-        };
+
+        let vol_value = if mute { 0u32 } else { (volume * 100.0) as u32 };
+        let msg = format!("VOLUME:{}:{}", vol_value, token);
 
         let _ = socket.send_to(msg.as_bytes(), &addr);
     }
-    
+
     Ok(true)
 }

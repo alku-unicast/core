@@ -8,6 +8,8 @@ pub struct PinVerifyResult {
     pub message: String,
     #[serde(rename = "attemptsRemaining")]
     pub attempts_remaining: Option<u8>,
+    #[serde(rename = "sessionToken")]
+    pub session_token: Option<String>,
 }
 
 /// Send PIN to Pi via UDP:5001 and wait for OK/FAIL response.
@@ -43,11 +45,14 @@ pub async fn verify_pin(
 
         let response = std::str::from_utf8(&buf[..len]).unwrap_or("").trim();
 
-        if response == "OK" {
+        if response.starts_with("OK") {
+            // Response is "OK:<token>" (new) or "OK" (legacy fallback)
+            let token = response.strip_prefix("OK:").map(|t| t.to_string());
             Ok(PinVerifyResult {
                 success: true,
                 message: "Authenticated".to_string(),
                 attempts_remaining: None,
+                session_token: token,
             })
         } else if response.starts_with("FAIL:") {
             let remaining = response
@@ -58,18 +63,21 @@ pub async fn verify_pin(
                 success: false,
                 message: format!("Wrong PIN. {remaining} attempts remaining."),
                 attempts_remaining: Some(remaining),
+                session_token: None,
             })
         } else if response == "BUSY" {
             Ok(PinVerifyResult {
                 success: false,
                 message: "Room is currently busy.".to_string(),
                 attempts_remaining: None,
+                session_token: None,
             })
         } else {
             Ok(PinVerifyResult {
                 success: false,
                 message: "Unknown response from Pi.".to_string(),
                 attempts_remaining: None,
+                session_token: None,
             })
         }
     })

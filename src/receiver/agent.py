@@ -2,6 +2,7 @@ import os
 import time
 import socket
 import random
+import secrets
 import signal
 import threading
 import subprocess
@@ -76,6 +77,10 @@ class UniCastReceiver:
         self.ip_address     = self._get_ip()
         self.last_heartbeat = 0
         self.pin_attempts: dict[str, int] = {}  # ip -> failed attempts
+
+        # Session token — issued after PIN auth, required for all control commands
+        self.session_token: str | None = None
+        self.session_ip:    str | None = None
  
         # Firebase reference
         self._fb_ref = None
@@ -188,6 +193,16 @@ class UniCastReceiver:
     # ─────────────────────────────────────────────────────────────────────────
     # Utilities
     # ─────────────────────────────────────────────────────────────────────────
+
+    def _validate_token(self, token: str | None, ip: str) -> bool:
+        """Returns True only if the token matches the active session and IP matches."""
+        if not self.session_token or not token:
+            return False
+        if token != self.session_token:
+            return False
+        if self.session_ip and ip != self.session_ip:
+            return False
+        return True
 
     def _generate_pin(self) -> str:
         return str(random.randint(1000, 9999))
@@ -414,12 +429,15 @@ class UniCastReceiver:
         if immediate_new_pin:
             self.pin = self._generate_pin()
             self.pin_attempts.clear()
+            self.session_token = None  # Invalidate session — new PIN required
+            self.session_ip    = None
             self.current_state = State.IDLE
             self.idle_since = time.time()
             print(f"[UniCast] Stream stopped | New PIN: {self.pin}")
             self._fb_write_status(State.IDLE)
         else:
             self.current_state = State.RECONNECTING
+            # Keep session_token alive during grace period so heartbeat can resume
             print("[UniCast] Stream paused — grace period started (PIN unchanged)")
             self._fb_write_status(State.IDLE)   # Show idle to sender UI
  
@@ -468,9 +486,12 @@ class UniCastReceiver:
 
                 if received == self.pin:
                     self.pin_attempts.pop(ip, None)  # reset on success
-                    self.udp_sock.sendto(b"OK", addr)
+                    token = secrets.token_hex(16)
+                    self.session_token = token
+                    self.session_ip    = ip
+                    self.udp_sock.sendto(f"OK:{token}".encode(), addr)
                     self.last_heartbeat = time.time()
-                    print(f"[Auth] OK from {ip}")
+                    print(f"[Auth] OK from {ip}, session token issued")
                     self.start_streaming()
                 else:
                     attempts += 1
@@ -481,40 +502,43 @@ class UniCastReceiver:
                     if attempts >= MAX_ATTEMPTS:
                         print(f"[Auth] MAX attempts — blocking {ip} for this PIN cycle")
 
-            # ── HEARTBEAT ─────────────────────────────────────────────────────
-            elif msg == "HEARTBEAT":
+            # ── HEARTBEAT:<token> ─────────────────────────────────────────────
+            elif msg.startswith("HEARTBEAT"):
+                token = msg[10:] if msg.startswith("HEARTBEAT:") else None
+                if not self._validate_token(token, ip):
+                    print(f"[Auth] HEARTBEAT rejected from {ip} — invalid token")
+                    continue
                 self.last_heartbeat = time.time()
                 if self.current_state == State.RECONNECTING:
                     print("[UniCast] Reconnect heartbeat — resuming stream")
                     self.start_streaming()
 
-            # ── STOP (sender user request) ────────────────────────────────────
-            elif msg == "STOP":
+            # ── STOP:<token> (sender user request) ───────────────────────────
+            elif msg.startswith("STOP"):
+                token = msg[5:] if msg.startswith("STOP:") else None
+                if not self._validate_token(token, ip):
+                    print(f"[Auth] STOP rejected from {ip} — invalid token")
+                    continue
                 self.stop_streaming(immediate_new_pin=True)
                 self.last_heartbeat = time.time()
 
-            # ── VOLUME:<0-100> (ISSUE-08) ───────────────────────────────────
+            # ── VOLUME:<0-100>:<token> ────────────────────────────────────────
             elif msg.startswith("VOLUME:"):
+                parts = msg.split(":")
+                if len(parts) < 3:
+                    print(f"[Auth] VOLUME rejected from {ip} — missing token")
+                    continue
+                token = parts[2]
+                if not self._validate_token(token, ip):
+                    print(f"[Auth] VOLUME rejected from {ip} — invalid token")
+                    continue
                 try:
-                    vol_str = msg.split(":")[1]
-                    vol = int(vol_str)
-                    vol = max(0, min(100, vol)) # Clamp 0-100
-                    
-                    # 1. Update system volume as fallback (optional)
-                    res = subprocess.run(["amixer", "-q", "sset", "Master", f"{vol}%"], capture_output=True)
-
-                    # 2. Update GStreamer volume element directly for instant/accurate response
+                    vol = max(0, min(100, int(parts[1])))
                     if self.vol_element:
-                        # GStreamer volume is 0.0 to 1.0
                         self.vol_element.set_property("volume", vol / 100.0)
-                        print(f"[Audio] GStreamer volume updated to {vol}%")
+                        print(f"[Audio] GStreamer volume set to {vol}% by {ip}")
                     else:
                         print(f"[Audio] Volume element not found in active pipeline")
-                    
-                    if res.returncode == 0:
-                        print(f"[Audio] Volume set to {vol}% by {ip}")
-                    else:
-                        print(f"[Audio] amixer failed (rc={res.returncode}) for {vol}% from {ip}")
                 except Exception as e:
                     print(f"[Audio] Volume command error: {e}")
 
@@ -552,6 +576,8 @@ class UniCastReceiver:
                     print("[UniCast] Grace period expired — new PIN")
                     self.pin = self._generate_pin()
                     self.pin_attempts.clear()
+                    self.session_token = None
+                    self.session_ip    = None
                     self.current_state = State.IDLE
                     self.idle_since = now
                     self._fb_write_status(State.IDLE)
