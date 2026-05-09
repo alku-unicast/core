@@ -95,6 +95,14 @@ function roomsToCache(rooms: Record<string, Room>): RoomsCache {
 }
 
 let pollInterval: any = null;
+let activeFetchRooms: (() => Promise<void>) | null = null;
+
+/** Force an immediate room refresh (fire-and-forget). */
+export function refreshRoomsNow(): void {
+  if (activeFetchRooms) {
+    activeFetchRooms().catch(() => {});
+  }
+}
 
 /**
  * Starts fetching rooms from Firebase via Rust backend.
@@ -179,6 +187,9 @@ export function startRoomListener(): () => void {
       }
     }
   };
+
+  // Expose for external refresh (e.g. after stream stops)
+  activeFetchRooms = fetchRooms;
 
   // Run startup sequence
   loadCache().then(() => {

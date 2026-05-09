@@ -236,6 +236,10 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       await invoke("mute_system_audio", { mute: false }).catch(console.warn);
     }
     get().reset();
+
+    // Refresh room list so discovery immediately shows updated Pi status
+    const { refreshRoomsNow } = await import("../services/roomService");
+    refreshRoomsNow();
   },
 
   toggleMute: async () => {
@@ -244,12 +248,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ isMuted: next });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const { targetRoom, sessionToken } = get();
+      const { targetRoom } = get();
       await invoke("set_stream_volume", {
         volume: streamVolume,
         mute: next,
         targetIp: targetRoom?.ip ?? null,
-        sessionToken: sessionToken ?? null,
       });
     } catch (e) {
       set({ isMuted: !next });
@@ -260,12 +263,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     set({ streamVolume: volume });
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      const { isMuted, targetRoom, sessionToken } = get();
+      const { isMuted, targetRoom } = get();
       await invoke("set_stream_volume", {
         volume,
         mute: isMuted,
         targetIp: targetRoom?.ip ?? null,
-        sessionToken: sessionToken ?? null,
       });
     } catch (e) {
       console.error("[connectionStore] setStreamVolume failed:", e);

@@ -9,11 +9,20 @@ static GST_PROCESS: std::sync::OnceLock<Arc<Mutex<Option<Child>>>> =
     std::sync::OnceLock::new();
 
 // Global Heartbeat flag
-static HEARTBEAT_RUNNING: std::sync::atomic::AtomicBool = 
+static HEARTBEAT_RUNNING: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
+
+// Global session token — set on stream start, cleared on stop.
+// Stored here so separate WebviewWindows (streaming bar) don't need to pass it.
+static SESSION_TOKEN: std::sync::OnceLock<Arc<Mutex<Option<String>>>> =
+    std::sync::OnceLock::new();
 
 fn gst_handle() -> &'static Arc<Mutex<Option<Child>>> {
     GST_PROCESS.get_or_init(|| Arc::new(Mutex::new(None)))
+}
+
+fn session_token_handle() -> &'static Arc<Mutex<Option<String>>> {
+    SESSION_TOKEN.get_or_init(|| Arc::new(Mutex::new(None)))
 }
 
 /// Spawns a background task that sends "HEARTBEAT:<token>" to the receiver every 2 seconds.
@@ -162,6 +171,9 @@ pub async fn start_stream(
     *guard = Some(child);
     drop(guard);
 
+    // Store token globally so streaming bar window can use it without sharing JS state
+    *session_token_handle().lock().unwrap() = Some(session_token.clone());
+
     // Start heartbeat loop
     spawn_heartbeat(config.target_ip.clone(), session_token);
 
@@ -213,8 +225,9 @@ pub fn stop_stream(app: AppHandle) -> bool {
 }
 
 pub fn stop_stream_internal() -> bool {
-    // 1. Stop Heartbeat Loop
+    // 1. Stop Heartbeat Loop + clear session token
     HEARTBEAT_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+    *session_token_handle().lock().unwrap() = None;
 
     // 2. Kill GStreamer
     let mut guard = gst_handle().lock().unwrap();
@@ -257,18 +270,20 @@ pub async fn set_stream_volume(
     volume: f32,
     mute: bool,
     target_ip: Option<String>,
-    session_token: Option<String>,
 ) -> Result<bool, String> {
     log::info!("[stream] set_stream_volume: volume={volume}, mute={mute}, target={target_ip:?}");
 
-    if let (Some(ip), Some(token)) = (target_ip, session_token) {
-        let addr = format!("{}:5001", ip);
-        let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| e.to_string())?;
+    if let Some(ip) = target_ip {
+        let token = session_token_handle().lock().unwrap().clone();
+        if let Some(token) = token {
+            let addr = format!("{}:5001", ip);
+            let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| e.to_string())?;
 
-        let vol_value = if mute { 0u32 } else { (volume * 100.0) as u32 };
-        let msg = format!("VOLUME:{}:{}", vol_value, token);
+            let vol_value = if mute { 0u32 } else { (volume * 100.0) as u32 };
+            let msg = format!("VOLUME:{}:{}", vol_value, token);
 
-        let _ = socket.send_to(msg.as_bytes(), &addr);
+            let _ = socket.send_to(msg.as_bytes(), &addr);
+        }
     }
 
     Ok(true)
