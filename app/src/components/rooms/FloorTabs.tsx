@@ -12,7 +12,7 @@ export function FloorTabs() {
   };
 
   return (
-    <div className="flex gap-1.5 px-5 overflow-x-auto scrollbar-none">
+    <div className="flex gap-1.5 px-5 overflow-x-auto scrollbar-none shrink-0">
       {/* All tab */}
       <TabButton
         id="tab-floor-all"
@@ -47,7 +47,7 @@ function TabButton({ id, label, active, onClick }: TabButtonProps) {
       onClick={onClick}
       className={`
         px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap
-        transition-all duration-150
+        transition-all duration-150 shrink-0
         ${
           active
             ? "bg-[var(--accent)] text-white shadow-sm"

@@ -91,7 +91,7 @@ export function AudioPopup({
           className="appearance-none cursor-pointer w-full"
           style={{
             height: 4,
-            accentColor: "var(--bar-text)",
+            accentColor: "var(--accent)",
             background: "rgba(255,255,255,0.2)",
             borderRadius: 4,
           }}

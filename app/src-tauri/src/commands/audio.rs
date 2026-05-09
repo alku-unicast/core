@@ -1,5 +1,29 @@
 use serde::{Deserialize, Serialize};
 
+#[cfg(target_os = "linux")]
+static SAVED_LINUX_VOL: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(-1);
+
+#[cfg(target_os = "linux")]
+fn get_sink_volume_pct() -> u32 {
+    let out = std::process::Command::new("pactl")
+        .args(["get-sink-volume", "@DEFAULT_SINK@"])
+        .output();
+    if let Ok(o) = out {
+        if o.status.success() {
+            let s = String::from_utf8_lossy(&o.stdout);
+            for part in s.split('/') {
+                let trimmed = part.trim();
+                if let Some(stripped) = trimmed.strip_suffix('%') {
+                    if let Ok(val) = stripped.trim().parse::<u32>() {
+                        if val <= 150 { return val; }
+                    }
+                }
+            }
+        }
+    }
+    50 // safe fallback
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AudioDevice {
     pub id: String,
@@ -119,16 +143,23 @@ pub async fn mute_system_audio(mute: bool) -> Result<bool, String> {
     }
     #[cfg(target_os = "linux")]
     {
-        // set-sink-mute mutes hardware output only; the monitor source (used by GStreamer
-        // pulsesrc) captures audio before the hardware mute stage and is unaffected.
-        // set-sink-volume would reduce the monitor source signal — do NOT use it.
-        let arg = if mute { "1" } else { "0" };
-        let ok = std::process::Command::new("pactl")
-            .args(["set-sink-mute", "@DEFAULT_SINK@", arg])
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        Ok(ok)
+        use std::sync::atomic::Ordering;
+        // Volume-based approach: set-sink-volume 1% silences speakers while
+        // keeping the monitor source signal intact (only full mute kills it).
+        if mute {
+            let current = get_sink_volume_pct();
+            SAVED_LINUX_VOL.store(current as i32, Ordering::SeqCst);
+            let _ = std::process::Command::new("pactl")
+                .args(["set-sink-volume", "@DEFAULT_SINK@", "1%"])
+                .status();
+        } else {
+            let saved = SAVED_LINUX_VOL.load(Ordering::SeqCst);
+            let pct = if saved > 1 { saved as u32 } else { 50 };
+            let _ = std::process::Command::new("pactl")
+                .args(["set-sink-volume", "@DEFAULT_SINK@", &format!("{}%", pct)])
+                .status();
+        }
+        Ok(true)
     }
 }
 
