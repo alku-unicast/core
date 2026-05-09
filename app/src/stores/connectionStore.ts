@@ -113,12 +113,13 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       const { invoke } = await import("@tauri-apps/api/core");
       const result = await invoke<{ success: boolean; pid: number }>("start_stream", { config });
       if (result.success) {
-        set({ 
-          streamPid: result.pid, 
-          streamElapsed: 0, 
+        set({
+          streamPid: result.pid,
+          streamElapsed: 0,
           lastStreamConfig: config,
           isRestarting: false,
-          streamError: null
+          streamError: null,
+          audioEnabled: config.audioEnabled,
         });
 
         // ── Streaming bar: show window + send current stream mode ─────────

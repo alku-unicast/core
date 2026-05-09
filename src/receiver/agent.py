@@ -305,7 +305,7 @@ class UniCastReceiver:
             self.idle_pipe.set_state(Gst.State.NULL)
         pipeline_str = (
             f"filesrc location={self._idle_image} ! pngdec ! imagefreeze ! "
-            f"videoconvert ! videoscale ! kmssink sync=false"
+            f"videoconvert ! videoscale ! kmssink sync=false force-aspect-ratio=false"
         )
         self.idle_pipe = Gst.parse_launch(pipeline_str)
         self.idle_pipe.set_state(Gst.State.PLAYING)
@@ -379,7 +379,7 @@ class UniCastReceiver:
             'udpsrc port=5000 caps="application/x-rtp, media=video, '
             'encoding-name=H264, payload=96" ! '
             'rtpjitterbuffer latency=200 ! rtph264depay ! h264parse ! avdec_h264 ! '
-            'videoconvert ! video/x-raw,width=1920,height=1080 ! kmssink sync=true'
+            'videoconvert ! videoscale ! kmssink sync=true force-aspect-ratio=false'
         )
         a_pipeline = (
             'udpsrc port=5002 caps="application/x-rtp, media=audio, '

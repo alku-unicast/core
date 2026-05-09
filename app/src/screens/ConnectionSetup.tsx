@@ -247,7 +247,7 @@ export function ConnectionSetup() {
 
   /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
-    <div className="flex flex-col h-screen bg-[var(--bg-primary)] overflow-hidden">
+    <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
 
       {/* ── Linux window-mode warning modal ──────────────────────────────── */}
       <LinuxWarningModal
@@ -512,7 +512,7 @@ export function ConnectionSetup() {
 
       {/* ── Cancel footer ────────────────────────────────────────────────── */}
       {!isStreaming && (
-        <footer className="px-5 pb-5 pt-3 shrink-0">
+        <footer className="px-5 pb-6 pt-3 shrink-0">
           <button
             id="btn-cancel"
             onClick={handleBack}

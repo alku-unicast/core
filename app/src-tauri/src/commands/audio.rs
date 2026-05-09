@@ -119,10 +119,15 @@ pub async fn mute_system_audio(mute: bool) -> Result<bool, String> {
     }
     #[cfg(target_os = "linux")]
     {
-        // BUG-02: On Linux, muting the default sink also silences the monitor source (used by GStreamer).
-        // To preserve stream audio, we disable local muting on Linux.
-        log::info!("[audio] mute_system_audio is a no-op on Linux to preserve stream audio.");
-        Ok(true)
+        // PulseAudio/Pipewire monitor sources capture audio before the hardware mute stage,
+        // so muting the default sink does not affect the .monitor source GStreamer reads from.
+        let arg = if mute { "1" } else { "0" };
+        let ok = std::process::Command::new("pactl")
+            .args(["set-sink-mute", "@DEFAULT_SINK@", arg])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        Ok(ok)
     }
 }
 
