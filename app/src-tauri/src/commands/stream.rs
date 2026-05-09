@@ -141,7 +141,7 @@ pub async fn start_stream(
                 log::warn!("[stream] Hardware encoder failed immediately. Falling back to software (x264enc)...");
                 let mut fallback_config = config.clone();
                 fallback_config.encoder_name = "x264enc".to_string();
-                return Box::pin(start_stream(app, fallback_config)).await;
+                return Box::pin(start_stream(app, fallback_config, session_token)).await;
             } else {
                 return Err(format!(
                     "GStreamer pipeline failed immediately (exit {:?}). GST_PLUGIN_PATH={:?}  Log: {:?}",
