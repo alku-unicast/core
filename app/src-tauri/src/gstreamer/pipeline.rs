@@ -1,7 +1,6 @@
 use crate::commands::stream::StreamConfig;
 
 // ── Encoder-specific GStreamer parameters ─────────────────────────────────
-// Each hardware encoder has different property names for zero-latency settings.
 fn encoder_params(encoder: &str) -> &'static str {
     match encoder {
         "x264enc" => "tune=zerolatency speed-preset=ultrafast key-int-max=15 intra-refresh=true",
@@ -17,10 +16,7 @@ fn encoder_params(encoder: &str) -> &'static str {
 pub fn build_pipeline(config: &StreamConfig) -> String {
     let (width, height) = parse_resolution(&config.resolution);
     let ip = &config.target_ip;
-    
-    // Adaptive quality settings based on Mode
-    // Video: High FPS (30/60), High Bitrate (6Mbps), low latency
-    // Presentation: Medium FPS (20), Medium Bitrate (3Mbps), high clarity
+
     let (fps, bitrate) = match config.quality_mode.as_str() {
         "video" => (u32::max(config.fps, 30), u32::max(config.bitrate, 5000)),
         "presentation" => (20, 3000),
@@ -33,10 +29,11 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
         &config.encoder_name
     };
 
-    println!("[gst] Building pipeline mode={} encoder={} target={}:{} fps={} bitrate={}", 
-             config.quality_mode, encoder, ip, 5000, fps, bitrate);
+    println!(
+        "[gst] Building pipeline mode={} encoder={} target={}:{} fps={} bitrate={}",
+        config.quality_mode, encoder, ip, 5000, fps, bitrate
+    );
 
-    // ── Video source: platform + mode aware ──────────────────────────────────
     let video_src = build_video_src(config);
 
     #[cfg(target_os = "windows")]
@@ -57,10 +54,8 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
         encoder_params(encoder)
     );
 
-    // ── Audio source: platform aware ──────────────────────────────────────────
     let audio_part = build_audio_part(config, ip);
 
-    // Combine parts with a space to ensure independent pipeline branches are correctly parsed
     let full_pipeline = format!("{} {}", video_part.trim(), audio_part.trim());
 
     let cleaned_pipeline = full_pipeline
@@ -73,12 +68,10 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
     cleaned_pipeline
 }
 
-// ── Video source selection ────────────────────────────────────────────────────
-
 fn build_video_src(config: &StreamConfig) -> String {
     #[cfg(target_os = "windows")]
     {
-                match config.stream_mode.as_str() {
+        match config.stream_mode.as_str() {
             "window" => {
                 if let Some(hwnd) = config.window_id {
                     format!("d3d11screencapturesrc window-handle={hwnd} show-cursor=false")
@@ -96,21 +89,12 @@ fn build_video_src(config: &StreamConfig) -> String {
 
     #[cfg(target_os = "macos")]
     {
+        // screencapturekitsrc senin GStreamer paketinde yok.
+        // Bu yüzden macOS için avfvideosrc kullanıyoruz.
+        // window mode şimdilik screen capture'a düşer.
         match config.stream_mode.as_str() {
-            "window" => {
-                if let Some(wid) = config.window_id {
-                    format!("screencapturekitsrc window-id={wid} show-cursor=false")
-                } else {
-                    "screencapturekitsrc show-cursor=false".to_string()
-                }
-            }
-            _ => {
-                if let Some(did) = config.monitor_index {
-                    format!("screencapturekitsrc display-id={did} show-cursor=false")
-                } else {
-                    "screencapturekitsrc show-cursor=false".to_string()
-                }
-            }
+            "window" => "avfvideosrc capture-screen=true".to_string(),
+            _ => "avfvideosrc capture-screen=true".to_string(),
         }
     }
 
@@ -129,22 +113,19 @@ fn build_video_src(config: &StreamConfig) -> String {
     }
 }
 
-// ── Audio source selection ────────────────────────────────────────────────────
-
 #[allow(unreachable_code)]
 fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
     let _ = ip;
+
     if !config.audio_enabled {
         return String::new();
     }
 
-    // P9: macOS — ScreenCaptureKit (SCK) for system audio loopback
     #[cfg(target_os = "macos")]
     {
-        format!(
-            "screencapturekitsrc ! queue ! audioconvert ! audioresample ! \
-             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={ip} port=5002"
-        )
+        // screencapturekitsrc bulunmadığı için macOS audio branch'i şimdilik kapalı.
+        // Önce video stream'i doğrulayalım.
+        String::new()
     }
 
     #[cfg(target_os = "windows")]
@@ -172,13 +153,11 @@ fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
     }
 }
 
-// ── Resolution helper ─────────────────────────────────────────────────────────
-
 fn parse_resolution(res: &str) -> (u32, u32) {
     match res {
         "1080p" => (1920, 1080),
-        "720p"  => (1280, 720),
-        "480p"  => (854, 480),
-        _       => (1920, 1080),
+        "720p" => (1280, 720),
+        "480p" => (854, 480),
+        _ => (1920, 1080),
     }
 }
