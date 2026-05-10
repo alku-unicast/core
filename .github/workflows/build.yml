@@ -1,0 +1,95 @@
+name: Build UniCast
+
+on:
+  push:
+    branches:
+      - main
+      - mac-yedek
+  pull_request:
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend deps
+        working-directory: app
+        run: npm install
+
+      # ─────────────────────────────────────────────
+      # Download GStreamer macOS runtime
+      # ─────────────────────────────────────────────
+      - name: Cache GStreamer
+        id: cache-gst
+        uses: actions/cache@v4
+        with:
+          path: |
+            app/src-tauri/gstreamer/macos
+          key: gst-macos-1.26.11-v1
+
+      - name: Download GStreamer
+        if: steps.cache-gst.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /tmp/gst
+          cd /tmp/gst
+
+          curl -L \
+            https://gstreamer.freedesktop.org/data/pkg/osx/1.26.11/gstreamer-1.0-1.26.11-universal.pkg \
+            -o gstreamer.pkg
+
+          pkgutil --expand-full gstreamer.pkg expanded
+
+          mkdir -p "$GITHUB_WORKSPACE/app/src-tauri/gstreamer/macos"
+
+          find expanded -name Payload | while read payload; do
+            tar -xpf "$payload" -C "$GITHUB_WORKSPACE/app/src-tauri/gstreamer/macos" || true
+          done
+
+      # ─────────────────────────────────────────────
+      # Clean problematic plugins
+      # ─────────────────────────────────────────────
+      - name: Remove unsupported plugins
+        run: |
+          rm -f app/src-tauri/gstreamer/macos/lib/gstreamer-1.0/libgstpython.dylib || true
+          rm -f app/src-tauri/gstreamer/macos/lib/gstreamer-1.0/libgstges.dylib || true
+
+      # ─────────────────────────────────────────────
+      # Verify bundled GStreamer
+      # ─────────────────────────────────────────────
+      - name: Verify GStreamer
+        run: |
+          app/src-tauri/gstreamer/macos/bin/gst-launch-1.0 --version
+
+          app/src-tauri/gstreamer/macos/bin/gst-inspect-1.0 avfvideosrc
+          app/src-tauri/gstreamer/macos/bin/gst-inspect-1.0 x264enc
+          app/src-tauri/gstreamer/macos/bin/gst-inspect-1.0 rtph264pay
+          app/src-tauri/gstreamer/macos/bin/gst-inspect-1.0 udpsink
+
+      # ─────────────────────────────────────────────
+      # Build Tauri app
+      # ─────────────────────────────────────────────
+      - name: Build Tauri
+        working-directory: app
+        run: npm run tauri build
+
+      # ─────────────────────────────────────────────
+      # Upload artifact
+      # ─────────────────────────────────────────────
+      - name: Upload macOS bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: unicast-macos
+          path: |
+            app/src-tauri/target/release/bundle/**/*.app
+            app/src-tauri/target/release/bundle/**/*.dmg
