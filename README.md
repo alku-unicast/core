@@ -3,7 +3,7 @@
 </div>
 
 <div align="center">
-  <img src="app/src/assets/unicast.png" width="110" alt="UniCast Logo" />
+  <img src="app/src/assets/UniCast.png" width="110" alt="UniCast Logo" />
   <h1>UniCast</h1>
   <p><strong>Low-latency wireless screen mirroring for education</strong></p>
   <p>
@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/github/v/release/alku-unicast/core" alt="Latest Release" />
     </a>
   </p>
-  <img src="Assets/System_Architecture_Simple_EN.png" width="680" alt="System Architecture" />
+  <img src="app/src/assets/System_Architecture_Simple_EN.png" width="680" alt="System Architecture" />
 </div>
 
 ---

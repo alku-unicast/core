@@ -3,7 +3,7 @@
 </div>
 
 <div align="center">
-  <img src="app/src/assets/unicast.png" width="110" alt="UniCast Logo" />
+  <img src="app/src/assets/UniCast.png" width="110" alt="UniCast Logo" />
   <h1>UniCast</h1>
   <p><strong>Eğitim için düşük gecikmeli kablosuz ekran yansıtma</strong></p>
   <p>
@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/github/v/release/alku-unicast/core" alt="Son Sürüm" />
     </a>
   </p>
-  <img src="Assets/System_Architecture_Simple_TR.png" width="680" alt="Sistem Mimarisi" />
+  <img src="app/src/assets/System_Architecture_Simple_TR.png" width="680" alt="Sistem Mimarisi" />
 </div>
 
 ---

@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 #[cfg(target_os = "linux")]
 static SAVED_LINUX_VOL: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(-1);
 
+// Stores pre-mute Windows volume as f32 bits. u32::MAX = sentinel (not saved).
+#[cfg(target_os = "windows")]
+static SAVED_WIN_VOL: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(u32::MAX);
+
 #[cfg(target_os = "linux")]
 fn get_sink_volume_pct() -> u32 {
     let out = std::process::Command::new("pactl")
@@ -171,6 +175,7 @@ fn mute_system_audio_windows(mute: bool) -> Result<bool, String> {
     use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
     use windows::Win32::System::Com::{CoCreateInstance, CoInitialize, CLSCTX_ALL};
     use windows::core::GUID;
+    use std::sync::atomic::Ordering;
 
     unsafe {
         let _ = CoInitialize(None);
@@ -183,9 +188,27 @@ fn mute_system_audio_windows(mute: bool) -> Result<bool, String> {
         let endpoint: IAudioEndpointVolume = device
             .Activate(CLSCTX_ALL, None)
             .map_err(|e| e.to_string())?;
-        endpoint
-            .SetMute(mute, &GUID::zeroed())
-            .map_err(|e| e.to_string())?;
+
+        if mute {
+            // Save current volume then set to ~1% — volume-based approach preserves
+            // WASAPI loopback capture signal (SetMute kills it entirely).
+            let mut current: f32 = 1.0;
+            let _ = endpoint.GetMasterVolumeLevelScalar(&mut current);
+            SAVED_WIN_VOL.store(current.to_bits(), Ordering::SeqCst);
+            endpoint
+                .SetMasterVolumeLevelScalar(0.01, &GUID::zeroed())
+                .map_err(|e| e.to_string())?;
+        } else {
+            let saved_bits = SAVED_WIN_VOL.load(Ordering::SeqCst);
+            let vol = if saved_bits == u32::MAX {
+                1.0f32
+            } else {
+                f32::from_bits(saved_bits).clamp(0.01, 1.0)
+            };
+            endpoint
+                .SetMasterVolumeLevelScalar(vol, &GUID::zeroed())
+                .map_err(|e| e.to_string())?;
+        }
         Ok(true)
     }
 }
