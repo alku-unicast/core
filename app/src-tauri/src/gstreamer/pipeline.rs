@@ -1,6 +1,6 @@
 use crate::commands::stream::StreamConfig;
+use tauri::AppHandle;
 
-// ── Encoder-specific GStreamer parameters ─────────────────────────────────
 fn encoder_params(encoder: &str) -> &'static str {
     match encoder {
         "x264enc" => "tune=zerolatency speed-preset=ultrafast key-int-max=15 intra-refresh=true",
@@ -13,12 +13,12 @@ fn encoder_params(encoder: &str) -> &'static str {
     }
 }
 
-pub fn build_pipeline(config: &StreamConfig) -> String {
+pub fn build_pipeline(_app: &AppHandle, config: &StreamConfig) -> String {
     let (width, height) = parse_resolution(&config.resolution);
     let ip = &config.target_ip;
 
     let (fps, bitrate) = match config.quality_mode.as_str() {
-        "video" => (u32::max(config.fps, 30), u32::max(config.bitrate, 5000)),
+        "video" => (config.fps.max(30), config.bitrate.max(5000)),
         "presentation" => (20, 3000),
         _ => (config.fps, config.bitrate),
     };
@@ -55,7 +55,6 @@ pub fn build_pipeline(config: &StreamConfig) -> String {
     );
 
     let audio_part = build_audio_part(config, ip);
-
     let full_pipeline = format!("{} {}", video_part.trim(), audio_part.trim());
 
     let cleaned_pipeline = full_pipeline
@@ -89,9 +88,6 @@ fn build_video_src(config: &StreamConfig) -> String {
 
     #[cfg(target_os = "macos")]
     {
-        // screencapturekitsrc senin GStreamer paketinde yok.
-        // Bu yüzden macOS için avfvideosrc kullanıyoruz.
-        // window mode şimdilik screen capture'a düşer.
         match config.stream_mode.as_str() {
             "window" => "avfvideosrc capture-screen=true".to_string(),
             _ => "avfvideosrc capture-screen=true".to_string(),
@@ -115,16 +111,12 @@ fn build_video_src(config: &StreamConfig) -> String {
 
 #[allow(unreachable_code)]
 fn build_audio_part(config: &StreamConfig, ip: &str) -> String {
-    let _ = ip;
-
     if !config.audio_enabled {
         return String::new();
     }
 
     #[cfg(target_os = "macos")]
     {
-        // screencapturekitsrc bulunmadığı için macOS audio branch'i şimdilik kapalı.
-        // Önce video stream'i doğrulayalım.
         String::new()
     }
 

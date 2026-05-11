@@ -71,13 +71,27 @@ export const useSystemStore = create<SystemStore>((set) => ({
 
   detectEncoder: async () => {
     set({ encoderDetecting: true });
+
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const result = await invoke<EncoderResult>("detect_encoder");
-      set({ detectedEncoder: result, encoderDetecting: false });
+
+      set({
+        detectedEncoder: result,
+        encoderDetecting: false
+      });
+
     } catch (e) {
       console.error("[systemStore] detectEncoder failed:", e);
-      set({ encoderDetecting: false });
+
+      set({
+        encoderDetecting: false,
+        detectedEncoder: {
+          encoder: "x264enc",
+          hardwareAccelerated: false,
+          displayName: "Software H.264 (x264)"
+        }
+      });
     }
   },
 }));
