@@ -135,18 +135,27 @@ fn get_gstreamer_env_vars(app: &AppHandle) -> Vec<(&'static str, String)> {
 
     if actual_root.exists() {
         let bin = actual_root.join("bin");
-        let mut lib = actual_root.join("lib");
-        let mut plugins = lib.join("gstreamer-1.0");
-
         #[cfg(target_os = "linux")]
-        {
+        let (lib, plugins) = {
             let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
             let possible_lib = actual_root.join("lib").join(multiarch);
             if possible_lib.join("gstreamer-1.0").exists() {
-                lib = possible_lib;
-                plugins = lib.join("gstreamer-1.0");
+                let lib = possible_lib;
+                let plugins = lib.join("gstreamer-1.0");
+                (lib, plugins)
+            } else {
+                let lib = actual_root.join("lib");
+                let plugins = lib.join("gstreamer-1.0");
+                (lib, plugins)
             }
-        }
+        };
+
+        #[cfg(not(target_os = "linux"))]
+        let (lib, plugins) = {
+            let lib = actual_root.join("lib");
+            let plugins = lib.join("gstreamer-1.0");
+            (lib, plugins)
+        };
 
         let bin_str = bin.to_string_lossy().to_string();
         let lib_str = lib.to_string_lossy().to_string();

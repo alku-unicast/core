@@ -107,7 +107,7 @@ python3 src/receiver/agent.py
 ```
 
 Place your Firebase service account key at `src/receiver/firebase-key.json` before running.  
-→ See [Firebase Setup Guide](Guide/firebase_kurulum_rehberi.md) for details.
+→ See [Firebase Setup Guide](Guide/firebase_implementation_guide.md) for details.
 
 When running, the Pi displays a PIN code on the projector screen.
 
@@ -154,12 +154,9 @@ UniCast App (Tauri)
 | Document | Language |
 |----------|----------|
 | [GStreamer Guide](Guide/gstreamer_guide.md) | 🇬🇧 EN |
-| [GStreamer Rehberi](Guide/gstreamer_rehberi.md) | 🇹🇷 TR |
-| [Firebase Setup Guide](Guide/firebase_kurulum_rehberi.md) | 🇹🇷 TR |
+| [Firebase Setup Guide](Guide/firebase_implementation_guide.md) | EN |
 | [Pi 5 Deployment Guide](Guide/pi5_guide.md) | 🇬🇧 EN |
-| [Pi 5 Kurulum Rehberi](Guide/pi5_rehberi.md) | 🇹🇷 TR |
 | [System Architecture](Guide/system_architectue.md) | 🇬🇧 EN |
-| [Performance Test Guide](src/test/test_guide.md) | 🇹🇷 TR |
 | [Development Plan](Guide/unicast_development_plan.md) | 🇬🇧 EN |
 
 ---
@@ -202,7 +199,8 @@ See [LICENSE](LICENSE) for details.
 ---
 
 <div align="center">
-  <sub>Developed at <strong>Alanya Alaaddün Keykubat University</strong> — Computer Engineering Department</sub>
+  <sub>Developed at <strong>Alanya Alaaddin Keykubat University</strong> — Computer Engineering Department</sub>
   <br/>
+  <br><br/>
   <img src="app/src/assets/alku-yatay-logo-rgb.png" width="200" alt="Alanya Alaaddün Keykubat University Logo" />
 </div>

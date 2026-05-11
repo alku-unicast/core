@@ -192,8 +192,7 @@ fn mute_system_audio_windows(mute: bool) -> Result<bool, String> {
         if mute {
             // Save current volume then set to ~1% — volume-based approach preserves
             // WASAPI loopback capture signal (SetMute kills it entirely).
-            let mut current: f32 = 1.0;
-            let _ = endpoint.GetMasterVolumeLevelScalar(&mut current);
+            let current = endpoint.GetMasterVolumeLevelScalar().unwrap_or(1.0);
             SAVED_WIN_VOL.store(current.to_bits(), Ordering::SeqCst);
             endpoint
                 .SetMasterVolumeLevelScalar(0.01, &GUID::zeroed())

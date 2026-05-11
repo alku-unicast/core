@@ -202,8 +202,9 @@ Ayrıntılar için [LICENSE](LICENSE) dosyasına bak.
 ---
 
 <div align="center">
-  <sub>Developed at <strong>Alanya Alaaddün Keykubat Üniversitesi</strong> — Bilgisayar Mühendisliği Bölümü</sub>
+  <sub>Developed at <strong>Alanya Alaaddin Keykubat Üniversitesi</strong> — Bilgisayar Mühendisliği Bölümü</sub>
   <br/>
+  <br></br>
   <img src="app/src/assets/alku-yatay-logo-rgb.png" width="200" alt="Alanya Alaaddün Keykubat Üniversitesi Logosu" />
 </div>
 
