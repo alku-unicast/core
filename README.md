@@ -3,7 +3,7 @@
 </div>
 
 <div align="center">
-  <img src="app/src/assets/unicast.png" width="110" alt="UniCast Logo" />
+  <img src="app/src/assets/UniCast.png" width="110" alt="UniCast Logo" />
   <h1>UniCast</h1>
   <p><strong>Low-latency wireless screen mirroring for education</strong></p>
   <p>
