@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/github/v/release/alku-unicast/core" alt="Latest Release" />
     </a>
   </p>
-  <img src="Assets/System_Architecture_Simple_EN.png" width="680" alt="System Architecture" />
+  <img src="app/src/assets/System_Architecture_Simple_EN.png" width="680" alt="System Architecture" />
 </div>
 
 ---
