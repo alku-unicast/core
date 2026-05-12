@@ -6,6 +6,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useSystemStore }   from "../../stores/systemStore";
+import { isMacOS }          from "../../utils/platform";
 import { StreamProfile } from "../../types/settings";
 import unicastLogo from "../../assets/UniCast.png";
 import alkuLogo    from "../../assets/alku-yatay-logo-rgb.png";
@@ -35,6 +36,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     profiles, audio, encoder, appearance, streamingBar,
     updateSettings, resetToDefaults,
   } = useSettingsStore();
+
+  const mac = isMacOS();
 
   const [activeProfile, setActiveProfile] = useState<"presentation" | "video">("presentation");
   const currentProfile = profiles[activeProfile];
@@ -299,40 +302,64 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
             {/* ── 2. Ses ───────────────────────────────────────────────── */}
             <Section ref={sectionRefs.audio} title={t("settings.tabs.audio")} icon={<Volume2 size={15} />}>
+              {mac ? (
+                <div className="relative rounded-xl overflow-hidden">
+                  {/* Blurred content */}
+                  <div className="flex flex-col gap-4 pointer-events-none select-none opacity-30 blur-[2px]">
+                    <SettingRow label={t("settings.audio.device")} description="WASAPI loopback source">
+                      <Select id="select-audio-device-wip" value="" onChange={() => {}} options={[{ value: "", label: "System Default" }]} />
+                    </SettingRow>
+                    <SettingRow label={t("settings.audio.mute_local")} description="Audio plays on projector only">
+                      <Toggle id="toggle-mute-local-wip" value={false} onChange={() => {}} />
+                    </SettingRow>
+                  </div>
+                  {/* WIP badge overlay */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                    <span className="px-3 py-1.5 rounded-full bg-[var(--accent-gold-subtle)] text-[var(--accent-gold)] text-xs font-semibold tracking-wide border border-[var(--accent-gold)]/30">
+                      🚧 {t("common.wip")}
+                    </span>
+                    <span className="text-[10px] text-[var(--text-muted)] text-center max-w-[200px] leading-snug">
+                      macOS ses desteği yakında eklenecek.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Audio device */}
+                  <SettingRow label={t("settings.audio.device")} description="WASAPI loopback source">
+                    <Select
+                      id="select-audio-device"
+                      value={audio.deviceId ?? ""}
+                      onChange={(v) =>
+                        updateSettings({ audio: { ...audio, deviceId: v || null } })
+                      }
+                      options={[
+                        { value: "", label: "System Default" },
+                        ...audioDevices.map((d) => ({
+                          value: d.id,
+                          label: d.name,
+                        })),
+                      ]}
+                    />
+                  </SettingRow>
 
-              {/* Audio device */}
-              <SettingRow label={t("settings.audio.device")} description="WASAPI loopback source">
-                <Select
-                  id="select-audio-device"
-                  value={audio.deviceId ?? ""}
-                  onChange={(v) =>
-                    updateSettings({ audio: { ...audio, deviceId: v || null } })
-                  }
-                  options={[
-                    { value: "", label: "System Default" },
-                    ...audioDevices.map((d) => ({
-                      value: d.id,
-                      label: d.name,
-                    })),
-                  ]}
-                />
-              </SettingRow>
+                  {/* Mute local */}
+                  <SettingRow
+                    label={t("settings.audio.mute_local")}
+                    description="Audio plays on projector only"
+                  >
+                    <Toggle
+                      id="toggle-mute-local"
+                      value={audio.muteLocal}
+                      onChange={(v) => updateSettings({ audio: { ...audio, muteLocal: v } })}
+                    />
+                  </SettingRow>
 
-              {/* Mute local */}
-              <SettingRow
-                label={t("settings.audio.mute_local")}
-                description="Audio plays on projector only"
-              >
-                <Toggle
-                  id="toggle-mute-local"
-                  value={audio.muteLocal}
-                  onChange={(v) => updateSettings({ audio: { ...audio, muteLocal: v } })}
-                />
-              </SettingRow>
-
-              <InfoBox>
-                {t("settings.audio.info", "WASAPI Loopback: Audio is captured from mixer output — GStreamer continues to capture even if speaker is muted.")}
-              </InfoBox>
+                  <InfoBox>
+                    {t("settings.audio.info", "WASAPI Loopback: Audio is captured from mixer output — GStreamer continues to capture even if speaker is muted.")}
+                  </InfoBox>
+                </>
+              )}
             </Section>
 
             {/* ── 3. Kontrol Çubuğu ────────────────────────────────────── */}

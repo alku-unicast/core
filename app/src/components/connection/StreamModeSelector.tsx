@@ -16,6 +16,7 @@ interface StreamModeSelectorProps {
   onWindowChange: (w: WindowInfo) => void;
   onRefreshWindows: () => void;
   windowsLoading: boolean;
+  hideWindow?: boolean;
 }
 
 export function StreamModeSelector({
@@ -29,6 +30,7 @@ export function StreamModeSelector({
   onWindowChange,
   onRefreshWindows,
   windowsLoading,
+  hideWindow = false,
 }: StreamModeSelectorProps) {
   const { t } = useTranslation();
 
@@ -39,7 +41,7 @@ export function StreamModeSelector({
       </span>
 
       {/* Mode radio buttons */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className={`grid gap-2 ${hideWindow ? "grid-cols-1" : "grid-cols-2"}`}>
         <ModeButton
           id="btn-mode-fullscreen"
           icon={<Monitor size={18} />}
@@ -48,14 +50,16 @@ export function StreamModeSelector({
           selected={mode === "fullscreen"}
           onClick={() => onModeChange("fullscreen")}
         />
-        <ModeButton
-          id="btn-mode-window"
-          icon={<AppWindow size={18} />}
-          label={t("connection.mode_window")}
-          description={t("connection.mode_window_desc")}
-          selected={mode === "window"}
-          onClick={() => onModeChange("window")}
-        />
+        {!hideWindow && (
+          <ModeButton
+            id="btn-mode-window"
+            icon={<AppWindow size={18} />}
+            label={t("connection.mode_window")}
+            description={t("connection.mode_window_desc")}
+            selected={mode === "window"}
+            onClick={() => onModeChange("window")}
+          />
+        )}
       </div>
 
       {/* Fullscreen: monitor select (only if multi-monitor) */}

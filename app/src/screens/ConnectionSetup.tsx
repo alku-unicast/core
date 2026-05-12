@@ -8,9 +8,9 @@ import { useConnectionStore } from "../stores/connectionStore";
 import { useSystemStore }     from "../stores/systemStore";
 import { useSettingsStore }   from "../stores/settingsStore";
 import { LinuxWarningModal }  from "../components/modals/LinuxWarningModal";
+import { isMacOS }            from "../utils/platform";
 
 import { StreamModeSelector }   from "../components/connection/StreamModeSelector";
-import { AudioToggle }          from "../components/connection/AudioToggle";
 import { PINEntry }             from "../components/connection/PINEntry";
 import { ConnectionProgress }   from "../components/connection/ConnectionProgress";
 
@@ -32,7 +32,6 @@ export function ConnectionSetup() {
     streamMode,
     submitPIN,
     startStream,
-    setAudioEnabled,
     setPhase,
     switchStreamMode,
     stopStream,
@@ -44,6 +43,7 @@ export function ConnectionSetup() {
 
   const isStreaming = phase === "streaming";
   const isAuthenticating = phase === "authenticating";
+  const mac = isMacOS();
 
   const {
     openWindows,
@@ -76,7 +76,9 @@ export function ConnectionSetup() {
     // Sequential to prevent concurrent Rust Mutex lock errors
     const bootstrap = async () => {
       await refreshMonitors();
-      await handleRefreshWindows();      // monitors done first
+      if (!isMacOS()) {
+        await handleRefreshWindows();    // skip on macOS (window mode disabled)
+      }
       if (!encoder.detected) {
         detectEncoder();                  // fire-and-forget, non-blocking
       }
@@ -157,6 +159,13 @@ export function ConnectionSetup() {
     }
   }, [streamMode, hideLinuxWindowWarning]);
 
+  /* ── macOS: force fullscreen (window mode unsupported) ──────────────────── */
+  useEffect(() => {
+    if (isMacOS() && streamMode === "window") {
+      switchStreamMode("fullscreen");
+    }
+  }, [streamMode, switchStreamMode]);
+
   /* ── Block browser history back ────────────────────────────────────────── */
   useEffect(() => {
     // Push a dummy state to history to enable popstate interception
@@ -224,7 +233,7 @@ export function ConnectionSetup() {
       qualityMode:   mode,
       windowId:      isWindow ? selectedWindow?.id : undefined,
       monitorIndex:  streamMode === "fullscreen" ? selectedMonitorIndex : undefined,
-      audioEnabled:  currentProfile.audioEnabled,
+      audioEnabled:  mac ? false : currentProfile.audioEnabled,
       audioDeviceId: globalAudio.deviceId,
       // macOS: physical-pixel bounds for videocrop
       windowX:  isWindow ? selectedWindow?.x : undefined,
@@ -374,6 +383,7 @@ export function ConnectionSetup() {
             onWindowChange={setSelectedWindow}
             onRefreshWindows={handleRefreshWindows}
             windowsLoading={windowsLoading}
+            hideWindow={mac}
           />
         </section>
 
@@ -462,19 +472,21 @@ export function ConnectionSetup() {
                   <span className="text-[9px] opacity-75 font-normal">Maksimum Keskinlik | {profiles.presentation.fps} FPS</span>
                 </button>
 
-                {/* Presentation Audio Toggle */}
-                <button
-                  onClick={() => toggleProfileAudio("presentation")}
-                  className={`
-                    w-12 px-2 rounded-xl border border-[var(--border)] flex flex-col items-center justify-center gap-1
-                    transition-colors duration-200
-                    ${profiles.presentation.audioEnabled ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"}
-                  `}
-                  title="Sunumda Ses"
-                >
-                  <Volume2 size={16} className={profiles.presentation.audioEnabled ? "opacity-100" : "opacity-40"} />
-                  <span className="text-[8px] font-bold">{profiles.presentation.audioEnabled ? "AÇIK" : "KAPALI"}</span>
-                </button>
+                {/* Presentation Audio Toggle — hidden on macOS */}
+                {!mac && (
+                  <button
+                    onClick={() => toggleProfileAudio("presentation")}
+                    className={`
+                      w-12 px-2 rounded-xl border border-[var(--border)] flex flex-col items-center justify-center gap-1
+                      transition-colors duration-200
+                      ${profiles.presentation.audioEnabled ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"}
+                    `}
+                    title="Sunumda Ses"
+                  >
+                    <Volume2 size={16} className={profiles.presentation.audioEnabled ? "opacity-100" : "opacity-40"} />
+                    <span className="text-[8px] font-bold">{profiles.presentation.audioEnabled ? "AÇIK" : "KAPALI"}</span>
+                  </button>
+                )}
               </div>
 
               <div className="flex items-stretch gap-2">
@@ -503,19 +515,21 @@ export function ConnectionSetup() {
                   <span className="text-[9px] text-[var(--text-muted)] font-normal">Akıcı Hareket | {profiles.video.fps} FPS</span>
                 </button>
 
-                {/* Video Audio Toggle */}
-                <button
-                  onClick={() => toggleProfileAudio("video")}
-                  className={`
-                    w-12 px-2 rounded-xl border border-[var(--border)] flex flex-col items-center justify-center gap-1
-                    transition-colors duration-200
-                    ${profiles.video.audioEnabled ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"}
-                  `}
-                  title="Videoda Ses"
-                >
-                  <Volume2 size={16} className={profiles.video.audioEnabled ? "opacity-100" : "opacity-40"} />
-                  <span className="text-[8px] font-bold">{profiles.video.audioEnabled ? "AÇIK" : "KAPALI"}</span>
-                </button>
+                {/* Video Audio Toggle — hidden on macOS */}
+                {!mac && (
+                  <button
+                    onClick={() => toggleProfileAudio("video")}
+                    className={`
+                      w-12 px-2 rounded-xl border border-[var(--border)] flex flex-col items-center justify-center gap-1
+                      transition-colors duration-200
+                      ${profiles.video.audioEnabled ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"}
+                    `}
+                    title="Videoda Ses"
+                  >
+                    <Volume2 size={16} className={profiles.video.audioEnabled ? "opacity-100" : "opacity-40"} />
+                    <span className="text-[8px] font-bold">{profiles.video.audioEnabled ? "AÇIK" : "KAPALI"}</span>
+                  </button>
+                )}
               </div>
             </div>
 

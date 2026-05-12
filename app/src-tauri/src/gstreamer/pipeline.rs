@@ -198,14 +198,8 @@ fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
 
     #[cfg(target_os = "macos")]
     {
-        // osxaudiosrc device property is an integer AudioDeviceID, not a device name string.
-        // system_profiler returns human-readable names which cannot be used directly.
-        // CoreAudio integer ID lookup is not yet implemented, so we always use the
-        // default Core Audio input device (covers built-in mic and BlackHole if set as default).
-        return format!(
-            " osxaudiosrc ! queue ! audioconvert ! audioresample ! \
-             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={_ip} port=5002"
-        );
+        // Audio streaming disabled on macOS for MVP (BlackHole sync issues, no reliable loopback).
+        return String::new();
     }
 
     #[cfg(target_os = "windows")]

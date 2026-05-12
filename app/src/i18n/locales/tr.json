@@ -7,7 +7,8 @@
     "loading": "Yükleniyor...",
     "loading_alt": "UniCast Hazırlanıyor...",
     "error": "Hata",
-    "retry": "Tekrar Dene"
+    "retry": "Tekrar Dene",
+    "wip": "Geliştirme Aşamasında"
   },
   "topbar": {
     "settings": "Ayarlar",

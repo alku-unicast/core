@@ -7,7 +7,8 @@
     "loading": "Loading...",
     "loading_alt": "UniCast Preparing...",
     "error": "Error",
-    "retry": "Retry"
+    "retry": "Retry",
+    "wip": "Work in Progress"
   },
   "topbar": {
     "settings": "Settings",
