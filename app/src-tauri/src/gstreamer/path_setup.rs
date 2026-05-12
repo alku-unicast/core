@@ -44,13 +44,38 @@ pub fn get_gst_launch(app: &AppHandle) -> String {
     #[cfg(not(target_os = "windows"))]
     {
         if gst_root.exists() {
-            // Apply environment to parent process once during initialization
-            apply_gstreamer_env_to_parent(app);
-            let bin_name = if cfg!(target_os = "windows") { "gst-launch-1.0.exe" } else { "gst-launch-1.0" };
-            return gst_root.join("bin").join(bin_name).to_string_lossy().to_string();
+            // On macOS, verify bundle completeness — CI/CD extraction can produce a partial
+            // bundle (plugins present but core dylibs like libglib missing), causing dyld
+            // failures at runtime even though gst_root.exists() is true.
+            #[cfg(target_os = "macos")]
+            let bundle_ok = gst_root.join("lib").join("libglib-2.0.0.dylib").exists()
+                || gst_root.join("lib").join("libglib-2.0.dylib").exists();
+            #[cfg(not(target_os = "macos"))]
+            let bundle_ok = true;
+
+            if bundle_ok {
+                apply_gstreamer_env_to_parent(app);
+                return gst_root.join("bin").join("gst-launch-1.0").to_string_lossy().to_string();
+            }
+            log::warn!("[gst] Bundled GStreamer at {:?} is INCOMPLETE (missing core dylibs), trying system fallback", gst_root);
+        } else {
+            log::warn!("[gst] Bundled GStreamer not found at {:?}, falling back to system PATH", gst_root);
         }
 
-        log::warn!("[gst] Bundled GStreamer not found at {:?}, falling back to system PATH", gst_root);
+        #[cfg(target_os = "macos")]
+        {
+            let system_paths = [
+                "/Library/Frameworks/GStreamer.framework/Commands/gst-launch-1.0",
+                "/Library/Frameworks/GStreamer.framework/Versions/1.0/bin/gst-launch-1.0",
+            ];
+            for path in &system_paths {
+                if std::path::Path::new(path).exists() {
+                    log::info!("[gst] Using system GStreamer framework at: {}", path);
+                    return path.to_string();
+                }
+            }
+        }
+
         "gst-launch-1.0".to_string()
     }
 }
@@ -134,67 +159,79 @@ fn get_gstreamer_env_vars(app: &AppHandle) -> Vec<(&'static str, String)> {
     let actual_root = if gst_root.join("usr").exists() { gst_root.join("usr") } else { gst_root };
 
     if actual_root.exists() {
-        let bin = actual_root.join("bin");
-        #[cfg(target_os = "linux")]
-        let (lib, plugins) = {
-            let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
-            let possible_lib = actual_root.join("lib").join(multiarch);
-            if possible_lib.join("gstreamer-1.0").exists() {
-                let lib = possible_lib;
-                let plugins = lib.join("gstreamer-1.0");
-                (lib, plugins)
-            } else {
+        // On macOS, skip env var setup for incomplete bundles to avoid poisoning
+        // system GStreamer's plugin discovery (GST_PLUGIN_PATH override breaks it).
+        #[cfg(target_os = "macos")]
+        let bundle_complete = actual_root.join("lib").join("libglib-2.0.0.dylib").exists()
+            || actual_root.join("lib").join("libglib-2.0.dylib").exists();
+        #[cfg(not(target_os = "macos"))]
+        let bundle_complete = true;
+
+        if bundle_complete {
+            let bin = actual_root.join("bin");
+            #[cfg(target_os = "linux")]
+            let (lib, plugins) = {
+                let multiarch = if cfg!(target_arch = "x86_64") { "x86_64-linux-gnu" } else { "aarch64-linux-gnu" };
+                let possible_lib = actual_root.join("lib").join(multiarch);
+                if possible_lib.join("gstreamer-1.0").exists() {
+                    let lib = possible_lib;
+                    let plugins = lib.join("gstreamer-1.0");
+                    (lib, plugins)
+                } else {
+                    let lib = actual_root.join("lib");
+                    let plugins = lib.join("gstreamer-1.0");
+                    (lib, plugins)
+                }
+            };
+
+            #[cfg(not(target_os = "linux"))]
+            let (lib, plugins) = {
                 let lib = actual_root.join("lib");
                 let plugins = lib.join("gstreamer-1.0");
                 (lib, plugins)
-            }
-        };
-
-        #[cfg(not(target_os = "linux"))]
-        let (lib, plugins) = {
-            let lib = actual_root.join("lib");
-            let plugins = lib.join("gstreamer-1.0");
-            (lib, plugins)
-        };
-
-        let bin_str = bin.to_string_lossy().to_string();
-        let lib_str = lib.to_string_lossy().to_string();
-        let plugins_str = plugins.to_string_lossy().to_string();
-
-        // 1. Path & LD_LIBRARY_PATH
-        #[cfg(target_os = "windows")]
-        {
-            if let Ok(current_path) = std::env::var("PATH") {
-                envs.push(("PATH", format!("{};{};{}", bin_str, lib_str, current_path)));
-            }
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            let ld_var = if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" } else { "LD_LIBRARY_PATH" };
-            let current_ld = std::env::var(ld_var).unwrap_or_default();
-            let new_ld = if current_ld.is_empty() {
-                format!("{}:{}", bin_str, lib_str)
-            } else {
-                format!("{}:{}:{}", bin_str, lib_str, current_ld)
             };
-            envs.push((ld_var, new_ld));
-        }
 
-        // 2. Plugins (Pure Bundled - No hybrid risk if bundled exists)
-        envs.push(("GST_PLUGIN_PATH", plugins_str));
-        envs.push(("GST_PLUGIN_SYSTEM_PATH", "".to_string())); // Clear system paths to avoid ABI mismatch
-        
-        #[cfg(target_os = "linux")]
-        if std::env::var("APPDIR").is_ok() {
-            envs.push(("GST_REGISTRY", "".to_string())); // Trigger clean scan in AppImage
-        }
+            let bin_str = bin.to_string_lossy().to_string();
+            let lib_str = lib.to_string_lossy().to_string();
+            let plugins_str = plugins.to_string_lossy().to_string();
 
-        // 3. Scanner
-        let scanner_name = if cfg!(target_os = "windows") { "gst-plugin-scanner.exe" } else { "gst-plugin-scanner" };
-        let mut scanner = actual_root.join("libexec").join("gstreamer-1.0").join(scanner_name);
-        if !scanner.exists() { scanner = bin.join(scanner_name); }
-        if scanner.exists() {
-            envs.push(("GST_PLUGIN_SCANNER", scanner.to_string_lossy().to_string()));
+            // 1. Path & LD_LIBRARY_PATH
+            #[cfg(target_os = "windows")]
+            {
+                if let Ok(current_path) = std::env::var("PATH") {
+                    envs.push(("PATH", format!("{};{};{}", bin_str, lib_str, current_path)));
+                }
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                let ld_var = if cfg!(target_os = "macos") { "DYLD_LIBRARY_PATH" } else { "LD_LIBRARY_PATH" };
+                let current_ld = std::env::var(ld_var).unwrap_or_default();
+                let new_ld = if current_ld.is_empty() {
+                    format!("{}:{}", bin_str, lib_str)
+                } else {
+                    format!("{}:{}:{}", bin_str, lib_str, current_ld)
+                };
+                envs.push((ld_var, new_ld));
+            }
+
+            // 2. Plugins (Pure Bundled - No hybrid risk if bundled exists)
+            envs.push(("GST_PLUGIN_PATH", plugins_str));
+            envs.push(("GST_PLUGIN_SYSTEM_PATH", "".to_string())); // Clear system paths to avoid ABI mismatch
+
+            #[cfg(target_os = "linux")]
+            if std::env::var("APPDIR").is_ok() {
+                envs.push(("GST_REGISTRY", "".to_string())); // Trigger clean scan in AppImage
+            }
+
+            // 3. Scanner
+            let scanner_name = if cfg!(target_os = "windows") { "gst-plugin-scanner.exe" } else { "gst-plugin-scanner" };
+            let mut scanner = actual_root.join("libexec").join("gstreamer-1.0").join(scanner_name);
+            if !scanner.exists() { scanner = bin.join(scanner_name); }
+            if scanner.exists() {
+                envs.push(("GST_PLUGIN_SCANNER", scanner.to_string_lossy().to_string()));
+            }
+        } else {
+            log::warn!("[gst] macOS bundled GStreamer at {:?} is INCOMPLETE — skipping env var setup to preserve system GStreamer.", actual_root);
         }
     }
 

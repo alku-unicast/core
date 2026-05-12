@@ -18,6 +18,12 @@ jobs:
       max-parallel: 1
       matrix:
         include:
+          - platform: 'macos-14'
+            os: 'macos'
+            arch: 'aarch64'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-universal.pkg'
+            gst_folder: 'macos/silicon'
+            gst_resources: 'gstreamer/macos/silicon/**/*'
           - platform: 'ubuntu-22.04'
             os: 'linux'
             arch: 'x86_64'
@@ -29,12 +35,6 @@ jobs:
             gst_url: 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/gstreamer-1.0-msvc-x86_64-1.24.13.msi'
             gst_folder: 'windows'
             gst_resources: 'gstreamer/windows/**/*'
-          - platform: 'macos-14'
-            os: 'macos'
-            arch: 'aarch64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/macos/1.24.13/gstreamer-1.0-1.24.13-universal.pkg'
-            gst_folder: 'macos/silicon'
-            gst_resources: 'gstreamer/macos/silicon/**/*'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -264,11 +264,20 @@ jobs:
             fi
           fi
 
-          # Verification
-          if [ ! -d "app/src-tauri/gstreamer/${{ matrix.gst_folder }}/lib" ]; then
-             echo "ERROR: Could not locate GStreamer libraries in expanded package"
+          # Verification — check lib dir AND at least one core dylib (not just plugin directory)
+          GST_LIB_DIR="app/src-tauri/gstreamer/${{ matrix.gst_folder }}/lib"
+          if [ ! -d "$GST_LIB_DIR" ]; then
+             echo "ERROR: Could not locate GStreamer lib directory in expanded package"
              exit 1
           fi
+          CORE_DYLIB_CHECK=$(find "$GST_LIB_DIR" -maxdepth 1 -name "libglib-2.0*.dylib" 2>/dev/null | head -1)
+          if [ -z "$CORE_DYLIB_CHECK" ]; then
+             echo "ERROR: GStreamer lib directory exists but is missing core dylibs (libglib-2.0.*.dylib)"
+             echo "Contents of $GST_LIB_DIR:"
+             ls "$GST_LIB_DIR" | head -20
+             exit 1
+          fi
+          echo "Verification OK: found core dylib at $CORE_DYLIB_CHECK"
 
       # ============================================
       # Build
