@@ -25,4 +25,11 @@ export interface StreamConfig {
   monitorIndex?: number;
   audioEnabled: boolean;
   audioDeviceId: string | null;
+  // macOS window-mode: physical-pixel crop bounds
+  windowX?: number;
+  windowY?: number;
+  windowW?: number;
+  windowH?: number;
+  screenW?: number;
+  screenH?: number;
 }

@@ -10,6 +10,13 @@ export interface WindowInfo {
   title: string;
   processName: string;
   icon?: string;      // base64 PNG, optional
+  // macOS only: physical-pixel bounds + screen dimensions (for videocrop)
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  screenW?: number;
+  screenH?: number;
 }
 
 export interface MonitorInfo {

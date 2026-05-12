@@ -74,6 +74,19 @@ pub struct StreamConfig {
     pub audio_enabled: bool,
     #[serde(rename = "audioDeviceId")]
     pub audio_device_id: Option<String>,
+    // macOS window-mode crop bounds (physical pixels)
+    #[serde(rename = "windowX")]
+    pub window_x: Option<i32>,
+    #[serde(rename = "windowY")]
+    pub window_y: Option<i32>,
+    #[serde(rename = "windowW")]
+    pub window_w: Option<u32>,
+    #[serde(rename = "windowH")]
+    pub window_h: Option<u32>,
+    #[serde(rename = "screenW")]
+    pub screen_w: Option<u32>,
+    #[serde(rename = "screenH")]
+    pub screen_h: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]

@@ -54,6 +54,8 @@ pub fn run() {
             // Cache
             commands::cache::read_rooms_cache,
             commands::cache::write_rooms_cache,
+            // Capture
+            commands::capture::set_bar_capture_exclusion,
             // Debug
             log_frontend,
         ])

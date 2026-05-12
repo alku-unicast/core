@@ -1,17 +1,14 @@
-/// Apply WDA_EXCLUDEFROMCAPTURE to a HWND so it doesn't appear in screen captures.
-/// Called once after streaming bar window is created.
+/// Removes a window from screen capture output entirely (Windows 10 build 19041+).
 #[cfg(target_os = "windows")]
 pub fn exclude_from_capture(hwnd: isize) -> bool {
     use windows::Win32::Foundation::HWND;
-    use windows::Win32::UI::WindowsAndMessaging::SetWindowDisplayAffinity;
-    use windows::Win32::UI::WindowsAndMessaging::WINDOW_DISPLAY_AFFINITY;
-    const WDA_MONITOR: u32 = 0x00000001;
-    // WDA_MONITOR makes the window transparent to capture, showing the background instead of black.
-
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowDisplayAffinity, WINDOW_DISPLAY_AFFINITY};
+    // WDA_EXCLUDEFROMCAPTURE (0x11): window is invisible to all capture APIs.
+    // Older WDA_MONITOR (0x01) only showed black; this removes it entirely.
     unsafe {
         SetWindowDisplayAffinity(
             HWND(hwnd as isize),
-            WINDOW_DISPLAY_AFFINITY(WDA_MONITOR),
+            WINDOW_DISPLAY_AFFINITY(0x11),
         )
         .map(|_| true)
         .unwrap_or(false)

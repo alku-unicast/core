@@ -6,6 +6,233 @@ pub struct WindowInfo {
     pub title: String,
     #[serde(rename = "processName")]
     pub process_name: String,
+    // macOS only: physical-pixel window bounds + screen size for videocrop
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub x: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub y: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub w: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub h: Option<u32>,
+    #[serde(rename = "screenW", skip_serializing_if = "Option::is_none")]
+    pub screen_w: Option<u32>,
+    #[serde(rename = "screenH", skip_serializing_if = "Option::is_none")]
+    pub screen_h: Option<u32>,
+}
+
+// ── macOS CGWindowList FFI ────────────────────────────────────────────────────
+
+#[cfg(target_os = "macos")]
+mod cg_ffi {
+    use std::ffi::c_void;
+
+    pub type CFTypeRef = *const c_void;
+    pub type CFArrayRef = *const c_void;
+    pub type CFDictionaryRef = *const c_void;
+    pub type CFStringRef = *const c_void;
+    pub type CFIndex = isize;
+
+    #[repr(C)]
+    #[derive(Default)]
+    pub struct CGPoint { pub x: f64, pub y: f64 }
+    #[repr(C)]
+    #[derive(Default)]
+    pub struct CGSize { pub width: f64, pub height: f64 }
+    #[repr(C)]
+    #[derive(Default)]
+    pub struct CGRect { pub origin: CGPoint, pub size: CGSize }
+
+    pub const CG_WINDOW_LIST_ON_SCREEN_ONLY: u32 = 1 << 0;
+    pub const CG_WINDOW_LIST_EXCLUDE_DESKTOP: u32 = 1 << 4;
+    pub const CF_STRING_ENCODING_UTF8: u32 = 0x08000100;
+    pub const CF_NUMBER_SINT64_TYPE: i32 = 4;
+
+    #[link(name = "CoreGraphics", kind = "framework")]
+    #[link(name = "CoreFoundation", kind = "framework")]
+    extern "C" {
+        // CF string keys (global variables in CoreGraphics.framework)
+        pub static kCGWindowName: CFStringRef;
+        pub static kCGWindowOwnerName: CFStringRef;
+        pub static kCGWindowLayer: CFStringRef;
+        pub static kCGWindowBounds: CFStringRef;
+        pub static kCGWindowNumber: CFStringRef;
+
+        // Array / Dictionary helpers
+        pub fn CFArrayGetCount(arr: CFArrayRef) -> CFIndex;
+        pub fn CFArrayGetValueAtIndex(arr: CFArrayRef, idx: CFIndex) -> CFTypeRef;
+        pub fn CFDictionaryGetValue(dict: CFDictionaryRef, key: CFTypeRef) -> CFTypeRef;
+
+        // String helper
+        pub fn CFStringGetCString(
+            s: CFStringRef,
+            buf: *mut u8,
+            bufsize: CFIndex,
+            encoding: u32,
+        ) -> u8;
+
+        // Number helper
+        pub fn CFNumberGetValue(
+            num: CFTypeRef,
+            the_type: i32,
+            value_ptr: *mut std::ffi::c_void,
+        ) -> u8;
+
+        // Rect helper
+        pub fn CGRectMakeWithDictionaryRepresentation(
+            dict: CFDictionaryRef,
+            rect: *mut CGRect,
+        ) -> u8;
+
+        // Display helpers
+        pub fn CGWindowListCopyWindowInfo(option: u32, relative: u32) -> CFArrayRef;
+        pub fn CGMainDisplayID() -> u32;
+        pub fn CGDisplayPixelsWide(display: u32) -> usize;
+        pub fn CGDisplayPixelsHigh(display: u32) -> usize;
+        pub fn CGDisplayBounds(display: u32) -> CGRect;
+        pub fn CFRelease(cf: CFTypeRef);
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn enum_windows_macos() -> Result<Vec<WindowInfo>, String> {
+    use cg_ffi::*;
+    use std::ffi::c_void;
+
+    unsafe {
+        let main_display = CGMainDisplayID();
+        let screen_phys_w = CGDisplayPixelsWide(main_display) as u32;
+        let screen_phys_h = CGDisplayPixelsHigh(main_display) as u32;
+        let screen_logical = CGDisplayBounds(main_display);
+
+        // Scale factor: physical pixels per logical point (Retina = 2.0)
+        let scale_x = screen_phys_w as f64 / screen_logical.size.width.max(1.0);
+        let scale_y = screen_phys_h as f64 / screen_logical.size.height.max(1.0);
+
+        let window_list = CGWindowListCopyWindowInfo(
+            CG_WINDOW_LIST_ON_SCREEN_ONLY | CG_WINDOW_LIST_EXCLUDE_DESKTOP,
+            0, // kCGNullWindowID
+        );
+
+        if window_list.is_null() {
+            return Ok(vec![]);
+        }
+
+        let count = CFArrayGetCount(window_list);
+        let mut windows = Vec::new();
+
+        for i in 0..count {
+            let dict = CFArrayGetValueAtIndex(window_list, i);
+            if dict.is_null() {
+                continue;
+            }
+
+            // Skip non-normal windows (layer != 0)
+            let layer_val = CFDictionaryGetValue(dict, kCGWindowLayer);
+            if layer_val.is_null() {
+                continue;
+            }
+            let mut layer: i64 = 0;
+            CFNumberGetValue(
+                layer_val,
+                CF_NUMBER_SINT64_TYPE,
+                &mut layer as *mut i64 as *mut c_void,
+            );
+            if layer != 0 {
+                continue;
+            }
+
+            // Title (kCGWindowName — null means app has no title / no Screen Recording access)
+            let name_val = CFDictionaryGetValue(dict, kCGWindowName);
+            if name_val.is_null() {
+                continue;
+            }
+            let mut title_buf = [0u8; 512];
+            if CFStringGetCString(name_val, title_buf.as_mut_ptr(), 512, CF_STRING_ENCODING_UTF8)
+                == 0
+            {
+                continue;
+            }
+            let title = std::ffi::CStr::from_ptr(title_buf.as_ptr() as *const i8)
+                .to_string_lossy()
+                .into_owned();
+            if title.is_empty() || title == "UniCast" {
+                continue;
+            }
+
+            // Process / owner name
+            let owner_val = CFDictionaryGetValue(dict, kCGWindowOwnerName);
+            let process_name = if !owner_val.is_null() {
+                let mut buf = [0u8; 256];
+                if CFStringGetCString(
+                    owner_val,
+                    buf.as_mut_ptr(),
+                    256,
+                    CF_STRING_ENCODING_UTF8,
+                ) != 0
+                {
+                    std::ffi::CStr::from_ptr(buf.as_ptr() as *const i8)
+                        .to_string_lossy()
+                        .into_owned()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            };
+
+            // Window ID
+            let id_val = CFDictionaryGetValue(dict, kCGWindowNumber);
+            let mut wid: i64 = 0;
+            if !id_val.is_null() {
+                CFNumberGetValue(
+                    id_val,
+                    CF_NUMBER_SINT64_TYPE,
+                    &mut wid as *mut i64 as *mut c_void,
+                );
+            }
+
+            // Bounds (in logical points → convert to physical pixels)
+            let bounds_val = CFDictionaryGetValue(dict, kCGWindowBounds);
+            let mut rect = CGRect::default();
+            if bounds_val.is_null()
+                || CGRectMakeWithDictionaryRepresentation(bounds_val, &mut rect) == 0
+            {
+                continue;
+            }
+
+            // Skip windows outside the primary display — avfvideosrc only captures the
+            // primary screen, so secondary-monitor windows would produce invalid videocrop values.
+            if rect.origin.x < 0.0
+                || rect.origin.y < 0.0
+                || (rect.origin.x + rect.size.width) > screen_logical.size.width
+                || (rect.origin.y + rect.size.height) > screen_logical.size.height
+            {
+                continue;
+            }
+
+            let px = (rect.origin.x * scale_x) as i32;
+            let py = (rect.origin.y * scale_y) as i32;
+            let pw = (rect.size.width * scale_x) as u32;
+            let ph = (rect.size.height * scale_y) as u32;
+            let (x, y, w, h) = (Some(px), Some(py), Some(pw), Some(ph));
+
+            windows.push(WindowInfo {
+                id: wid as u64,
+                title,
+                process_name,
+                x,
+                y,
+                w,
+                h,
+                screen_w: Some(screen_phys_w),
+                screen_h: Some(screen_phys_h),
+            });
+        }
+
+        CFRelease(window_list);
+        Ok(windows)
+    }
 }
 
 #[tauri::command]
@@ -18,7 +245,9 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
     }
     #[cfg(target_os = "macos")]
     {
-        Ok(vec![]) // CGWindowList — implemented separately if needed
+        tokio::task::spawn_blocking(enum_windows_macos)
+            .await
+            .map_err(|e| e.to_string())?
     }
     #[cfg(target_os = "linux")]
     {
@@ -101,6 +330,8 @@ pub async fn get_open_windows() -> Result<Vec<WindowInfo>, String> {
                                 id: window as u64,
                                 title,
                                 process_name: "Linux App".to_string(),
+                                x: None, y: None, w: None, h: None,
+                                screen_w: None, screen_h: None,
                             });
                         }
                     }
@@ -151,6 +382,8 @@ fn enum_windows_win32() -> Result<Vec<WindowInfo>, String> {
                         id: hwnd.0 as u64,
                         title,
                         process_name,
+                        x: None, y: None, w: None, h: None,
+                        screen_w: None, screen_h: None,
                     });
                 }
             }

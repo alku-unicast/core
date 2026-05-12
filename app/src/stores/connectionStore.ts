@@ -136,6 +136,9 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
             if (bar) {
               await bar.show();
               await bar.setFocus();
+              // Exclude the bar from screen capture (macOS: NSWindowSharingNone, Windows: WDA_EXCLUDEFROMCAPTURE)
+              const { invoke } = await import("@tauri-apps/api/core");
+              invoke("set_bar_capture_exclusion", { label: "streaming-bar" }).catch(() => {});
               // Give bar a moment to mount before sending mode info
               setTimeout(() => {
                 const state = get();

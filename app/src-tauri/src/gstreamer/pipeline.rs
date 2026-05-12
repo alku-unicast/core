@@ -132,7 +132,25 @@ fn build_video_src(_app: &AppHandle, _config: &StreamConfig) -> String {
 
     #[cfg(target_os = "macos")]
     {
-        // avfvideosrc for full screen; no window mode on Mac (MVP)
+        if _config.stream_mode == "window" {
+            if let (Some(x), Some(y), Some(w), Some(h), Some(sw), Some(sh)) = (
+                _config.window_x, _config.window_y,
+                _config.window_w, _config.window_h,
+                _config.screen_w, _config.screen_h,
+            ) {
+                let left   = x.max(0) as u32;
+                let top    = y.max(0) as u32;
+                let right  = (sw as i64 - x as i64 - w as i64).max(0) as u32;
+                let bottom = (sh as i64 - y as i64 - h as i64).max(0) as u32;
+                log::info!(
+                    "[gst] macOS window crop: left={left} top={top} right={right} bottom={bottom} (phys_screen={sw}x{sh})"
+                );
+                return format!(
+                    "avfvideosrc capture-screen=true ! videocrop left={left} top={top} right={right} bottom={bottom}"
+                );
+            }
+        }
+        // Full-screen (or window mode without valid bounds → fallback to full screen)
         "avfvideosrc capture-screen=true".to_string()
     }
 
@@ -178,11 +196,16 @@ fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
         return String::new();
     }
 
-    // P9: macOS — disable audio in MVP (no reliable loopback without extra setup)
     #[cfg(target_os = "macos")]
     {
-        log::info!("[pipeline] Audio disabled on macOS (P9)");
-        return String::new();
+        // osxaudiosrc device property is an integer AudioDeviceID, not a device name string.
+        // system_profiler returns human-readable names which cannot be used directly.
+        // CoreAudio integer ID lookup is not yet implemented, so we always use the
+        // default Core Audio input device (covers built-in mic and BlackHole if set as default).
+        return format!(
+            " osxaudiosrc ! queue ! audioconvert ! audioresample ! \
+             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={_ip} port=5002"
+        );
     }
 
     #[cfg(target_os = "windows")]

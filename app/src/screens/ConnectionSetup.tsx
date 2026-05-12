@@ -212,6 +212,7 @@ export function ConnectionSetup() {
     const currentProfile = profiles[mode];
     const encoderName = detectedEncoder?.name ?? encoder.detected ?? "x264enc";
 
+    const isWindow = streamMode === "window";
     const config: StreamConfig = {
       targetIp:      targetRoom!.ip,
       resolution:    currentProfile.resolution,
@@ -221,10 +222,17 @@ export function ConnectionSetup() {
       encoderName,
       streamMode,
       qualityMode:   mode,
-      windowId:      streamMode === "window" ? selectedWindow?.id : undefined,
+      windowId:      isWindow ? selectedWindow?.id : undefined,
       monitorIndex:  streamMode === "fullscreen" ? selectedMonitorIndex : undefined,
       audioEnabled:  currentProfile.audioEnabled,
       audioDeviceId: globalAudio.deviceId,
+      // macOS: physical-pixel bounds for videocrop
+      windowX:  isWindow ? selectedWindow?.x : undefined,
+      windowY:  isWindow ? selectedWindow?.y : undefined,
+      windowW:  isWindow ? selectedWindow?.w : undefined,
+      windowH:  isWindow ? selectedWindow?.h : undefined,
+      screenW:  isWindow ? selectedWindow?.screenW : undefined,
+      screenH:  isWindow ? selectedWindow?.screenH : undefined,
     };
 
     const ok = await submitPIN(pin);

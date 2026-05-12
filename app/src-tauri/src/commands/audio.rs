@@ -40,9 +40,17 @@ pub struct AudioDevice {
 pub async fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
     #[cfg(target_os = "windows")]
     {
-        get_audio_devices_windows()
+        tokio::task::spawn_blocking(get_audio_devices_windows)
+            .await
+            .map_err(|e| e.to_string())?
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        tokio::task::spawn_blocking(get_audio_devices_macos)
+            .await
+            .map_err(|e| e.to_string())?
+    }
+    #[cfg(target_os = "linux")]
     {
         Ok(vec![AudioDevice {
             id: "default".to_string(),
@@ -50,6 +58,90 @@ pub async fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
             is_default: true,
         }])
     }
+}
+
+/// Lists Core Audio input devices using system_profiler.
+/// Includes built-in mic and any virtual devices (e.g. BlackHole).
+#[cfg(target_os = "macos")]
+fn get_audio_devices_macos() -> Result<Vec<AudioDevice>, String> {
+    use std::process::Command;
+
+    // system_profiler outputs JSON with audio device info
+    let out = Command::new("system_profiler")
+        .args(["SPAudioDataType", "-json"])
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !out.status.success() {
+        return Ok(default_macos_audio());
+    }
+
+    let json: serde_json::Value =
+        serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())?;
+
+    let mut devices: Vec<AudioDevice> = Vec::new();
+
+    // SPAudioDataType → array of items, each has "_items" array
+    if let Some(items) = json
+        .get("SPAudioDataType")
+        .and_then(|v| v.as_array())
+    {
+        for section in items {
+            if let Some(sub) = section.get("_items").and_then(|v| v.as_array()) {
+                for dev in sub {
+                    let name = dev
+                        .get("_name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if name.is_empty() {
+                        continue;
+                    }
+                    // Only include devices that have input capability
+                    let has_input = dev
+                        .get("coreaudio_input_source")
+                        .or_else(|| dev.get("coreaudio_default_input_device"))
+                        .is_some();
+                    if !has_input {
+                        continue;
+                    }
+                    let is_default = dev
+                        .get("coreaudio_default_input_device")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s == "spaudio_yes")
+                        .unwrap_or(false);
+                    // Use device name as id — osxaudiosrc accepts device name strings
+                    devices.push(AudioDevice {
+                        id: name.clone(),
+                        name,
+                        is_default,
+                    });
+                }
+            }
+        }
+    }
+
+    if devices.is_empty() {
+        return Ok(default_macos_audio());
+    }
+
+    // Ensure exactly one default
+    if !devices.iter().any(|d| d.is_default) {
+        if let Some(d) = devices.first_mut() {
+            d.is_default = true;
+        }
+    }
+
+    Ok(devices)
+}
+
+#[cfg(target_os = "macos")]
+fn default_macos_audio() -> Vec<AudioDevice> {
+    vec![AudioDevice {
+        id: "default".to_string(),
+        name: "Default Microphone".to_string(),
+        is_default: true,
+    }]
 }
 
 #[cfg(target_os = "windows")]
