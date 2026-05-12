@@ -130,7 +130,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v11
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v12
 
       - name: Download & Install GStreamer (Windows)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
@@ -244,25 +244,28 @@ jobs:
           pkgutil --expand-full gst.pkg ./gst_expand
           mkdir -p app/src-tauri/gstreamer/${{ matrix.gst_folder }}
 
-          # 1. Primary Strategy: Direct Target (Official PKG Structure)
-          DIRECT_PATH=$(find ./gst_expand -type d -path "*/Versions/1.0" 2>/dev/null | head -1)
-          if [ -z "$DIRECT_PATH" ]; then
-             DIRECT_PATH=$(find ./gst_expand -type d -path "*/GStreamer.framework/Versions/Current" 2>/dev/null | head -1)
-          fi
-
-          if [ -n "$DIRECT_PATH" ] && [ -d "$DIRECT_PATH/lib" ]; then
-            echo "Direct match found: $DIRECT_PATH"
-            cp -R "$DIRECT_PATH"/* app/src-tauri/gstreamer/${{ matrix.gst_folder }}/
-          else
-            # 2. Fallback Strategy: Deep Search for known dylib
-            echo "Direct match failed, starting deep search fallback..."
-            CORE_DYLIB=$(find ./gst_expand -name "libgstreamer-1.0.0.dylib" 2>/dev/null | head -1)
-            if [ -n "$CORE_DYLIB" ]; then
-               BASE_DIR=$(dirname $(dirname "$CORE_DYLIB"))
-               echo "Deep search found library root: $BASE_DIR"
-               cp -R "$BASE_DIR"/* app/src-tauri/gstreamer/${{ matrix.gst_folder }}/
+          # The GStreamer universal pkg expands into multiple sub-packages (core, base, good,
+          # bad, ugly, libav, devel, ...), each with its own Payload directory.
+          # libgst*.dylib lives in the core Payload; libglib-2.0.0.dylib and other
+          # third-party deps live in a different sub-package Payload.
+          # We must merge ALL Payload directories into the target.
+          echo "Merging all sub-package Payloads..."
+          MERGED=0
+          while IFS= read -r payload_dir; do
+            if [ -d "$payload_dir/lib" ] || [ -d "$payload_dir/bin" ]; then
+              echo "  + $payload_dir"
+              rsync -a "$payload_dir"/ app/src-tauri/gstreamer/${{ matrix.gst_folder }}/
+              MERGED=$((MERGED + 1))
             fi
+          done < <(find ./gst_expand -maxdepth 3 -type d -name "Payload" 2>/dev/null)
+
+          if [ "$MERGED" -eq 0 ]; then
+            echo "ERROR: No valid Payload directories found in expanded pkg"
+            echo "gst_expand contents:"
+            ls ./gst_expand
+            exit 1
           fi
+          echo "Merged $MERGED sub-package(s)"
 
           # Verification — check lib dir AND at least one core dylib (not just plugin directory)
           GST_LIB_DIR="app/src-tauri/gstreamer/${{ matrix.gst_folder }}/lib"
