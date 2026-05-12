@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Square, Monitor, AppWindow, Volume2, Volume1, VolumeX } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -26,15 +26,9 @@ export function StreamingBarApp() {
   const { t } = useTranslation();
   const { appearance, loadFromDisk } = useSettingsStore();
   
-  /* ── Startup: Transparent background & theme sync ──────────── */
+  /* ── Load settings on mount ──────────────────────────────────── */
   useEffect(() => {
-    document.documentElement.style.backgroundColor = "transparent";
-    document.body.style.backgroundColor = "transparent";
     loadFromDisk();
-    return () => {
-      document.documentElement.style.backgroundColor = "";
-      document.body.style.backgroundColor = "";
-    };
   }, [loadFromDisk]);
 
   /* ── Local state (separate Tauri window — no shared Zustand) ──────────── */

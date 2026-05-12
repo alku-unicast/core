@@ -103,7 +103,8 @@ html, body, #root {
 
 body {
   font-family: "Inter", system-ui, sans-serif;
-  background-color: var(--bg-primary);
+  /* background-color intentionally omitted — each screen sets its own via bg-[var(--bg-primary)].
+     This keeps the streaming-bar window fully transparent (transparent:true in tauri.conf.json). */
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
