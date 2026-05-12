@@ -52,7 +52,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   };
 
   const {
-    detectedEncoder, encoderDetecting, audioDevices,
+    audioDevices,
     detectEncoder, refreshAudioDevices,
   } = useSystemStore();
 
@@ -86,12 +86,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  const encoderName = detectedEncoder?.name ?? encoder.detected ?? null;
-  const encoderType = detectedEncoder?.hwType ?? null;
-
-  const encoderLabel = encoderName
-    ? t("settings.stream.detected", { name: `${encoderName}${encoderType ? ` (${encoderType})` : ""}` })
-    : t("settings.stream.not_detected");
+  // encoderName/encoderLabel unused while HW acceleration section is hidden
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -271,10 +266,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 </div>
               </div>
 
+              {/* HW acceleration — WIP, hidden until encoder selection UX is designed
               <div className="mt-2 pt-4 border-t border-[var(--border)]">
                 <SettingRow label={t("settings.stream.encoder")} description="H.264 donanım kodlayıcı">
                    <div className="flex items-center gap-2 w-full max-w-[240px]">
-                      <span 
+                      <span
                         className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-mono truncate bg-[var(--bg-tertiary)] text-[var(--text-secondary)] ${!encoderName ? "opacity-50" : ""}`}
                         title={encoderLabel}
                       >
@@ -298,6 +294,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                    </div>
                 </SettingRow>
               </div>
+              */}
             </Section>
 
             {/* ── 2. Ses ───────────────────────────────────────────────── */}

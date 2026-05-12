@@ -1,5 +1,5 @@
 <div align="right">
-  <a href="README_TR.md">🇹🇷 Türkçe</a>
+  <a href="README_TR.md">Türkçe</a>
 </div>
 
 <div align="center">
@@ -21,6 +21,28 @@
 
 ---
 
+## Platform Support
+
+UniCast supports **Windows, Linux, and macOS**. However, macOS support is currently partial — fullscreen streaming works fully, but two features are disabled for this release:
+
+| Feature | Windows | Linux | macOS |
+|---------|:-------:|:-----:|:-----:|
+| Fullscreen streaming | Yes | Yes | Yes |
+| Window capture mode | Yes | Yes | WIP |
+| Audio streaming | Yes | Yes | WIP |
+| Hardware acceleration | Yes — NVENC / QSV / AMF | Yes — VAAPI | Yes — VideoToolbox |
+| Streaming overlay bar | Yes | Yes | Yes *(off by default)* |
+| Screen Recording permission required | — | — | Yes |
+
+> **macOS — Why are window capture and audio disabled?**
+>
+> - **Window capture:** `AVFoundation` (avfvideosrc) captures at Retina physical resolution. Mapping logical window coordinates from `CGWindowList` to physical-pixel crop values works for static windows, but tracking a moving window during a live stream requires dynamic pipeline updates — not yet implemented.
+> - **Audio:** macOS does not expose a system audio loopback API without a virtual audio device (e.g., BlackHole). Routing audio through a third-party driver introduces sync issues unsuitable for a classroom setting. A native CoreAudio loopback solution is planned.
+>
+> Both features are planned for a future release. Until then, the UI hides these options on macOS.
+
+---
+
 ## About
 
 UniCast is an open-source wireless screen mirroring system designed for classrooms. A teacher connects their laptop to a projector over **Wi-Fi or LAN** — no cables, no dongles, no driver installations.
@@ -39,7 +61,7 @@ UniCast is built with [Tauri](https://tauri.app/) (Rust backend + React frontend
 | **Low Latency** | < 150 ms end-to-end over LAN |
 | **Cross-Platform** | Windows 10/11, Linux (X11/Wayland), macOS (Intel + Apple Silicon) |
 | **Hardware Acceleration** | NVIDIA (NVENC), Intel (QSV), AMD (AMF), Apple (VideoToolbox), CPU fallback |
-| **Audio Streaming** | Opus audio via UDP with volume control |
+| **Audio Streaming** | Opus audio via UDP with volume control *(Windows & Linux; macOS: WIP)* |
 | **PIN Authentication** | Time-limited PIN shown on the projector screen |
 | **Session Token Security** | All control commands require a signed session token |
 | **Streaming Overlay Bar** | Floating always-on-top bar during stream (timer, network quality, stop) |
@@ -56,18 +78,55 @@ UniCast is built with [Tauri](https://tauri.app/) (Rust backend + React frontend
 
 | Platform | Download |
 |----------|----------|
-| Windows 10/11 (x64) | [📦 UniCast-Setup.exe](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_x64-setup.exe) |
-| Linux (x86_64 AppImage) | [📦 UniCast.AppImage](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_amd64.AppImage) |
-| macOS (ARM64 / Intel) | [📦 UniCast.dmg](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_aarch64.dmg) |
+| Windows 10/11 (x64) | [UniCast-Setup.exe](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_x64-setup.exe) |
+| Linux (x86_64 AppImage) | [UniCast.AppImage](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_amd64.AppImage) |
+| macOS (ARM64 / Intel) | [UniCast.dmg](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_aarch64.dmg) |
 
 All releases: [github.com/alku-unicast/core/releases](https://github.com/alku-unicast/core/releases)
 
-**Linux:** After download, mark as executable:
+---
+
+### Windows
+
+Run the installer (`UniCast_x64-setup.exe`) and follow the prompts. No additional steps required.
+
+---
+
+### Linux
+
+The AppImage bundles GStreamer — no system packages needed.
+
 ```bash
-chmod +x UniCast.AppImage && ./UniCast.AppImage
+# 1. Make executable
+chmod +x UniCast_0.1.0_amd64.AppImage
+
+# 2. Run
+./UniCast_0.1.0_amd64.AppImage
 ```
 
-**macOS:** If Gatekeeper blocks the app: right-click → Open → Open.
+> **Wayland users:** UniCast auto-detects the display server. Window capture falls back to fullscreen on Wayland (X11 window enumeration is not available under pure Wayland compositors).
+
+---
+
+### macOS
+
+The app is **not signed with an Apple Developer certificate**, so Gatekeeper will block it on first launch. Choose one of the following methods:
+
+**Method 1 — Right-click (simplest):**
+1. Open the `.dmg`, drag UniCast to `/Applications`
+2. In Finder, right-click `UniCast.app` → **Open** → **Open**
+
+**Method 2 — Terminal (one-liner, most reliable):**
+```bash
+# Remove the quarantine attribute Gatekeeper sets on downloaded files
+xattr -cr /Applications/UniCast.app
+```
+Then launch normally from Finder or Spotlight.
+
+**Method 3 — System Settings:**
+After a blocked launch attempt: **System Settings → Privacy & Security** → scroll to the bottom → click **"Open Anyway"**
+
+> **Screen Recording permission:** On first stream, macOS will prompt you to grant Screen Recording access. Go to **System Settings → Privacy & Security → Screen Recording** and enable UniCast. A restart of the app may be required.
 
 ---
 
@@ -117,7 +176,7 @@ When running, the Pi displays a PIN code on the projector screen.
 2. Open UniCast — it fetches the room list from Firebase automatically
 3. Select the room (projector), click **Connect**
 4. Enter the PIN shown on the screen
-5. Choose stream mode (fullscreen or window capture) and click **Start Streaming**
+5. Choose stream mode *(macOS: fullscreen only)* and click **Start Streaming**
 
 A floating streaming bar appears with stream controls. Click **Stop** to end the session.
 
@@ -153,11 +212,11 @@ UniCast App (Tauri)
 
 | Document | Language |
 |----------|----------|
-| [GStreamer Guide](Guide/gstreamer_guide.md) | 🇬🇧 EN |
+| [GStreamer Guide](Guide/gstreamer_guide.md) | EN |
 | [Firebase Setup Guide](Guide/firebase_implementation_guide.md) | EN |
-| [Pi 5 Deployment Guide](Guide/pi5_guide.md) | 🇬🇧 EN |
-| [System Architecture](Guide/system_architectue.md) | 🇬🇧 EN |
-| [Development Plan](Guide/unicast_development_plan.md) | 🇬🇧 EN |
+| [Pi 5 Deployment Guide](Guide/pi5_guide.md) | EN |
+| [System Architecture](Guide/system_architectue.md) | EN |
+| [Development Plan](Guide/unicast_development_plan.md) | EN |
 
 ---
 

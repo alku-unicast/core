@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Settings, DEFAULT_SETTINGS } from "../types/settings";
+import { isMacOS } from "../utils/platform";
 
 interface SettingsStore extends Settings {
   // Actions
@@ -13,6 +14,8 @@ interface SettingsStore extends Settings {
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   ...DEFAULT_SETTINGS,
+  // macOS: mini ada default kapalı (pencere modu/ses desteği henüz yok)
+  streamingBar: { enabled: !isMacOS() },
 
   setHideLinuxWindowWarning: (value) => {
     set({ hideLinuxWindowWarning: value });

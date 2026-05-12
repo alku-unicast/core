@@ -1,5 +1,5 @@
 <div align="right">
-  <a href="README.md">🇬🇧 English</a>
+  <a href="README.md">English</a>
 </div>
 
 <div align="center">
@@ -21,6 +21,28 @@
 
 ---
 
+## Platform Desteği
+
+UniCast **Windows, Linux ve macOS** üzerinde çalışır. Ancak macOS desteği şu an kısmi düzeydedir — tam ekran yayın tam olarak çalışmakta, iki özellik ise bu sürümde devre dışı bırakılmıştır:
+
+| Özellik | Windows | Linux | macOS |
+|---------|:-------:|:-----:|:-----:|
+| Tam ekran yayın | Evet | Evet | Evet |
+| Pencere yakalama modu | Evet | Evet | WIP |
+| Ses yayını | Evet | Evet | WIP |
+| Donanım hızlandırma | Evet — NVENC / QSV / AMF | Evet — VAAPI | Evet — VideoToolbox |
+| Yayın kontrol çubuğu | Evet | Evet | Evet *(varsayılan kapalı)* |
+| Ekran Kaydı izni gerekli | — | — | Evet |
+
+> **macOS — Pencere yakalama ve ses neden devre dışı?**
+>
+> - **Pencere yakalama:** `AVFoundation` (avfvideosrc) ekranı fiziksel Retina çözünürlüğünde yakalar. `CGWindowList`'ten gelen mantıksal koordinatların fiziksel piksel kırpma değerlerine dönüştürülmesi statik pencereler için çalışır; ancak yayın sırasında hareket eden bir pencerenin takibi dinamik pipeline güncellemesi gerektirir — bu henüz implemente edilmedi.
+> - **Ses:** macOS, sanal bir ses cihazı (ör. BlackHole) olmadan sistem ses loopback API'si sunmaz. Üçüncü taraf sürücü üzerinden ses yönlendirmek sınıf ortamı için uygun olmayan senkronizasyon sorunları yaratır. Yerel bir CoreAudio loopback çözümü planlanmaktadır.
+>
+> Her iki özellik de gelecek sürümlerde eklenecektir. O zamana kadar arayüz bu seçenekleri macOS'ta gizler.
+
+---
+
 ## Hakkında
 
 UniCast, sınıf ortamları için geliştirilmiş açık kaynaklı bir kablosuz ekran yansıtma sistemidir. Öğretmen, laptopunu bir projektöre **Wi-Fi veya kablo (LAN) üzerinden** bağlar — kablo yok, adaptör yok, sürücü kurulumu yok.
@@ -39,7 +61,7 @@ UniCast; [Tauri](https://tauri.app/) (Rust backend + React arayüz) ve [GStreame
 | **Düşük Gecikme** | LAN üzerinde uçtan uca < 150 ms |
 | **Çok Platform** | Windows 10/11, Linux (X11/Wayland), macOS (Intel + Apple Silicon) |
 | **Donanım Hızlandırma** | NVIDIA (NVENC), Intel (QSV), AMD (AMF), Apple (VideoToolbox), CPU yedek |
-| **Ses Yayını** | UDP üzerinden Opus ses, volume kontrolü |
+| **Ses Yayını** | UDP üzerinden Opus ses, volume kontrolü *(Windows & Linux; macOS: WIP)* |
 | **PIN Kimlik Doğrulama** | Projektör ekranında görüntülenen süreli PIN kodu |
 | **Oturum Token Güvenliği** | Tüm kontrol komutları oturum token'ı gerektirir |
 | **Yayın Çubuğu** | Yayın sırasında kayan her zaman üstte panel (süre, ağ kalitesi, durdur) |
@@ -56,18 +78,55 @@ UniCast; [Tauri](https://tauri.app/) (Rust backend + React arayüz) ve [GStreame
 
 | Platform | İndir |
 |----------|-------|
-| Windows 10/11 (x64) | [📦 UniCast-Setup.exe](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_x64-setup.exe) |
-| Linux (x86_64 AppImage) | [📦 UniCast.AppImage](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_amd64.AppImage) |
-| macOS (ARM64 / Intel) | [📦 UniCast.dmg](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_aarch64.dmg) |
+| Windows 10/11 (x64) | [UniCast-Setup.exe](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_x64-setup.exe) |
+| Linux (x86_64 AppImage) | [UniCast.AppImage](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_amd64.AppImage) |
+| macOS (ARM64 / Intel) | [UniCast.dmg](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_aarch64.dmg) |
 
 Tüm sürümler: [github.com/alku-unicast/core/releases](https://github.com/alku-unicast/core/releases)
 
-**Linux:** İndirdikten sonra çalıştırılabilir yap:
+---
+
+### Windows
+
+Yükleyiciyi (`UniCast_x64-setup.exe`) çalıştır ve adımları izle. Ek bir işlem gerekmez.
+
+---
+
+### Linux
+
+AppImage, GStreamer'ı içinde barındırır — sistem paketi kurulumu gerekmez.
+
 ```bash
-chmod +x UniCast.AppImage && ./UniCast.AppImage
+# 1. Çalıştırılabilir yap
+chmod +x UniCast_0.1.0_amd64.AppImage
+
+# 2. Çalıştır
+./UniCast_0.1.0_amd64.AppImage
 ```
 
-**macOS:** Gatekeeper engellerse: sağ tıkla → Aç → Aç.
+> **Wayland kullananlar:** UniCast ekran sunucusunu otomatik algılar. Pencere yakalama, Wayland'de tam ekrana düşer (saf Wayland compositor altında X11 pencere listesi kullanılamaz).
+
+---
+
+### macOS
+
+Uygulama **Apple Geliştirici sertifikasıyla imzalı değildir**, dolayısıyla Gatekeeper ilk açılışta engeller. Aşağıdaki yöntemlerden birini kullan:
+
+**Yöntem 1 — Sağ tıklama (en kolay):**
+1. `.dmg`'yi aç, UniCast'ı `/Applications` klasörüne sürükle
+2. Finder'da `UniCast.app`'e sağ tıkla → **Aç** → **Aç**
+
+**Yöntem 2 — Terminal (tek satır, en güvenilir):**
+```bash
+# Gatekeeper'ın indirilen dosyalara koyduğu karantina özelliğini kaldır
+xattr -cr /Applications/UniCast.app
+```
+Ardından Finder veya Spotlight'tan normal şekilde çalıştır.
+
+**Yöntem 3 — Sistem Ayarları:**
+Engellenen açılış denemesinin ardından: **Sistem Ayarları → Gizlilik & Güvenlik** → aşağı kaydır → **"Yine de Aç"** düğmesine tıkla.
+
+> **Ekran Kaydı izni:** İlk yayında macOS, Ekran Kaydı erişimi için izin ister. **Sistem Ayarları → Gizlilik & Güvenlik → Ekran Kaydı** bölümünden UniCast'a izin ver. Uygulamayı yeniden başlatman gerekebilir.
 
 ---
 
@@ -117,7 +176,7 @@ python3 src/receiver/agent.py
 2. UniCast'ı aç — oda listesi Firebase'den otomatik yüklenir
 3. Odayı (projektörü) seç, **Bağlan**'a tıkla
 4. Ekranda görünen PIN'i gir
-5. Yayın modunu seç (tam ekran veya pencere) ve **Yayını Başlat**'a tıkla
+5. Yayın modunu seç *(macOS'ta yalnızca tam ekran)* ve **Yayını Başlat**'a tıkla
 
 Yayın sırasında ekranın köşesinde yüzen bir kontrol çubuğu belirir. **Durdur**'a tıklayarak oturumu kapatabilirsin.
 
@@ -153,14 +212,14 @@ UniCast Uygulaması (Tauri)
 
 | Belge | Dil |
 |-------|-----|
-| [GStreamer Rehberi](Guide/gstreamer_rehberi.md) | 🇹🇷 TR |
-| [GStreamer Guide](Guide/gstreamer_guide.md) | 🇬🇧 EN |
-| [Firebase Kurulum Rehberi](Guide/firebase_kurulum_rehberi.md) | 🇹🇷 TR |
-| [Pi 5 Kurulum Rehberi](Guide/pi5_rehberi.md) | 🇹🇷 TR |
-| [Pi 5 Deployment Guide](Guide/pi5_guide.md) | 🇬🇧 EN |
-| [Sistem Analizi](Guide/sistem_analizi.md) | 🇹🇷 TR |
-| [Performans Testi Rehberi](src/test/test_rehberi.md) | 🇹🇷 TR |
-| [Geliştirme Planı](Guide/unicast_gelistirme_plani.md) | 🇹🇷 TR |
+| [GStreamer Rehberi](Guide/gstreamer_rehberi.md) | TR |
+| [GStreamer Guide](Guide/gstreamer_guide.md) | EN |
+| [Firebase Kurulum Rehberi](Guide/firebase_kurulum_rehberi.md) | TR |
+| [Pi 5 Kurulum Rehberi](Guide/pi5_rehberi.md) | TR |
+| [Pi 5 Deployment Guide](Guide/pi5_guide.md) | EN |
+| [Sistem Analizi](Guide/sistem_analizi.md) | TR |
+| [Performans Testi Rehberi](src/test/test_rehberi.md) | TR |
+| [Geliştirme Planı](Guide/unicast_gelistirme_plani.md) | TR |
 
 ---
 
