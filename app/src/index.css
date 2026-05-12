@@ -102,9 +102,8 @@ html, body, #root {
 }
 
 body {
+  background-color: transparent; /* Tauri transparent windows require explicit transparent, not just absence. Main screens use bg-[var(--bg-primary)] on their root div. */
   font-family: "Inter", system-ui, sans-serif;
-  /* background-color intentionally omitted — each screen sets its own via bg-[var(--bg-primary)].
-     This keeps the streaming-bar window fully transparent (transparent:true in tauri.conf.json). */
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

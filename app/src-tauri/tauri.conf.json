@@ -29,7 +29,7 @@
         "title": "UniCast Stream",
         "devtools": true,
         "width": 380,
-        "height": 200,
+        "height": 76,
         "resizable": false,
         "alwaysOnTop": true,
         "decorations": false,

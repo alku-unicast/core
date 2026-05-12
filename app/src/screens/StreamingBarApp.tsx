@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../stores/settingsStore";
 
 import { NetworkQualityDot } from "../components/streaming-bar/NetworkQualityDot";
-import { AudioPopup } from "../components/streaming-bar/AudioPopup";
 import { NetworkQuality } from "../types/stream";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -37,7 +36,6 @@ export function StreamingBarApp() {
   const [lastRTT, setLastRTT]               = useState<number | null>(null);
   const [isMuted, setIsMuted]               = useState(false);
   const [volume, setVolume]                 = useState(1.0);
-  const [audioPopupOpen, setAudioPopupOpen] = useState(false);
   const [streamMode, setStreamMode]         = useState<"fullscreen" | "window">("fullscreen");
   const [targetIp, setTargetIp]             = useState<string | null>(null);
   const [audioEnabled, setAudioEnabled]     = useState(true);
@@ -68,7 +66,6 @@ export function StreamingBarApp() {
     listen<{ mode: string; targetIp?: string; audioEnabled?: boolean; volume?: number; isMuted?: boolean }>("stream-mode-info", (ev) => {
       setElapsed(0); // reset timer when stream is newly started
       setStopping(false);
-      setAudioPopupOpen(false);
       if (ev.payload.mode === "fullscreen" || ev.payload.mode === "window") {
         setStreamMode(ev.payload.mode as "fullscreen" | "window");
       }
@@ -203,32 +200,35 @@ export function StreamingBarApp() {
       {/* ── Spacer (draggable) ──────────────────────────────────────────── */}
       <div className="flex-1 min-w-0" data-tauri-drag-region />
 
-      {/* ── Audio control ──────────────────────────────────────────────── */}
+      {/* ── Audio control (inline) ─────────────────────────────────────── */}
       {audioEnabled && (
-        <div className="relative shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             id="btn-bar-audio"
-            onClick={() => setAudioPopupOpen((o) => !o)}
-            title={t("streaming_bar.audio_control")}
-            className="
-              w-8 h-8 flex items-center justify-center rounded-lg
-              bg-white/10 hover:bg-white/20
-              transition-colors duration-150
-            "
+            onClick={handleMuteToggle}
+            title={isMuted ? t("streaming_bar.unmute") : t("streaming_bar.mute")}
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors duration-150"
             style={{ color: isMuted ? "#ef4444" : "var(--bar-text)" }}
           >
-            <VolumeIcon size={15} />
+            <VolumeIcon size={13} />
           </button>
-
-          {audioPopupOpen && (
-            <AudioPopup
-              volume={volume}
-              isMuted={isMuted}
-              onVolumeChange={handleVolumeChange}
-              onMuteToggle={handleMuteToggle}
-              onClose={() => setAudioPopupOpen(false)}
-            />
-          )}
+          <input
+            id="bar-volume-slider"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={isMuted ? 0 : Math.round(volume * 100)}
+            onChange={(e) => handleVolumeChange(Number(e.target.value) / 100)}
+            className="appearance-none cursor-pointer w-[68px]"
+            style={{
+              height: 3,
+              accentColor: "var(--accent)",
+              background: `linear-gradient(to right, var(--accent) ${Math.round(isMuted ? 0 : volume * 100)}%, rgba(255,255,255,0.2) ${Math.round(isMuted ? 0 : volume * 100)}%)`,
+              borderRadius: 4,
+            }}
+            aria-label={t("streaming_bar.volume_hint")}
+          />
         </div>
       )}
 

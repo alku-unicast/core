@@ -87,6 +87,8 @@ mod cg_ffi {
         // Display helpers
         pub fn CGWindowListCopyWindowInfo(option: u32, relative: u32) -> CFArrayRef;
         pub fn CGMainDisplayID() -> u32;
+        pub fn CGDisplayPixelsWide(display: u32) -> usize;
+        pub fn CGDisplayPixelsHigh(display: u32) -> usize;
         pub fn CGDisplayBounds(display: u32) -> CGRect;
         pub fn CFRelease(cf: CFTypeRef);
     }
@@ -99,10 +101,15 @@ fn enum_windows_macos() -> Result<Vec<WindowInfo>, String> {
 
     unsafe {
         let main_display = CGMainDisplayID();
-        // CGDisplayBounds returns logical points (independent of Retina scale).
-        // avfvideosrc capture-screen=true also outputs at logical resolution,
-        // so videocrop values must be in logical pixels — no scale factor needed.
+        // avfvideosrc capture-screen=true outputs at PHYSICAL (Retina) resolution
+        // because AVCaptureScreenInput.scalingEnabled defaults to NO.
+        // CGWindowList bounds are in logical points, so we apply the scale factor
+        // to convert to physical pixels for use in videocrop.
+        let screen_phys_w = CGDisplayPixelsWide(main_display) as u32;
+        let screen_phys_h = CGDisplayPixelsHigh(main_display) as u32;
         let screen_logical = CGDisplayBounds(main_display);
+        let scale_x = screen_phys_w as f64 / screen_logical.size.width.max(1.0);
+        let scale_y = screen_phys_h as f64 / screen_logical.size.height.max(1.0);
 
         let window_list = CGWindowListCopyWindowInfo(
             CG_WINDOW_LIST_ON_SCREEN_ONLY | CG_WINDOW_LIST_EXCLUDE_DESKTOP,
@@ -206,11 +213,12 @@ fn enum_windows_macos() -> Result<Vec<WindowInfo>, String> {
                 continue;
             }
 
+            // Convert logical → physical pixels for videocrop (avfvideosrc is physical)
             let (x, y, w, h) = (
-                Some(rect.origin.x as i32),
-                Some(rect.origin.y as i32),
-                Some(rect.size.width as u32),
-                Some(rect.size.height as u32),
+                Some((rect.origin.x * scale_x) as i32),
+                Some((rect.origin.y * scale_y) as i32),
+                Some((rect.size.width * scale_x) as u32),
+                Some((rect.size.height * scale_y) as u32),
             );
 
             windows.push(WindowInfo {
@@ -221,8 +229,8 @@ fn enum_windows_macos() -> Result<Vec<WindowInfo>, String> {
                 y,
                 w,
                 h,
-                screen_w: Some(screen_logical.size.width as u32),
-                screen_h: Some(screen_logical.size.height as u32),
+                screen_w: Some(screen_phys_w),
+                screen_h: Some(screen_phys_h),
             });
         }
 
