@@ -130,7 +130,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: app/src-tauri/gstreamer/${{ matrix.gst_folder }}
-          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v10
+          key: ${{ matrix.os }}-${{ matrix.arch }}-gst-1.24.13-v11
 
       - name: Download & Install GStreamer (Windows)
         if: steps.cache-gst.outputs.cache-hit != 'true' && matrix.os == 'windows'
