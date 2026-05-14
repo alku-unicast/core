@@ -6,7 +6,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useSystemStore }   from "../../stores/systemStore";
-import { isMacOS }          from "../../utils/platform";
+import { isMacOS, isWindows } from "../../utils/platform";
 import { StreamProfile } from "../../types/settings";
 import unicastLogo from "../../assets/UniCast.png";
 import alkuLogo    from "../../assets/alku-yatay-logo-rgb.png";
@@ -38,6 +38,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   } = useSettingsStore();
 
   const mac = isMacOS();
+  const win = isWindows();
 
   const [activeProfile, setActiveProfile] = useState<"presentation" | "video">("presentation");
   const currentProfile = profiles[activeProfile];
@@ -329,8 +330,12 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                       onChange={(v) => updateSettings({ audio: { ...audio, muteLocal: v } })}
                     />
                   </SettingRow>
+                  {win && audio.muteLocal && (
+                    <p className="text-xs text-amber-400 mt-1 px-1">
+                      {t("settings.audio.mute_local_win_warning")}
+                    </p>
+                  )}
 
-                  <InfoBox>{t("settings.audio.info")}</InfoBox>
                 </>
               )}
             </Section>
@@ -544,21 +549,25 @@ function Toggle({
   id,
   value,
   onChange,
+  disabled = false,
 }: {
   id: string;
   value: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       id={id}
-      onClick={() => onChange(!value)}
+      onClick={() => { if (!disabled) onChange(!value); }}
       className={`
         relative w-11 h-6 rounded-full transition-colors duration-200
+        ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
         ${value ? "bg-[var(--accent)]" : "bg-[var(--bg-tertiary)]"}
       `}
       role="switch"
       aria-checked={value}
+      aria-disabled={disabled}
     >
       <span
         className={`

@@ -211,16 +211,10 @@ fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
             .map(|id| format!(" device=\"{}\"", id))
             .unwrap_or_default();
 
-        // When muteLocal is active, mute_system_audio() sets the Windows endpoint
-        // volume to 1% to silence speakers. WASAPI loopback then captures at 1%.
-        // Compensate with a 100x software gain so the projector receives full-level audio.
-        // Note: behaviour is driver-dependent (APO vs standard HDAudio).
-        let volume_comp = if config.mute_local { " ! volume volume=100.0" } else { "" };
-
         format!(
-            " wasapi2src loopback=true{}{} ! queue ! audioconvert ! audioresample ! \
+            " wasapi2src loopback=true{} ! queue ! audioconvert ! audioresample ! \
              opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={} port=5002",
-            device_arg, volume_comp, _ip
+            device_arg, _ip
         )
     }
 

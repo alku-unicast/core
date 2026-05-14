@@ -127,6 +127,7 @@
       "device_hint": "Ses ile ilgili sorun yaşamıyorsanız değiştirmeyin.",
       "mute_local": "Yayın sırasında hoparlörü kapat",
       "mute_local_description": "Ses yalnızca projektörden çıkar",
+      "mute_local_win_warning": "Bazı sistemlerde (Realtek APO) yayın sesi de kısılabilir. Sistem ses seviyesini %30'un üzerinde tutun. Bu, sizin ve projektör sesiniz arasında asenkronluğa neden olabilir.",
       "info": "WASAPI Loopback: Ses mikseri çıkışından yakalanır — hoparlör sessize alınmış olsa bile GStreamer yakalamayı sürdürür.",
       "wip_macos": "macOS ses desteği yakında eklenecek."
     },
