@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::process::Child;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use crate::gstreamer::{path_setup::get_gst_launch, pipeline::build_pipeline};
 
 // Global GStreamer process handle
