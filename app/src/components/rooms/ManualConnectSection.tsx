@@ -15,13 +15,12 @@ export function ManualConnectSection() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { connect } = useConnectionStore();
-  const { networkState, hasLocalInterface } = useNetworkStore();
+  const { networkState } = useNetworkStore();
 
   const [ip, setIp] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // ISSUE-02: User wants to keep it visible for testing even when online
-  if (networkState === "NO_NETWORK" || !hasLocalInterface) return null;
+  if (networkState !== "LOCAL_ONLY") return null;
 
   const valid = isValidIp(ip);
 

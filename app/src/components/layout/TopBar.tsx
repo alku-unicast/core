@@ -1,7 +1,7 @@
 import { Settings, Sun, Moon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settingsStore";
-import logo from "../../assets/UniCast.png";
+import logo from "../../assets/UniCast_WB.png";
 
 interface TopBarProps {
   onSettingsClick: () => void;

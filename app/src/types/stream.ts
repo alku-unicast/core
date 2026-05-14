@@ -25,6 +25,7 @@ export interface StreamConfig {
   monitorIndex?: number;
   audioEnabled: boolean;
   audioDeviceId: string | null;
+  muteLocal: boolean;
   // macOS window-mode: physical-pixel crop bounds
   windowX?: number;
   windowY?: number;

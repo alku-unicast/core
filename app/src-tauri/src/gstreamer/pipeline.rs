@@ -211,10 +211,20 @@ fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
             .map(|id| format!(" device=\"{}\"", id))
             .unwrap_or_default();
 
+        // When muteLocal is active, mute_system_audio() sets the Windows endpoint
+        // volume to 1% to silence speakers. WASAPI loopback then captures at 1%.
+        // Compensate with 100x gain (audioamplify) and hard-clip at 1.0 to prevent
+        // clipping artifacts if the user manually raises system volume above 1%.
+        let volume_comp = if config.mute_local {
+            " ! audioamplify amplification=100.0 clipping-method=hard-clip"
+        } else {
+            ""
+        };
+
         format!(
-            " wasapi2src loopback=true{} ! queue ! audioconvert ! audioresample ! \
+            " wasapi2src loopback=true{}{} ! queue ! audioconvert ! audioresample ! \
              opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={} port=5002",
-            device_arg, _ip
+            device_arg, volume_comp, _ip
         )
     }
 

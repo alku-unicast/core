@@ -111,6 +111,20 @@ pub fn run() {
             // ── Scan for orphaned GStreamer processes on startup ─────────────
             utils::process::kill_gstreamer();
 
+            // ── Apply WDA_EXCLUDEFROMCAPTURE to streaming bar at startup ────
+            // This ensures the bar is ALWAYS excluded from D3D11 screen capture,
+            // even on the second stream when the window appears instantly (no render delay).
+            // The flag persists across hide/show cycles on the same HWND.
+            #[cfg(target_os = "windows")]
+            {
+                if let Some(bar) = app.get_webview_window("streaming-bar") {
+                    if let Ok(hwnd) = bar.hwnd() {
+                        let ok = crate::utils::capture_exclusion::exclude_from_capture(hwnd.0 as isize);
+                        log::info!("[setup] WDA_EXCLUDEFROMCAPTURE applied to streaming-bar at startup: {ok}");
+                    }
+                }
+            }
+
             Ok(())
         })
         // Clean up on window close

@@ -12,6 +12,7 @@ interface ConnectionStore {
   // PIN
   pinError: string | null;
   pinAttempts: number;          // attempts used (max 3)
+  pinLockedUntil: number | null; // timestamp ms — null means not locked
 
   // Audio
   audioEnabled: boolean;        // include audio in stream
@@ -60,6 +61,7 @@ const initialState = {
   streamPid: null,
   pinError: null,
   pinAttempts: 0,
+  pinLockedUntil: null as number | null,
   audioEnabled: true,
   isMuted: false,
   streamVolume: 1.0,
@@ -82,8 +84,11 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   },
 
   submitPIN: async (pin) => {
-    const { targetRoom } = get();
+    const { targetRoom, pinAttempts, pinLockedUntil } = get();
     if (!targetRoom) return false;
+
+    // Enforce lockout — UI should prevent this but guard here too
+    if (pinLockedUntil && Date.now() < pinLockedUntil) return false;
 
     set({ phase: "authenticating" });
     try {
@@ -94,14 +99,16 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       );
 
       if (result.success) {
-        set({ phase: "streaming", pinError: null, pinAttempts: 0, sessionToken: result.sessionToken ?? null });
+        set({ phase: "streaming", pinError: null, pinAttempts: 0, pinLockedUntil: null, sessionToken: result.sessionToken ?? null });
         return true;
       } else {
-        const used = get().pinAttempts + 1;
+        const used = pinAttempts + 1;
+        const locked = used >= 3;
         set({
           phase: "awaiting_pin",
           pinError: result.message,
           pinAttempts: used,
+          pinLockedUntil: locked ? Date.now() + 5 * 60 * 1000 : null,
         });
         return false;
       }
@@ -175,7 +182,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       return result.success;
     } catch (e) {
       console.error("[connectionStore] startStream failed:", e);
-      set({ phase: "awaiting_pin", streamError: "Yayın başlatılamadı. Lütfen ağ bağlantısını ve eklentileri kontrol edin." });
+      set({ phase: "awaiting_pin", streamError: "Stream could not be started. Please check your network connection and GStreamer plugins." });
       return false;
     }
   },
@@ -202,10 +209,10 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
 
     if (newCount > 3) {
       console.warn("[connectionStore] Max auto-restart attempts reached.");
-      set({ 
-        phase: "awaiting_pin", 
-        isRestarting: false, 
-        streamError: "Linux pencere modu kararsız olabilir. Lütfen pencere boyutunu değiştirmeyin veya Tam Ekran moduna geçin." 
+      set({
+        phase: "awaiting_pin",
+        isRestarting: false,
+        streamError: "Linux window mode may be unstable. Please do not resize the window or switch to Full Screen mode."
       });
       return;
     }
@@ -214,7 +221,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
       isRestarting: true, 
       restartAttempts: newCount, 
       lastRestartTime: now,
-      streamError: "Görüntü kalitesi optimize ediliyor..." // Professional wording for "it crashed and we are fixing it"
+      streamError: "Optimizing video quality..." // restarting after BadMatch crash
     });
 
     const timeout = setTimeout(async () => {

@@ -85,9 +85,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     sectionRefs[id].current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  // encoderName/encoderLabel unused while HW acceleration section is hidden
-
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <div
@@ -132,7 +129,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           <button
             id="btn-settings-reset"
             onClick={async () => {
-              if (confirm("Tüm ayarlar fabrika ayarlarına döndürülecektir. Emin misiniz?")) {
+              if (confirm(t("settings.reset_confirm"))) {
                 await resetToDefaults();
               }
             }}
@@ -142,7 +139,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             "
           >
             <RefreshCw size={13} />
-            AYARLARI SIFIRLA
+            {t("settings.reset_button")}
           </button>
         </nav>
 
@@ -168,9 +165,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           {/* Scrollable sections */}
           <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-8 scrollbar-none">
 
-            {/* ── 1. Yayın Profilleri ─────────────────────────────────────── */}
-            <Section ref={sectionRefs.stream} title="Yayın Profilleri" icon={<Cpu size={15} />}>
-              
+            {/* ── 1. Stream Profiles ──────────────────────────────────────── */}
+            <Section ref={sectionRefs.stream} title={t("settings.stream.profiles_title")} icon={<Cpu size={15} />}>
+
               {/* Profile Tabs */}
               <div className="flex gap-1 p-1 rounded-xl bg-[var(--bg-tertiary)] mb-2">
                 <button
@@ -178,21 +175,24 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   onClick={() => setActiveProfile("presentation")}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeProfile === "presentation" ? "bg-[var(--bg-primary)] text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
                 >
-                  SUNUM MODU
+                  {t("settings.stream.presentation_mode")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveProfile("video")}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeProfile === "video" ? "bg-[var(--bg-primary)] text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
                 >
-                  VİDEO MODU
+                  {t("settings.stream.video_mode")}
                 </button>
               </div>
 
               {/* Profile Specific Controls */}
               <div className="flex flex-col gap-4 mb-2">
                 {/* Resolution */}
-                <SettingRow label={t("settings.stream.resolution")} description={`${activeProfile === 'presentation' ? 'Sunum' : 'Video'} kalitesi`}>
+                <SettingRow
+                  label={t("settings.stream.resolution")}
+                  description={activeProfile === "presentation" ? t("settings.stream.presentation_quality") : t("settings.stream.video_quality")}
+                >
                   <Select
                     id="select-profile-resolution"
                     value={currentProfile.resolution}
@@ -206,7 +206,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 </SettingRow>
 
                 {/* FPS */}
-                <SettingRow label={t("settings.stream.fps")} description="Saniyedeki kare sayısı">
+                <SettingRow label={t("settings.stream.fps")} description={t("settings.stream.fps_description")}>
                   <Select
                     id="select-profile-fps"
                     value={String(currentProfile.fps)}
@@ -226,12 +226,12 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     className="flex items-center gap-1.5 text-xs font-medium text-[var(--accent)] hover:opacity-80 transition-opacity duration-150 self-start py-1"
                   >
                     {advancedOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                    {t("settings.stream.advanced")} ({activeProfile === 'presentation' ? 'Sunum' : 'Video'})
+                    {t("settings.stream.advanced")} ({activeProfile === "presentation" ? t("settings.stream.presentation_short") : t("settings.stream.video_short")})
                   </button>
 
                   {advancedOpen && (
                     <div className="flex flex-col gap-4 mt-3 pl-3 border-l-2 border-[var(--border)]">
-                      <SettingRow label="Bit Hızı" description={`${currentProfile.bitrate.toLocaleString()} kbps`}>
+                      <SettingRow label={t("settings.stream.bitrate_label")} description={`${currentProfile.bitrate.toLocaleString()} kbps`}>
                         <div className="flex items-center gap-3 w-full">
                           <span className="text-xs text-[var(--text-muted)] shrink-0">1000</span>
                           <input
@@ -244,7 +244,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                           <span className="text-xs text-[var(--text-muted)] shrink-0">8000</span>
                         </div>
                       </SettingRow>
-                      <SettingRow label={t("settings.network.buffer")} description="Ağ titreşimini telafi eder">
+                      <SettingRow label={t("settings.network.buffer")} description={t("settings.stream.buffer_description")}>
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
@@ -257,9 +257,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         </div>
                       </SettingRow>
                       <InfoBox>
-                        {activeProfile === 'presentation' 
-                          ? "Sunum modunda düşük gecikme ve yüksek keskinlik önceliklidir." 
-                          : "Video modunda akıcılık ve hareket kalitesi önceliklidir."}
+                        {activeProfile === "presentation"
+                          ? t("settings.stream.presentation_info")
+                          : t("settings.stream.video_info")}
                       </InfoBox>
                     </div>
                   )}
@@ -269,61 +269,39 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               {/* HW acceleration — WIP, hidden until encoder selection UX is designed
               <div className="mt-2 pt-4 border-t border-[var(--border)]">
                 <SettingRow label={t("settings.stream.encoder")} description="H.264 donanım kodlayıcı">
-                   <div className="flex items-center gap-2 w-full max-w-[240px]">
-                      <span
-                        className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-mono truncate bg-[var(--bg-tertiary)] text-[var(--text-secondary)] ${!encoderName ? "opacity-50" : ""}`}
-                        title={encoderLabel}
-                      >
-                        {encoderLabel}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={detectEncoder}
-                        disabled={encoderDetecting}
-                        className="
-                          flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-medium shrink-0
-                          bg-[var(--accent-subtle)] text-[var(--accent)]
-                          hover:bg-[var(--accent)] hover:text-white
-                          disabled:opacity-40 disabled:cursor-not-allowed
-                          transition-colors duration-150
-                        "
-                      >
-                        <RefreshCw size={12} className={encoderDetecting ? "animate-spin" : ""} />
-                        {t("settings.stream.scan")}
-                      </button>
-                   </div>
+                   ...
                 </SettingRow>
               </div>
               */}
             </Section>
 
-            {/* ── 2. Ses ───────────────────────────────────────────────── */}
+            {/* ── 2. Audio ─────────────────────────────────────────────── */}
             <Section ref={sectionRefs.audio} title={t("settings.tabs.audio")} icon={<Volume2 size={15} />}>
               {mac ? (
                 <div className="relative rounded-xl overflow-hidden">
                   {/* Blurred content */}
                   <div className="flex flex-col gap-4 pointer-events-none select-none opacity-30 blur-[2px]">
-                    <SettingRow label={t("settings.audio.device")} description="WASAPI loopback source">
+                    <SettingRow label={t("settings.audio.device")} description={t("settings.audio.device_hint")}>
                       <Select id="select-audio-device-wip" value="" onChange={() => {}} options={[{ value: "", label: "System Default" }]} />
                     </SettingRow>
-                    <SettingRow label={t("settings.audio.mute_local")} description="Audio plays on projector only">
+                    <SettingRow label={t("settings.audio.mute_local")} description={t("settings.audio.mute_local_description")}>
                       <Toggle id="toggle-mute-local-wip" value={false} onChange={() => {}} />
                     </SettingRow>
                   </div>
                   {/* WIP badge overlay */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
                     <span className="px-3 py-1.5 rounded-full bg-[var(--accent-gold-subtle)] text-[var(--accent-gold)] text-xs font-semibold tracking-wide border border-[var(--accent-gold)]/30">
-                      🚧 {t("common.wip")}
+                      {t("common.wip")}
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)] text-center max-w-[200px] leading-snug">
-                      macOS ses desteği yakında eklenecek.
+                      {t("settings.audio.wip_macos")}
                     </span>
                   </div>
                 </div>
               ) : (
                 <>
                   {/* Audio device */}
-                  <SettingRow label={t("settings.audio.device")} description="WASAPI loopback source">
+                  <SettingRow label={t("settings.audio.device")} description={t("settings.audio.device_hint")}>
                     <Select
                       id="select-audio-device"
                       value={audio.deviceId ?? ""}
@@ -343,7 +321,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   {/* Mute local */}
                   <SettingRow
                     label={t("settings.audio.mute_local")}
-                    description="Audio plays on projector only"
+                    description={t("settings.audio.mute_local_description")}
                   >
                     <Toggle
                       id="toggle-mute-local"
@@ -352,19 +330,17 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     />
                   </SettingRow>
 
-                  <InfoBox>
-                    {t("settings.audio.info", "WASAPI Loopback: Audio is captured from mixer output — GStreamer continues to capture even if speaker is muted.")}
-                  </InfoBox>
+                  <InfoBox>{t("settings.audio.info")}</InfoBox>
                 </>
               )}
             </Section>
 
-            {/* ── 3. Kontrol Çubuğu ────────────────────────────────────── */}
+            {/* ── 3. Appearance ────────────────────────────────────────── */}
             <Section ref={sectionRefs.bar} title={t("settings.tabs.appearance")} icon={<LayoutPanelTop size={15} />}>
 
               <SettingRow
-                label="Kontrol çubuğunu göster"
-                description="Yayın sırasında ekranda küçük widget"
+                label={t("settings.appearance.streaming_bar_label")}
+                description={t("settings.appearance.streaming_bar_description")}
               >
                 <Toggle
                   id="toggle-streaming-bar"
@@ -373,7 +349,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 />
               </SettingRow>
 
-              <SettingRow label="Çubuk Teması" description="Bağımsız tema">
+              <SettingRow label={t("settings.appearance.bar_theme_label")} description={t("settings.appearance.bar_theme_description")}>
                 <Select
                   id="select-bar-theme"
                   value={appearance.barTheme}
@@ -384,14 +360,13 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                   }
                   options={[
                     { value: "translucent-dark", label: "Translucent Dark" },
-                    { value: "dark",             label: "Dark" },
                     { value: "light",            label: "Light" },
                   ]}
                 />
               </SettingRow>
 
               <SettingRow
-                label="Saydamlık"
+                label={t("settings.appearance.opacity_label")}
                 description={`%${Math.round(appearance.barOpacity * 100)}`}
               >
                 <div className="flex items-center gap-3 w-full">
@@ -418,26 +393,26 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               </SettingRow>
             </Section>
 
-            {/* ── 4. Hakkında ──────────────────────────────────────────── */}
+            {/* ── 4. About ──────────────────────────────────────────────── */}
             <Section ref={sectionRefs.about} title={t("settings.tabs.about")} icon={<Info size={15} />}>
               <div className="flex flex-col gap-3 text-sm">
                 <div className="flex justify-between items-center py-1 border-b border-[var(--border)]">
-                  <span className="text-[var(--text-muted)]">Application</span>
+                  <span className="text-[var(--text-muted)]">{t("settings.about.application")}</span>
                   <span className="text-[var(--text-primary)] font-medium">UniCast</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-[var(--border)]">
-                  <span className="text-[var(--text-muted)]">{t("settings.about.version", "Version")}</span>
+                  <span className="text-[var(--text-muted)]">{t("settings.about.version")}</span>
                   <span className="text-[var(--text-primary)] font-medium">0.1.0</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-[var(--border)]">
-                  <span className="text-[var(--text-muted)]">University</span>
+                  <span className="text-[var(--text-muted)]">{t("settings.about.university_label")}</span>
                   <span className="text-[var(--text-primary)] font-medium text-right leading-snug">
                     {t("settings.about.university")}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-[var(--border)]">
-                  <span className="text-[var(--text-muted)]">License</span>
-                  <span className="text-[var(--text-primary)] font-medium">Academic Project</span>
+                  <span className="text-[var(--text-muted)]">{t("settings.about.license_label")}</span>
+                  <span className="text-[var(--text-primary)] font-medium">{t("settings.about.license_value")}</span>
                 </div>
 
                 {/* GitHub link */}

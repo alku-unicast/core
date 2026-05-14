@@ -74,6 +74,8 @@ pub struct StreamConfig {
     pub audio_enabled: bool,
     #[serde(rename = "audioDeviceId")]
     pub audio_device_id: Option<String>,
+    #[serde(rename = "muteLocal")]
+    pub mute_local: bool,
     // macOS window-mode crop bounds (physical pixels)
     #[serde(rename = "windowX")]
     pub window_x: Option<i32>,
@@ -103,6 +105,18 @@ pub async fn start_stream(
 ) -> Result<StartStreamResult, String> {
     // Kill any existing stream first
     stop_stream_internal();
+
+    // Re-apply WDA_EXCLUDEFROMCAPTURE to the streaming bar before GStreamer starts.
+    // On some Windows/WebView2 configurations, hide() may reset the flag set at startup.
+    // Applying it here guarantees GStreamer never captures even the first frame of the bar.
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(bar) = app.get_webview_window("streaming-bar") {
+            if let Ok(hwnd) = bar.hwnd() {
+                crate::utils::capture_exclusion::exclude_from_capture(hwnd.0 as isize);
+            }
+        }
+    }
 
     let gst_launch = get_gst_launch(&app);
     let bin_dir = crate::gstreamer::path_setup::get_gst_bin_dir(&app);

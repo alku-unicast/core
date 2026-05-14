@@ -27,6 +27,7 @@ export function ConnectionSetup() {
     phase,
     targetRoom,
     pinError,
+    pinLockedUntil,
     streamError,
     audioEnabled,
     streamMode,
@@ -125,7 +126,7 @@ export function ConnectionSetup() {
           if (isLinux && isWindow) {
             attemptAutoRestart();
           } else {
-            resetStream("Akış beklenmedik şekilde durdu. Lütfen tekrar bağlanmayı deneyin.");
+            resetStream("Stream stopped unexpectedly. Please try reconnecting.");
           }
         } else {
           reset();
@@ -235,6 +236,7 @@ export function ConnectionSetup() {
       monitorIndex:  streamMode === "fullscreen" ? selectedMonitorIndex : undefined,
       audioEnabled:  mac ? false : currentProfile.audioEnabled,
       audioDeviceId: globalAudio.deviceId,
+      muteLocal:     mac ? false : globalAudio.muteLocal,
       // macOS: physical-pixel bounds for videocrop
       windowX:  isWindow ? selectedWindow?.x : undefined,
       windowY:  isWindow ? selectedWindow?.y : undefined,
@@ -275,7 +277,8 @@ export function ConnectionSetup() {
   if (!targetRoom) return null;
 
   /* ── Derived state ───────────────────────────────────────────────────────── */
-  const pinDisabled      = isAuthenticating || isStreaming || (phase === "waking");
+  const isLocked    = !!pinLockedUntil && Date.now() < pinLockedUntil;
+  const pinDisabled = isAuthenticating || isStreaming || (phase === "waking") || isLocked;
 
   /* ── Render ──────────────────────────────────────────────────────────────── */
   return (
@@ -362,30 +365,31 @@ export function ConnectionSetup() {
             )}
             <div className="flex-1 min-w-0">
               <p className={`text-sm font-semibold ${isRestarting ? 'text-amber-500' : 'text-red-400'} mb-0.5`}>
-                {isRestarting ? 'Görüntü Optimize Ediliyor' : 'Akış başlatılamadı'}
+                {isRestarting ? t("connection.restarting_title") : t("connection.error_title")}
               </p>
               <p className={`text-xs ${isRestarting ? 'text-amber-500/70' : 'text-red-400/70'} break-words`}>{streamError}</p>
             </div>
           </section>
         )}
 
-        {/* ── Stream mode selection ──────────────────────────────────── */}
-        <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-4">
-
-          <StreamModeSelector
-            mode={streamMode}
-            onModeChange={(m) => switchStreamMode(m)}
-            monitors={availableMonitors}
-            selectedMonitor={selectedMonitorIndex}
-            onMonitorChange={setSelectedMonitor}
-            windows={openWindows}
-            selectedWindow={selectedWindow}
-            onWindowChange={setSelectedWindow}
-            onRefreshWindows={handleRefreshWindows}
-            windowsLoading={windowsLoading}
-            hideWindow={mac}
-          />
-        </section>
+        {/* ── Stream mode selection — hidden while streaming ─────────── */}
+        {!isStreaming && (
+          <section className="bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border)] p-4">
+            <StreamModeSelector
+              mode={streamMode}
+              onModeChange={(m) => switchStreamMode(m)}
+              monitors={availableMonitors}
+              selectedMonitor={selectedMonitorIndex}
+              onMonitorChange={setSelectedMonitor}
+              windows={openWindows}
+              selectedWindow={selectedWindow}
+              onWindowChange={setSelectedWindow}
+              onRefreshWindows={handleRefreshWindows}
+              windowsLoading={windowsLoading}
+              hideWindow={mac}
+            />
+          </section>
+        )}
 
         {/* ── PIN entry or Streaming Active ─────────────────────────────────── */}
         {isStreaming ? (
@@ -399,7 +403,7 @@ export function ConnectionSetup() {
                 {t("connection.streaming")}
               </h2>
               <p className="text-sm text-[var(--text-muted)]">
-                Yayınınız şu anda projektör ekranına aktarılıyor.
+                {t("connection.streaming_subtitle")}
               </p>
             </div>
  
@@ -432,7 +436,7 @@ export function ConnectionSetup() {
               "
             >
               <Square size={16} className="fill-current" />
-              YAYINI DURDUR
+              {t("connection.stop_stream")}
             </button>
           </section>
         ) : (
@@ -443,6 +447,7 @@ export function ConnectionSetup() {
               onSubmit={() => {}} // Handle via mode buttons
               error={pinError}
               disabled={pinDisabled}
+              lockedUntil={pinLockedUntil}
             />
 
             {/* Dual Mode Buttons with Persistent Audio Switches */}
@@ -466,10 +471,10 @@ export function ConnectionSetup() {
                   ) : (
                     <div className="flex items-center gap-2">
                       <Monitor size={16} />
-                      <span>SUNUM OLARAK BAŞLAT</span>
+                      <span>{t("connection.presentation_button")}</span>
                     </div>
                   )}
-                  <span className="text-[9px] opacity-75 font-normal">Maksimum Keskinlik | {profiles.presentation.fps} FPS</span>
+                  <span className="text-[9px] opacity-75 font-normal">{t("connection.max_clarity")} | {profiles.presentation.fps} FPS</span>
                 </button>
 
                 {/* Presentation Audio Toggle — hidden on macOS */}
@@ -481,10 +486,10 @@ export function ConnectionSetup() {
                       transition-colors duration-200
                       ${profiles.presentation.audioEnabled ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"}
                     `}
-                    title="Sunumda Ses"
+                    title={t("connection.audio_presentation_title")}
                   >
                     <Volume2 size={16} className={profiles.presentation.audioEnabled ? "opacity-100" : "opacity-40"} />
-                    <span className="text-[8px] font-bold">{profiles.presentation.audioEnabled ? "AÇIK" : "KAPALI"}</span>
+                    <span className="text-[8px] font-bold">{profiles.presentation.audioEnabled ? t("connection.audio_on") : t("connection.audio_off")}</span>
                   </button>
                 )}
               </div>
@@ -509,10 +514,10 @@ export function ConnectionSetup() {
                   ) : (
                     <div className="flex items-center gap-2">
                       <Radio size={16} />
-                      <span>VİDEO OLARAK BAŞLAT</span>
+                      <span>{t("connection.video_button")}</span>
                     </div>
                   )}
-                  <span className="text-[9px] text-[var(--text-muted)] font-normal">Akıcı Hareket | {profiles.video.fps} FPS</span>
+                  <span className="text-[9px] text-[var(--text-muted)] font-normal">{t("connection.smooth_motion")} | {profiles.video.fps} FPS</span>
                 </button>
 
                 {/* Video Audio Toggle — hidden on macOS */}
@@ -524,17 +529,17 @@ export function ConnectionSetup() {
                       transition-colors duration-200
                       ${profiles.video.audioEnabled ? "bg-green-500/10 border-green-500/30 text-green-500" : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"}
                     `}
-                    title="Videoda Ses"
+                    title={t("connection.audio_video_title")}
                   >
                     <Volume2 size={16} className={profiles.video.audioEnabled ? "opacity-100" : "opacity-40"} />
-                    <span className="text-[8px] font-bold">{profiles.video.audioEnabled ? "AÇIK" : "KAPALI"}</span>
+                    <span className="text-[8px] font-bold">{profiles.video.audioEnabled ? t("connection.audio_on") : t("connection.audio_off")}</span>
                   </button>
                 )}
               </div>
             </div>
 
             <p className="text-[11px] text-[var(--text-muted)] text-center">
-              Lütfen projeksiyon ekranında gördüğünüz 4 haneli PIN kodunu girin.
+              {t("connection.pin_hint")}
             </p>
           </section>
         )}
@@ -542,7 +547,7 @@ export function ConnectionSetup() {
         {/* ── Encoder info ─────────────────────────────────────────────── */}
         {encoder.detected && (
           <p className="text-center text-[11px] text-[var(--text-muted)]">
-            Kodlayıcı: {encoder.detected}
+            {t("connection.encoder_label")}: {encoder.detected}
           </p>
         )}
       </main>
@@ -561,7 +566,7 @@ export function ConnectionSetup() {
               transition-colors duration-150
             "
           >
-            İptal
+            {t("common.cancel")}
           </button>
         </footer>
       )}

@@ -1,5 +1,5 @@
-import { useRef, useEffect, KeyboardEvent, ClipboardEvent } from "react";
-import { AlertCircle } from "lucide-react";
+import { useRef, useEffect, useState, KeyboardEvent, ClipboardEvent } from "react";
+import { AlertCircle, Lock } from "lucide-react";
 import { useTranslation, Trans } from "react-i18next";
 
 interface PINEntryProps {
@@ -8,11 +8,28 @@ interface PINEntryProps {
   onSubmit: () => void;
   error: string | null;
   disabled?: boolean;
+  lockedUntil?: number | null;
 }
 
-export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntryProps) {
+export function PINEntry({ value, onChange, onSubmit, error, disabled, lockedUntil }: PINEntryProps) {
   const { t } = useTranslation();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [remainingSecs, setRemainingSecs] = useState(0);
+
+  // ── Lockout countdown ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!lockedUntil) {
+      setRemainingSecs(0);
+      return;
+    }
+    const tick = () => setRemainingSecs(Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
+
+  const isLocked = remainingSecs > 0;
+  const isDisabled = disabled || isLocked;
 
   // ── Error Mapping ──────────────────────────────────────────────────────────
 
@@ -41,11 +58,11 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
   const localizedError = getLocalizedError(error);
 
   useEffect(() => {
-    if (!disabled) {
+    if (!isDisabled) {
       const timer = setTimeout(() => inputRefs.current[0]?.focus(), 100);
       return () => clearTimeout(timer);
     }
-  }, [disabled]);
+  }, [isDisabled]);
 
   const focusBox = (index: number) => {
     const el = inputRefs.current[Math.max(0, Math.min(3, index))];
@@ -114,6 +131,13 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
     }
   };
 
+  // Format remaining seconds as "4:30" or "0:45"
+  const formatRemaining = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
   return (
     <div className="flex flex-col items-center gap-4">
       <p className="text-sm text-[var(--text-secondary)] text-center">
@@ -136,7 +160,7 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
               inputMode="numeric"
               maxLength={1}
               value={isFilled ? "•" : ""}
-              disabled={disabled}
+              disabled={isDisabled}
               autoFocus={i === 0}
               autoComplete="off"
               autoCorrect="off"
@@ -151,7 +175,9 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
                 bg-[var(--bg-secondary)] text-[var(--text-primary)]
                 outline-none transition-all duration-150
                 ${
-                  error
+                  isLocked
+                    ? "border-amber-500/60 bg-amber-50/5 opacity-50"
+                    : error
                     ? "border-[var(--status-error)] bg-red-50/10"
                     : isFilled
                     ? "border-[var(--accent)] shadow-[0_0_0_3px_var(--accent-subtle)]"
@@ -165,7 +191,14 @@ export function PINEntry({ value, onChange, onSubmit, error, disabled }: PINEntr
         })}
       </div>
 
-      {localizedError && (
+      {isLocked && (
+        <div className="flex items-center gap-2 text-sm text-amber-500">
+          <Lock size={14} />
+          <span>{t("connection.pin_locked", { remaining: formatRemaining(remainingSecs) })}</span>
+        </div>
+      )}
+
+      {!isLocked && localizedError && (
         <div className="flex items-center gap-2 text-sm text-[var(--status-error)] animate-pulse">
           <AlertCircle size={15} />
           <span>{localizedError}</span>

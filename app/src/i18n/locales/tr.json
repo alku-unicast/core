@@ -46,7 +46,22 @@
     "hdmi_ready": "HDMI Hazır",
     "awaiting_pin": "PIN Bekleniyor",
     "authenticating": "Doğrulanıyor...",
-    "streaming": "Yayın Başlıyor...",
+    "streaming": "Yayında",
+    "streaming_subtitle": "Yayınınız şu anda projektör ekranına aktarılıyor.",
+    "presentation_button": "SUNUM OLARAK BAŞLAT",
+    "video_button": "VİDEO OLARAK BAŞLAT",
+    "max_clarity": "Maksimum Keskinlik",
+    "smooth_motion": "Akıcı Hareket",
+    "audio_on": "AÇIK",
+    "audio_off": "KAPALI",
+    "audio_presentation_title": "Sunumda Ses",
+    "audio_video_title": "Videoda Ses",
+    "pin_hint": "Projeksiyon ekranında gördüğünüz 4 haneli PIN kodunu girin.",
+    "encoder_label": "Kodlayıcı",
+    "stop_stream": "YAYINI DURDUR",
+    "error_title": "Akış başlatılamadı",
+    "restarting_title": "Görüntü Optimize Ediliyor",
+    "pin_locked": "Çok fazla yanlış deneme. {{remaining}} sonra tekrar deneyin.",
     "mode_title": "Yayın Modu",
     "mode_fullscreen": "Tam Ekran",
     "mode_fullscreen_desc": "Tüm ekranı paylaş",
@@ -76,6 +91,8 @@
   },
   "settings": {
     "title": "Ayarlar",
+    "reset_confirm": "Tüm ayarlar fabrika ayarlarına döndürülecektir. Emin misiniz?",
+    "reset_button": "AYARLARI SIFIRLA",
     "tabs": {
       "stream": "Yayın",
       "audio": "Ses",
@@ -84,6 +101,18 @@
       "about": "Hakkında"
     },
     "stream": {
+      "profiles_title": "Yayın Profilleri",
+      "presentation_mode": "SUNUM MODU",
+      "video_mode": "VİDEO MODU",
+      "presentation_short": "Sunum",
+      "video_short": "Video",
+      "presentation_quality": "Sunum kalitesi",
+      "video_quality": "Video kalitesi",
+      "fps_description": "Saniyedeki kare sayısı",
+      "bitrate_label": "Bit Hızı",
+      "buffer_description": "Ağ titreşimini telafi eder",
+      "presentation_info": "Sunum modunda düşük gecikme ve yüksek keskinlik önceliklidir.",
+      "video_info": "Video modunda akıcılık ve hareket kalitesi önceliklidir.",
       "resolution": "Çözünürlük",
       "fps": "Kare Hızı (FPS)",
       "bitrate": "Bit Hızı (Mbps)",
@@ -95,14 +124,29 @@
     },
     "audio": {
       "device": "Ses Giriş Cihazı",
-      "mute_local": "Yayın sırasında hoparlörü kapat"
+      "device_hint": "Ses ile ilgili sorun yaşamıyorsanız değiştirmeyin.",
+      "mute_local": "Yayın sırasında hoparlörü kapat",
+      "mute_local_description": "Ses yalnızca projektörden çıkar",
+      "info": "WASAPI Loopback: Ses mikseri çıkışından yakalanır — hoparlör sessize alınmış olsa bile GStreamer yakalamayı sürdürür.",
+      "wip_macos": "macOS ses desteği yakında eklenecek."
+    },
+    "appearance": {
+      "streaming_bar_label": "Kontrol çubuğunu göster",
+      "streaming_bar_description": "Yayın sırasında ekranda yüzen widget",
+      "bar_theme_label": "Çubuk Teması",
+      "bar_theme_description": "Bağımsız tema",
+      "opacity_label": "Saydamlık"
     },
     "network": {
       "buffer": "Senkronizasyon Tamponu (ms)"
     },
     "about": {
+      "application": "Uygulama",
       "version": "Sürüm",
+      "university_label": "Üniversite",
       "university": "ALANYA ALAADDİN KEYKUBAT ÜNİVERSİTESİ",
+      "license_label": "Lisans",
+      "license_value": "Akademik Proje — GitHub'da MIT",
       "repo": "GitHub"
     }
   },

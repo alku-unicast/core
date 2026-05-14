@@ -46,7 +46,22 @@
     "hdmi_ready": "HDMI Ready",
     "awaiting_pin": "Waiting for PIN",
     "authenticating": "Authenticating...",
-    "streaming": "Starting Stream...",
+    "streaming": "Streaming",
+    "streaming_subtitle": "Your screen is now being projected.",
+    "presentation_button": "START AS PRESENTATION",
+    "video_button": "START AS VIDEO",
+    "max_clarity": "Maximum Clarity",
+    "smooth_motion": "Smooth Motion",
+    "audio_on": "ON",
+    "audio_off": "OFF",
+    "audio_presentation_title": "Presentation Audio",
+    "audio_video_title": "Video Audio",
+    "pin_hint": "Enter the 4-digit PIN code shown on the projector screen.",
+    "encoder_label": "Encoder",
+    "stop_stream": "STOP STREAM",
+    "error_title": "Stream failed",
+    "restarting_title": "Optimizing Stream",
+    "pin_locked": "Too many failed attempts. Retry in {{remaining}}.",
     "mode_title": "Stream Mode",
     "mode_fullscreen": "Full Screen",
     "mode_fullscreen_desc": "Share your whole screen",
@@ -76,6 +91,8 @@
   },
   "settings": {
     "title": "Settings",
+    "reset_confirm": "All settings will be reset to factory defaults. Are you sure?",
+    "reset_button": "RESET SETTINGS",
     "tabs": {
       "stream": "Stream",
       "audio": "Audio",
@@ -84,6 +101,18 @@
       "about": "About"
     },
     "stream": {
+      "profiles_title": "Stream Profiles",
+      "presentation_mode": "PRESENTATION",
+      "video_mode": "VIDEO",
+      "presentation_short": "Presentation",
+      "video_short": "Video",
+      "presentation_quality": "Presentation quality",
+      "video_quality": "Video quality",
+      "fps_description": "Frames per second",
+      "bitrate_label": "Bitrate",
+      "buffer_description": "Compensates for network jitter",
+      "presentation_info": "Presentation mode prioritizes low latency and high clarity.",
+      "video_info": "Video mode prioritizes smooth motion and motion quality.",
       "resolution": "Resolution",
       "fps": "Frame Rate (FPS)",
       "bitrate": "Bitrate (Mbps)",
@@ -95,14 +124,29 @@
     },
     "audio": {
       "device": "Audio Input Device",
-      "mute_local": "Mute speaker during streaming"
+      "device_hint": "If you are not experiencing audio issues, do not change this setting.",
+      "mute_local": "Mute speaker during streaming",
+      "mute_local_description": "Audio plays on projector only",
+      "info": "WASAPI Loopback: Audio is captured from mixer output — GStreamer continues to capture even if speaker is muted.",
+      "wip_macos": "macOS audio support coming soon."
+    },
+    "appearance": {
+      "streaming_bar_label": "Show streaming bar",
+      "streaming_bar_description": "Floating widget visible during streaming",
+      "bar_theme_label": "Bar Theme",
+      "bar_theme_description": "Independent theme",
+      "opacity_label": "Opacity"
     },
     "network": {
       "buffer": "Sync Buffer (ms)"
     },
     "about": {
+      "application": "Application",
       "version": "Version",
+      "university_label": "University",
       "university": "ALANYA ALAADDIN KEYKUBAT UNIVERSITY",
+      "license_label": "License",
+      "license_value": "Academic Project — MIT on GitHub",
       "repo": "GitHub"
     }
   },
