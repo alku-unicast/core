@@ -213,13 +213,9 @@ fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
 
         // When muteLocal is active, mute_system_audio() sets the Windows endpoint
         // volume to 1% to silence speakers. WASAPI loopback then captures at 1%.
-        // Compensate with 100x gain (audioamplify) and hard-clip at 1.0 to prevent
-        // clipping artifacts if the user manually raises system volume above 1%.
-        let volume_comp = if config.mute_local {
-            " ! audioamplify amplification=100.0 clipping-method=hard-clip"
-        } else {
-            ""
-        };
+        // Compensate with a 100x software gain so the projector receives full-level audio.
+        // Note: behaviour is driver-dependent (APO vs standard HDAudio).
+        let volume_comp = if config.mute_local { " ! volume volume=100.0" } else { "" };
 
         format!(
             " wasapi2src loopback=true{}{} ! queue ! audioconvert ! audioresample ! \
