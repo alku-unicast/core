@@ -127,8 +127,7 @@
       "device_hint": "If you are not experiencing audio issues, do not change this setting.",
       "mute_local": "Mute speaker during streaming",
       "mute_local_description": "Audio plays on projector only",
-      "mute_local_win_warning": "On some systems (Realtek APO), stream audio may also be quieter. Keep system volume above 30%. This may cause asynchronous between your and projector audio.",
-      "info": "WASAPI Loopback: Audio is captured from mixer output — GStreamer continues to capture even if speaker is muted.",
+      "mute_local_win_warning": "On some systems (Realtek APO), stream audio may also be quieter. Keep system volume above 30%.",
       "wip_macos": "macOS audio support coming soon."
     },
     "appearance": {

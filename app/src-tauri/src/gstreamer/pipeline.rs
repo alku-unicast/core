@@ -36,7 +36,7 @@ pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
         &config.encoder_name
     };
 
-    println!("[gst] Building pipeline mode={} encoder={} target={}:{} fps={} bitrate={}", 
+    log::info!("[gst] Building pipeline mode={} encoder={} target={}:{} fps={} bitrate={}",
              config.quality_mode, encoder, ip, 5000, fps, bitrate);
 
     // ── Video source: platform + mode aware ──────────────────────────────────
@@ -79,7 +79,7 @@ pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
         .collect::<Vec<&str>>()
         .join(" ");
 
-    println!("[gst] Final Pipeline: {}", cleaned_pipeline);
+    log::info!("[gst] Final pipeline: {}", cleaned_pipeline);
 
     cleaned_pipeline
 }
@@ -233,10 +233,14 @@ fn build_audio_part(config: &StreamConfig, _ip: &str) -> String {
         }
 
         let monitor = path_setup::get_linux_audio_monitor();
+        // PulseAudio monitor always captures post-sink-volume, so when muteLocal
+        // sets the sink to 1%, the monitor also captures at 1%. Compensate here.
+        let volume_comp = if config.mute_local { " ! volume volume=100.0" } else { "" };
 
         format!(
-            " pulsesrc device=\"{monitor}\" ! queue ! audioconvert ! audioresample ! \
-             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={_ip} port=5002"
+            " pulsesrc device=\"{monitor}\" ! queue ! audioconvert ! audioresample{} ! \
+             opusenc bitrate=128000 ! rtpopuspay ! queue ! udpsink host={_ip} port=5002",
+            volume_comp
         )
     }
 }

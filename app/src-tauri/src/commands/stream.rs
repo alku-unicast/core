@@ -122,10 +122,10 @@ pub async fn start_stream(
     let bin_dir = crate::gstreamer::path_setup::get_gst_bin_dir(&app);
     let pipeline = build_pipeline(&app, &config);
 
-    println!("[stream] gst_launch path: {}", gst_launch);
-    println!("[stream] bin_dir (CWD): {}", bin_dir);
-    println!("[stream] pipeline: {}", pipeline);
-    println!("[stream] Full command about to run: {} {}", gst_launch, pipeline);
+    log::info!("[stream] gst_launch path: {}", gst_launch);
+    log::info!("[stream] bin_dir (CWD): {}", bin_dir);
+    log::info!("[stream] pipeline: {}", pipeline);
+    log::info!("[stream] Full command: {} {}", gst_launch, pipeline);
 
     // WINDOWS: Split the pipeline into separate arguments for gst-launch-1.0.
     // CREATE_NO_WINDOW (0x08000000) prevents a CMD console popup on Windows.

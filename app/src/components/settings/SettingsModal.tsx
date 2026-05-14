@@ -6,7 +6,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useSystemStore }   from "../../stores/systemStore";
-import { isMacOS, isWindows } from "../../utils/platform";
+import { isMacOS, isWindows, isLinux } from "../../utils/platform";
 import { StreamProfile } from "../../types/settings";
 import unicastLogo from "../../assets/UniCast.png";
 import alkuLogo    from "../../assets/alku-yatay-logo-rgb.png";
@@ -39,6 +39,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   const mac = isMacOS();
   const win = isWindows();
+  const linux = isLinux();
 
   const [activeProfile, setActiveProfile] = useState<"presentation" | "video">("presentation");
   const currentProfile = profiles[activeProfile];
