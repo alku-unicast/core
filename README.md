@@ -4,8 +4,7 @@
 
 <div align="center">
   <img src="app/src/assets/UniCast.png" width="110" alt="UniCast Logo" />
-  <h1>UniCast</h1>
-  <p><strong>Low-latency wireless screen mirroring for education</strong></p>
+  <p><strong>Wireless Projection Solution for Educational Environments</strong></p>
   <p>
     <a href="https://github.com/alku-unicast/core/actions/workflows/build.yml">
       <img src="https://github.com/alku-unicast/core/actions/workflows/build.yml/badge.svg" alt="Build Status" />
