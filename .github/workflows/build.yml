@@ -18,6 +18,12 @@ jobs:
       max-parallel: 1
       matrix:
         include:
+          - platform: 'windows-latest'
+            os: 'windows'
+            arch: 'x86_64'
+            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/gstreamer-1.0-msvc-x86_64-1.24.13.msi'
+            gst_folder: 'windows'
+            gst_resources: 'gstreamer/windows/**/*'
           - platform: 'macos-14'
             os: 'macos'
             arch: 'aarch64'
@@ -29,12 +35,6 @@ jobs:
             arch: 'x86_64'
             gst_folder: 'linux'
             gst_resources: 'gstreamer/linux/**/*'
-          - platform: 'windows-latest'
-            os: 'windows'
-            arch: 'x86_64'
-            gst_url: 'https://gstreamer.freedesktop.org/data/pkg/windows/1.24.13/msvc/gstreamer-1.0-msvc-x86_64-1.24.13.msi'
-            gst_folder: 'windows'
-            gst_resources: 'gstreamer/windows/**/*'
 
     runs-on: ${{ matrix.platform }}
     steps:
