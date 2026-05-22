@@ -58,7 +58,7 @@ UniCast is built with [Tauri](https://tauri.app/) (Rust backend + React frontend
 | Feature | Details |
 |---------|---------|
 | **Low Latency** | < 150 ms end-to-end over LAN |
-| **Cross-Platform** | Windows 10/11, Linux (X11/Wayland), macOS (Intel + Apple Silicon) |
+| **Cross-Platform** | Windows 10/11, Linux (X11/Wayland), macOS (Apple Silicon) |
 | **Hardware Acceleration** | NVIDIA (NVENC), Intel (QSV), AMD (AMF), Apple (VideoToolbox), CPU fallback |
 | **Audio Streaming** | Opus audio via UDP with volume control *(Windows & Linux; macOS: WIP)* |
 | **PIN Authentication** | Time-limited PIN shown on the projector screen |
@@ -79,7 +79,7 @@ UniCast is built with [Tauri](https://tauri.app/) (Rust backend + React frontend
 |----------|----------|
 | Windows 10/11 (x64) | [UniCast-Setup.exe](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_x64-setup.exe) |
 | Linux (x86_64 AppImage) | [UniCast.AppImage](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_amd64.AppImage) |
-| macOS (ARM64 / Intel) | [UniCast.dmg](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_aarch64.dmg) |
+| macOS (Apple Silicon) | [UniCast.dmg](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_aarch64.dmg) |
 
 All releases: [github.com/alku-unicast/core/releases](https://github.com/alku-unicast/core/releases)
 

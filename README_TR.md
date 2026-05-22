@@ -58,7 +58,7 @@ UniCast; [Tauri](https://tauri.app/) (Rust backend + React arayüz) ve [GStreame
 | Özellik | Detay |
 |---------|-------|
 | **Düşük Gecikme** | LAN üzerinde uçtan uca < 150 ms |
-| **Çok Platform** | Windows 10/11, Linux (X11/Wayland), macOS (Intel + Apple Silicon) |
+| **Çok Platform** | Windows 10/11, Linux (X11/Wayland), macOS (Apple Silicon) |
 | **Donanım Hızlandırma** | NVIDIA (NVENC), Intel (QSV), AMD (AMF), Apple (VideoToolbox), CPU yedek |
 | **Ses Yayını** | UDP üzerinden Opus ses, volume kontrolü *(Windows & Linux; macOS: WIP)* |
 | **PIN Kimlik Doğrulama** | Projektör ekranında görüntülenen süreli PIN kodu |
@@ -79,7 +79,7 @@ UniCast; [Tauri](https://tauri.app/) (Rust backend + React arayüz) ve [GStreame
 |----------|-------|
 | Windows 10/11 (x64) | [UniCast-Setup.exe](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_x64-setup.exe) |
 | Linux (x86_64 AppImage) | [UniCast.AppImage](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_amd64.AppImage) |
-| macOS (ARM64 / Intel) | [UniCast.dmg](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_aarch64.dmg) |
+| macOS (Apple Silicon) | [UniCast.dmg](https://github.com/alku-unicast/core/releases/download/v0.1.0/UniCast_0.1.0_aarch64.dmg) |
 
 Tüm sürümler: [github.com/alku-unicast/core/releases](https://github.com/alku-unicast/core/releases)
 

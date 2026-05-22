@@ -1,11 +1,11 @@
 """
 report_generator.py
 ======================
-UniCast Bilimsel Rapor Üretici
+UniCast Scientific Report Generator
 
-Kullanım:
-  python report_generator.py 10   → Ortalama ± SD (tek iterasyon, bilimsel)
-  python report_generator.py 50   → Ham akış (5 iterasyon arka arkaya)
+Usage:
+  python report_generator.py 10   → Mean ± SD (single iteration, scientific)
+  python report_generator.py 50   → Raw stream (5 consecutive iterations)
 """
 
 import pandas as pd
@@ -19,15 +19,17 @@ import sys
 class ScientificReportGenerator:
     def __init__(self, benchmark_csv="../receiver/benchmark_log.csv", latency_csv=None):
         self.benchmark_csv = benchmark_csv
-        # Latency log: otomatik konum tespiti
+        # Latency log: automatic location detection
         if latency_csv:
             self.latency_csv = latency_csv
+        elif os.path.exists("../sender/latency_log_partly_fixes.csv"):
+            self.latency_csv = "../sender/latency_log_partly_fixes.csv"
         elif os.path.exists("../latency_log.csv"):
             self.latency_csv = "../latency_log.csv"
         elif os.path.exists("../receiver/latency_log.csv"):
             self.latency_csv = "../receiver/latency_log.csv"
         else:
-            self.latency_csv = "../latency_log.csv"  # varsayılan
+            self.latency_csv = "../sender/latency_log_partly_fixes.csv"  # default
         self.output_file = "unicast_final_report.html"
 
     def load_data(self):
@@ -35,8 +37,8 @@ class ScientificReportGenerator:
         df_lat = None
         if os.path.exists(self.latency_csv):
             try:
-                # Raw okuma: Türkçe locale ondalık virgülü (3,96) CSV virgülüyle karışıyor
-                # Bu yüzden satır satır parse ediyoruz
+                # Raw read: Turkish locale decimal comma (3,96) mixes with CSV comma
+                # So we parse line by line
                 rows = []
                 with open(self.latency_csv, 'r', encoding='utf-8-sig') as f:
                     for line in f:
@@ -45,10 +47,10 @@ class ScientificReportGenerator:
                             continue
                         parts = line.split(",")
                         if len(parts) == 4:
-                            # Normal: Timestamp,Mode,Iteration,RTT_ms (veya TIMEOUT)
+                            # Normal: Timestamp,Mode,Iteration,RTT_ms (or TIMEOUT)
                             ts, mode, iteration, rtt = parts
                         elif len(parts) == 5:
-                            # Türkçe virgül: Timestamp,Mode,Iteration,8,72 → 8.72
+                            # Turkish comma: Timestamp,Mode,Iteration,8,72 → 8.72
                             ts, mode, iteration, rtt_int, rtt_dec = parts
                             rtt = f"{rtt_int}.{rtt_dec}"
                         else:
@@ -64,11 +66,11 @@ class ScientificReportGenerator:
                 
                 if rows:
                     df_lat = pd.DataFrame(rows)
-                    print(f"Latency: {len(df_lat)} gecerli RTT olcumu yuklendi.")
+                    print(f"Latency: {len(df_lat)} valid RTT measurements loaded.")
                 else:
-                    print("Latency: Gecerli RTT olcumu bulunamadi.")
+                    print("Latency: No valid RTT measurements found.")
             except Exception as e:
-                print(f"Latency CSV okuma hatasi: {e}")
+                print(f"Latency CSV read error: {e}")
                 df_lat = None
         
         if df is not None:
@@ -86,7 +88,7 @@ class ScientificReportGenerator:
 
     def run_ttest(self, df, group_col, val1, val2, filter_cols):
         results = []
-        metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "paket"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
+        metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "packets"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
         subgroups = df.groupby(filter_cols)
         for name, sub_df in subgroups:
             g1 = sub_df[sub_df[group_col] == val1]
@@ -99,7 +101,7 @@ class ScientificReportGenerator:
                     res_dict[col] = {
                         "m1": round(g1[col].mean(), 3), "s1": round(g1[col].std(), 3),
                         "m2": round(g2[col].mean(), 2), "s2": round(g2[col].std(), 3),
-                        "t": round(t, 3), "p": round(p, 5), "sig": "Evet (p<0.05)" if p < 0.05 else "Hayir"
+                        "t": round(t, 3), "p": round(p, 5), "sig": "Yes (p<0.05)" if p < 0.05 else "No"
                     }
                 results.append(res_dict)
         return results
@@ -108,15 +110,15 @@ class ScientificReportGenerator:
         if not results: return ""
         html = f"<h3>{title} ({label1.capitalize()} vs {label2.capitalize()})</h3>"
         html += """<table class='scientific-table'><thead><tr>
-            <th>Alt Senaryo</th><th>Metrik</th><th>{l1} (Ort±SD)</th><th>{l2} (Ort±SD)</th><th>t</th><th>p</th><th>Fark?</th>
+            <th>Sub Scenario</th><th>Metric</th><th>{l1} (Mean±SD)</th><th>{l2} (Mean±SD)</th><th>t</th><th>p</th><th>Diff?</th>
         </tr></thead><tbody>""".format(l1=label1, l2=label2)
         
-        metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "paket"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
+        metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "packets"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
         for res in results:
             first = True
             for col, unit in metrics:
                 r = res[col]
-                sig_style = "color:green;font-weight:bold" if "Evet" in r['sig'] else "color:#e74c3c"
+                sig_style = "color:green;font-weight:bold" if "Yes" in r['sig'] else "color:#e74c3c"
                 html += "<tr>"
                 if first:
                     html += f"<td rowspan='5' class='group-header'>{res['group']}</td>"
@@ -126,24 +128,24 @@ class ScientificReportGenerator:
         return html
 
     # ═════════════════════════════════════════════════════════════════════
-    #  RAPOR OLUŞTURMA
+    #  REPORT GENERATION
     # ═════════════════════════════════════════════════════════════════════
 
     def generate_report(self, view_mode=10):
         df, df_lat = self.load_data()
         if df is None: return
 
-        # 1. ANALIZ TABLOLARI
-        s1 = self._build_stats_table("1. Ses Etkisi", "sessiz", "sesli", self.run_ttest(df, "AudioStatus", "sessiz", "sesli", ["Resolution", "ContentType"]))
-        s2 = self._build_stats_table("2. Çözünürlük Etkisi", "1080p", "720p", self.run_ttest(df, "Resolution", "1080p", "720p", ["ContentType", "AudioStatus"]))
-        s3 = self._build_stats_table("3. İçerik Etkisi", "slayt", "video", self.run_ttest(df, "ContentType", "slayt", "video", ["Resolution", "AudioStatus"]))
+        # 1. ANALYSIS TABLES
+        s1 = self._build_stats_table("1. Audio Effect", "Silent", "Audio", self.run_ttest(df, "AudioStatus", "sessiz", "sesli", ["Resolution", "ContentType"]))
+        s2 = self._build_stats_table("2. Resolution Effect", "1080p", "720p", self.run_ttest(df, "Resolution", "1080p", "720p", ["ContentType", "AudioStatus"]))
+        s3 = self._build_stats_table("3. Content Effect", "Slide", "Video", self.run_ttest(df, "ContentType", "slayt", "video", ["Resolution", "AudioStatus"]))
 
-        # 2. GRAFIKLER
+        # 2. CHARTS
         metrics = [
-            ("FPS", "FPS Akışı"), ("Video_Jitter(ms)", "Video Jitter (ms)"),
-            ("CPU_Usage(%)", "CPU Kullanımı (%)"), ("Throughput(kbps)", "Net Trafiği (kbps)"),
-            ("Video_Loss", "Paket Kaybı"), ("Audio_Jitter(ms)", "Audio Jitter (ms)"),
-            ("Temp(C)", "Sıcaklık (°C)"), ("RTT_ms", "RTT Gecikmesi (ms)")
+            ("FPS", "FPS Stream"), ("Video_Jitter(ms)", "Video Jitter (ms)"),
+            ("CPU_Usage(%)", "CPU Usage (%)"), ("Throughput(kbps)", "Network Traffic (kbps)"),
+            ("Video_Loss", "Packet Loss"), ("Audio_Jitter(ms)", "Audio Jitter (ms)"),
+            ("Temp(C)", "Temperature (°C)"), ("RTT_ms", "RTT Latency (ms)")
         ]
         
         fig = make_subplots(rows=4, cols=2, vertical_spacing=0.08, subplot_titles=[m[1] for m in metrics])
@@ -155,20 +157,20 @@ class ScientificReportGenerator:
 
         if view_mode == 10:
             self._build_mean_sd_charts(fig, df, df_lat, metrics, modes, colors)
-            mode_label = "10dk Ortalama ± SD"
-            desc = "Her çizgi 5 iterasyonun ortalamasını, gölge ±1 standart sapmayı gösterir."
+            mode_label = "10min Mean ± SD"
+            desc = "Each line shows the mean of 5 iterations, the shaded area shows ±1 standard deviation."
         else:
             self._build_timeline_charts(fig, df, df_lat, metrics, modes, colors)
-            mode_label = "50dk Ham Akış"
-            desc = "5 iterasyon arka arkaya gösterilmektedir."
+            mode_label = "50min Raw Stream"
+            desc = "5 iterations are shown consecutively."
 
         final_html = self._wrap_html(s1 + s2 + s3, fig.to_html(full_html=False, include_plotlyjs="cdn"), mode_label, desc)
         
         with open(self.output_file, "w", encoding="utf-8") as f:
             f.write(final_html)
-        print(f"Rapor basariyla olusturuldu: {self.output_file} ({mode_label})")
+        print(f"Report successfully generated: {self.output_file} ({mode_label})")
 
-    # ─── MOD 10: Ortalama ± SD ───────────────────────────────────────────
+    # ─── MODE 10: Mean ± SD ───────────────────────────────────────────
     def _build_mean_sd_charts(self, fig, df, df_lat, metrics, modes, colors):
         TRACES_PER_MODE = 2  # SD fill + mean line
         total_traces = 0
@@ -209,7 +211,7 @@ class ScientificReportGenerator:
 
         self._add_dropdown(fig, modes, metrics, total_traces, TRACES_PER_MODE)
 
-    # ─── MOD 50: Ham akış (5 iterasyon arka arkaya) ──────────────────────
+    # ─── MODE 50: Raw stream (5 consecutive iterations) ──────────────────────
     def _build_timeline_charts(self, fig, df, df_lat, metrics, modes, colors):
         TRACES_PER_MODE = 1
         total_traces = 0
@@ -242,9 +244,9 @@ class ScientificReportGenerator:
 
         self._add_dropdown(fig, modes, metrics, total_traces, TRACES_PER_MODE)
 
-    # ─── Yardımcı fonksiyonlar ────────────────────────────────────────────
+    # ─── Helper functions ────────────────────────────────────────────
     def _collect_iter_data(self, df, df_lat, m_col, mode):
-        """Bir mod×metrik için iterasyon bazlı veri toplar. (iter_data_list, max_len) döndürür."""
+        """Collects iteration-based data for a mode×metric. Returns (iter_data_list, max_len)."""
         iter_data = []
         max_len = 0
         
@@ -279,7 +281,7 @@ class ScientificReportGenerator:
         n_metrics = len(metrics)
         traces_per_metric = n_modes * traces_per_mode
         
-        buttons = [dict(label="Tüm Senaryolar", method="update", args=[{"visible": [True] * total_traces}])]
+        buttons = [dict(label="All Scenarios", method="update", args=[{"visible": [True] * total_traces}])]
         
         for mi, m in enumerate(modes):
             visibility = [False] * total_traces
@@ -298,14 +300,14 @@ class ScientificReportGenerator:
         )
         for i in range(1, n_metrics + 1):
             axis_name = f"xaxis{i}" if i > 1 else "xaxis"
-            fig.update_layout(**{axis_name: dict(title="Süre (dk:sn)")})
+            fig.update_layout(**{axis_name: dict(title="Time (min:sec)")})
 
     def _wrap_html(self, stats_tables, chart_html, mode_label="", desc=""):
         return f"""<!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>UniCast Bilimsel Rapor</title>
+  <title>UniCast Scientific Report</title>
   <style>
     body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background: #fff; color: #333; line-height: 1.6; }}
     .main-wrap {{ max-width: 1400px; margin: auto; }}
@@ -333,70 +335,69 @@ class ScientificReportGenerator:
 </head>
 <body>
   <div class="main-wrap">
-    <h1>UniCast Performans Değerlendirme Raporu</h1>
+    <h1>UniCast Performance Evaluation Report</h1>
     
     <div class="analysis-section">
-      <h2>1. İSTATİSTİKSEL ANALİZLER</h2>
-      <p>Aşağıdaki tablolar her bir ana değişkenin (Ses, Çözünürlük, İçerik) sistem performansı üzerindeki etkisini bilimsel olarak (T-Testi) göstermektedir.</p>
+      <h2>1. STATISTICAL ANALYSIS</h2>
+      <p>The tables below show the scientific impact (T-Test) of each main variable (Audio, Resolution, Content) on system performance.</p>
       {stats_tables}
     </div>
 
     <div class="chart-box">
-      <h2>2. ZAMANSAL PERFORMANS AKIŞI <span class="mode-badge">{mode_label}</span></h2>
-      <p style="color:#7f8c8d;">* {desc} Yukarıdaki menüden bir senaryo seçerek detaylı inceleyebilirsiniz.</p>
+      <h2>2. TEMPORAL PERFORMANCE STREAM <span class="mode-badge">{mode_label}</span></h2>
+      <p style="color:#7f8c8d;">* {desc} You can view details by selecting a scenario from the menu above.</p>
       {chart_html}
     </div>
 
     <div class="sys-footer">
-      <h2>3. TEST ORTAMI</h2>
+      <h2>3. TEST ENVIRONMENT</h2>
       <div class="sys-grid">
         <div class="sys-card">
-          <h4>🖥️ Gönderici (Windows)</h4>
+          <h4>🖥️ Sender (Windows)</h4>
           <table>
-            <tr><td>İşletim Sistemi</td><td>Windows 10 Pro (10.0.19045)</td></tr>
-            <tr><td>Sistem</td><td>FUJITSU ESPRIMO P756</td></tr>
-            <tr><td>İşlemci</td><td>Intel Core i7-6700 @ 3.40 GHz</td></tr>
-            <tr><td>Çekirdek / Thread</td><td>4 Çekirdek / 8 Thread</td></tr>
+            <tr><td>OS</td><td>Windows 10 Pro (10.0.19045)</td></tr>
+            <tr><td>System</td><td>FUJITSU ESPRIMO P756</td></tr>
+            <tr><td>Processor</td><td>Intel Core i7-6700 @ 3.40 GHz</td></tr>
+            <tr><td>Cores / Threads</td><td>4 Cores / 8 Threads</td></tr>
             <tr><td>RAM</td><td>8 GB DDR4</td></tr>
             <tr><td>GPU</td><td>Intel HD Graphics 530 (1 GB)</td></tr>
-            <tr><td>Ekran Çözünürlüğü</td><td>1366 × 768 @ 59 Hz</td></tr>
-            <tr><td>BIOS Modu</td><td>UEFI</td></tr>
-            <tr><td>Ekran Yakalama</td><td>DX9 Screen Capture (dx9screencapsrc)</td></tr>
+            <tr><td>Display Resolution</td><td>1366 × 768 @ 59 Hz</td></tr>
+            <tr><td>BIOS Mode</td><td>UEFI</td></tr>
+            <tr><td>Screen Capture</td><td>DX9 Screen Capture (dx9screencapsrc)</td></tr>
           </table>
         </div>
         <div class="sys-card">
-          <h4>📡 Alıcı (Raspberry Pi)</h4>
+          <h4>📡 Receiver (Raspberry Pi)</h4>
           <table>
-            <tr><td>Model</td><td>Raspberry Pi 4 Model B</td></tr>
-            <tr><td>İşlemci</td><td>Broadcom BCM2711 @ 1.5 GHz</td></tr>
-            <tr><td>Çekirdek</td><td>4 Çekirdek (ARM Cortex-A72)</td></tr>
-            <tr><td>RAM</td><td>4 GB LPDDR4</td></tr>
-            <tr><td>İşletim Sistemi</td><td>Raspberry Pi OS (Debian)</td></tr>
-            <tr><td>Ağ Bağlantısı</td><td>Gigabit Ethernet (LAN)</td></tr>
+            <tr><td>Model</td><td>Raspberry Pi 5</td></tr>
+            <tr><td>Processor</td><td>Broadcom BCM2712 2.4GHz quad-core 64-bit Arm Cortex-A76</td></tr>
+            <tr><td>RAM</td><td>LPDDR4X-4267 SDRAM (1GB)</td></tr>
+            <tr><td>GPU</td><td>VideoCore VII</td></tr>
+            <tr><td>OS</td><td>Raspberry Pi OS Lite Bookworm (Debian)</td></tr>
             <tr><td>Video Decoder</td><td>GStreamer (H.264 SW)</td></tr>
           </table>
         </div>
         <div class="sys-card">
-          <h4>⚙️ Test Parametreleri</h4>
+          <h4>⚙️ Test Parameters</h4>
           <table>
-            <tr><td>Senaryo Sayısı</td><td>8 (2 çözünürlük × 2 içerik × 2 ses)</td></tr>
-            <tr><td>İterasyon</td><td>5 tekrar / senaryo</td></tr>
-            <tr><td>Süre / İterasyon</td><td>600 saniye (10 dakika)</td></tr>
-            <tr><td>Toplam Test Süresi</td><td>~7 saat (40 tur)</td></tr>
-            <tr><td>Soğuma Arası</td><td>30 saniye</td></tr>
-            <tr><td>Senkronizasyon</td><td>TCP Handshake (PREPARE/READY/STOP)</td></tr>
+            <tr><td>Scenario Count</td><td>8 (2 resolutions × 2 contents × 2 audio)</td></tr>
+            <tr><td>Iterations</td><td>5 repeats / scenario</td></tr>
+            <tr><td>Duration / Iteration</td><td>600 seconds (10 minutes)</td></tr>
+            <tr><td>Total Test Time</td><td>~7 hours (40 runs)</td></tr>
+            <tr><td>Cooldown Interval</td><td>30 seconds</td></tr>
+            <tr><td>Synchronization</td><td>TCP Handshake (PREPARE/READY/STOP)</td></tr>
           </table>
         </div>
         <div class="sys-card">
-          <h4>📊 Akış Konfigürasyonu</h4>
+          <h4>📊 Stream Configuration</h4>
           <table>
             <tr><td>Video Codec</td><td>H.264 (x264enc)</td></tr>
             <tr><td>Audio Codec</td><td>Opus (128 kbps)</td></tr>
-            <tr><td>Slayt Modu</td><td>15 FPS / 5000 kbps</td></tr>
-            <tr><td>Video Modu</td><td>30 FPS / 4000 kbps</td></tr>
-            <tr><td>Çözünürlükler</td><td>1920×1080 / 1280×720</td></tr>
-            <tr><td>Protokol</td><td>RTP over UDP</td></tr>
-            <tr><td>RTT Ölçüm</td><td>UDP PING/PONG (1 sn aralık)</td></tr>
+            <tr><td>Slide Mode</td><td>15 FPS / 5000 kbps</td></tr>
+            <tr><td>Video Mode</td><td>30 FPS / 4000 kbps</td></tr>
+            <tr><td>Resolutions</td><td>1920×1080 / 1280×720</td></tr>
+            <tr><td>Protocol</td><td>RTP over UDP</td></tr>
+            <tr><td>RTT Measurement</td><td>UDP PING/PONG (1 sec interval)</td></tr>
           </table>
         </div>
       </div>
@@ -413,9 +414,9 @@ if __name__ == "__main__":
         except ValueError:
             pass
     if view not in (10, 50):
-        print("Kullanim: python report_generator.py [10|50]")
-        print("  10 = Ortalama +/- SD (bilimsel, varsayilan)")
-        print("  50 = Ham akis (5 iterasyon arka arkaya)")
+        print("Usage: python report_generator.py [10|50]")
+        print("  10 = Mean +/- SD (scientific, default)")
+        print("  50 = Raw stream (5 consecutive iterations)")
         sys.exit(1)
     gen = ScientificReportGenerator()
     gen.generate_report(view_mode=view)

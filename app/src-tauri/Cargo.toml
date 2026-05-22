@@ -3,7 +3,7 @@ name = "unicast"
 version = "0.1.0"
 description = "UniCast — Wireless Screen Mirroring"
 authors = ["ALKÜ"]
-edition = "2021"
+edition = "2026"
 
 [lib]
 name = "unicast_lib"

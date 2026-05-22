@@ -41,7 +41,7 @@ def get_config_room_id():
     return "unknown-room"  # Default fallback — set ROOM_ID in /boot/firmware/unicast_config.txt
 
 ROOM_ID           = get_config_room_id()
-SERVICE_ACCOUNT   = "/home/unicast_pi/core/src/receiver/firebase-key.json"
+SERVICE_ACCOUNT   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "firebase-key.json")
 FIREBASE_DB_URL   = "https://unicast-8a705-default-rtdb.europe-west1.firebasedatabase.app"
 
 HEARTBEAT_TIMEOUT = 5    # seconds
