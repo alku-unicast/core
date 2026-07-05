@@ -23,10 +23,10 @@ pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
     
     // Adaptive quality settings based on Mode
     // Video: High FPS (30/60), High Bitrate (6Mbps), low latency
-    // Presentation: Medium FPS (20), Medium Bitrate (3Mbps), high clarity
+    // Presentation: Low FPS (15), Medium Bitrate (3Mbps), high clarity
     let (fps, bitrate) = match config.quality_mode.as_str() {
         "video" => (u32::max(config.fps, 30), u32::max(config.bitrate, 5000)),
-        "presentation" => (20, 3000),
+        "presentation" => (15, 3000),
         _ => (config.fps, config.bitrate),
     };
 

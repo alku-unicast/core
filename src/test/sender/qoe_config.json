@@ -1,0 +1,24 @@
+{
+    "room_btn_pos": [
+        1105,
+        468
+    ],
+    "room_active_color": [
+        0,
+        163,
+        204
+    ],
+    "start_btn_pos": [
+        1492,
+        763
+    ],
+    "start_active_color": [
+        0,
+        163,
+        204
+    ],
+    "stop_btn_pos": [
+        1415,
+        611
+    ]
+}
