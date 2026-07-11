@@ -32,6 +32,15 @@ class ScientificReportGenerator:
             self.latency_csv = "../sender/latency_log_partly_fixes.csv"  # default
         self.output_file = "unicast_final_report.html"
 
+    def make_datetime_aware(self, df_col):
+        times = pd.to_timedelta(df_col)
+        diffs = times.diff()
+        wrap_indices = diffs < pd.to_timedelta("-12h")
+        days = wrap_indices.cumsum()
+        continuous_time = times + pd.to_timedelta(days, unit='D')
+        baseline = pd.to_datetime("2026-07-06")
+        return baseline + continuous_time
+
     def load_data(self):
         df = pd.read_csv(self.benchmark_csv) if os.path.exists(self.benchmark_csv) else None
         df_lat = None
@@ -74,6 +83,18 @@ class ScientificReportGenerator:
                 df_lat = None
         
         if df is not None:
+            # 1. Convert to continuous datetime FIRST (on raw chronological CSV order)
+            df["Datetime"] = self.make_datetime_aware(df["Timestamp"])
+            
+            # 2. Exclude verified network outage window using real datetime objects
+            outage_start = pd.to_datetime("2026-07-07 00:23:00")
+            outage_end = pd.to_datetime("2026-07-07 01:26:30")
+            df = df[~((df["Datetime"] >= outage_start) & (df["Datetime"] <= outage_end))].copy()
+
+            # 3. Sort by Mode, Iteration, and Datetime, then diff cumulative loss
+            df = df.sort_values(by=["Mode", "Iteration", "Datetime"])
+            df["Video_Loss"] = df.groupby(["Mode", "Iteration"])["Video_Loss"].diff().fillna(0).clip(lower=0)
+
             def parse_mode(mode):
                 p = str(mode).split("_")
                 if len(p) >= 3: return p[0], p[1], p[2]
@@ -84,24 +105,87 @@ class ScientificReportGenerator:
             if "Audio_Jitter(ns)" in df.columns:
                 df["Audio_Jitter(ms)"] = df["Audio_Jitter(ns)"] / 1_000_000.0
             df = df[df["FPS"] > 0].copy()
+
+        if df_lat is not None:
+            # Convert to continuous datetime first on raw chronological order
+            df_lat["Datetime"] = self.make_datetime_aware(df_lat["Timestamp"])
+            outage_start = pd.to_datetime("2026-07-07 00:23:00")
+            outage_end = pd.to_datetime("2026-07-07 01:26:30")
+            df_lat = df_lat[~((df_lat["Datetime"] >= outage_start) & (df_lat["Datetime"] <= outage_end))].copy()
+
         return df, df_lat
 
-    def run_ttest(self, df, group_col, val1, val2, filter_cols):
+    def run_ttest(self, df, group_col, val1, val2, filter_cols, paired=False):
+        def translate_group_name(group_name):
+            translations = {
+                "1080p slayt": "1080p Slide",
+                "1080p video": "1080p Video",
+                "720p slayt": "720p Slide",
+                "720p video": "720p Video",
+                
+                "slayt sesli": "Slide with Audio",
+                "slayt sessiz": "Slide without Audio",
+                "video sesli": "Video with Audio",
+                "video sessiz": "Video without Audio",
+                
+                "1080p sesli": "1080p with Audio",
+                "1080p sessiz": "1080p without Audio",
+                "720p sesli": "720p with Audio",
+                "720p sessiz": "720p without Audio"
+            }
+            return translations.get(group_name, group_name)
+
         results = []
-        metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "packets"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
+        metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "packets/s"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
         subgroups = df.groupby(filter_cols)
         for name, sub_df in subgroups:
             g1 = sub_df[sub_df[group_col] == val1]
             g2 = sub_df[sub_df[group_col] == val2]
             if len(g1) > 1 and len(g2) > 1:
                 group_name = " ".join(name) if isinstance(name, tuple) else name
+                group_name = translate_group_name(group_name)
                 res_dict = {"group": group_name}
                 for col, unit in metrics:
-                    t, p = stats.ttest_ind(g1[col], g2[col], equal_var=False)
+                    # Aggregate at the iteration level to avoid pseudoreplication (autocorrelation)
+                    g1_agg = g1.groupby("Iteration")[col].mean()
+                    g2_agg = g2.groupby("Iteration")[col].mean()
+                    
+                    # Align iterations
+                    common_idx = g1_agg.index.intersection(g2_agg.index)
+                    n1 = len(g1_agg)
+                    n2 = len(g2_agg)
+                    
+                    # Cohen's d (Effect Size) calculation
+                    if n1 > 1 and n2 > 1:
+                        m1, m2 = g1_agg.mean(), g2_agg.mean()
+                        s1, s2 = g1_agg.var(ddof=1), g2_agg.var(ddof=1)
+                        pooled_sd = np.sqrt(((n1 - 1) * s1 + (n2 - 1) * s2) / (n1 + n2 - 2))
+                        d_val = (m1 - m2) / pooled_sd if pooled_sd > 0 else 0.0
+                    else:
+                        d_val = 0.0
+                    
+                    if paired:
+                        if len(common_idx) > 1:
+                            t, p = stats.ttest_rel(g1_agg.loc[common_idx], g2_agg.loc[common_idx])
+                        else:
+                            t, p = np.nan, np.nan
+                    else:
+                        if n1 > 1 and n2 > 1:
+                            t, p = stats.ttest_ind(g1_agg, g2_agg, equal_var=False)
+                        else:
+                            t, p = np.nan, np.nan
+                    
                     res_dict[col] = {
-                        "m1": round(g1[col].mean(), 3), "s1": round(g1[col].std(), 3),
-                        "m2": round(g2[col].mean(), 2), "s2": round(g2[col].std(), 3),
-                        "t": round(t, 3), "p": round(p, 5), "sig": "Yes (p<0.05)" if p < 0.05 else "No"
+                        "m1": round(g1_agg.mean(), 3) if not g1_agg.empty else 0.0,
+                        "s1": round(g1_agg.std(), 3) if len(g1_agg) > 1 else 0.0,
+                        "m2": round(g2_agg.mean(), 3) if not g2_agg.empty else 0.0,
+                        "s2": round(g2_agg.std(), 3) if len(g2_agg) > 1 else 0.0,
+                        "n1": n1,
+                        "n2": n2,
+                        "t": round(t, 3) if not np.isnan(t) else 0.0,
+                        "p": round(p, 5) if not np.isnan(p) else 1.0,
+                        "d": round(d_val, 3),
+                        "sig": "Yes (p<0.05)" if (not np.isnan(p) and p < 0.05) else "No"
                     }
                 results.append(res_dict)
         return results
@@ -110,10 +194,10 @@ class ScientificReportGenerator:
         if not results: return ""
         html = f"<h3>{title} ({label1.capitalize()} vs {label2.capitalize()})</h3>"
         html += """<table class='scientific-table'><thead><tr>
-            <th>Sub Scenario</th><th>Metric</th><th>{l1} (Mean±SD)</th><th>{l2} (Mean±SD)</th><th>t</th><th>p</th><th>Diff?</th>
+            <th>Sub Scenario</th><th>Metric</th><th>{l1} (Mean±SD)</th><th>{l2} (Mean±SD)</th><th>n1</th><th>n2</th><th>t</th><th>p</th><th>Cohen's d</th><th>Diff?</th>
         </tr></thead><tbody>""".format(l1=label1, l2=label2)
         
-        metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "packets"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
+        metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "packets/s"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
         for res in results:
             first = True
             for col, unit in metrics:
@@ -123,7 +207,7 @@ class ScientificReportGenerator:
                 if first:
                     html += f"<td rowspan='5' class='group-header'>{res['group']}</td>"
                     first = False
-                html += f"<td>{col}</td><td>{r['m1']}±{r['s1']}</td><td>{r['m2']}±{r['s2']}</td><td>{r['t']}</td><td>{r['p']}</td><td style='{sig_style}'>{r['sig']}</td></tr>"
+                html += f"<td>{col}</td><td>{r['m1']}±{r['s1']}</td><td>{r['m2']}±{r['s2']}</td><td>{r['n1']}</td><td>{r['n2']}</td><td>{r['t']}</td><td>{r['p']}</td><td>{r['d']}</td><td style='{sig_style}'>{r['sig']}</td></tr>"
         html += "</tbody></table>"
         return html
 
@@ -136,15 +220,15 @@ class ScientificReportGenerator:
         if df is None: return
 
         # 1. ANALYSIS TABLES
-        s1 = self._build_stats_table("1. Audio Effect", "Silent", "Audio", self.run_ttest(df, "AudioStatus", "sessiz", "sesli", ["Resolution", "ContentType"]))
-        s2 = self._build_stats_table("2. Resolution Effect", "1080p", "720p", self.run_ttest(df, "Resolution", "1080p", "720p", ["ContentType", "AudioStatus"]))
-        s3 = self._build_stats_table("3. Content Effect", "Slide", "Video", self.run_ttest(df, "ContentType", "slayt", "video", ["Resolution", "AudioStatus"]))
+        s1 = self._build_stats_table("1. Audio Effect", "Silent", "Audio", self.run_ttest(df, "AudioStatus", "sessiz", "sesli", ["Resolution", "ContentType"], paired=True))
+        s2 = self._build_stats_table("2. Resolution Effect", "1080p", "720p", self.run_ttest(df, "Resolution", "1080p", "720p", ["ContentType", "AudioStatus"], paired=False))
+        s3 = self._build_stats_table("3. Content Effect", "Slide", "Video", self.run_ttest(df, "ContentType", "slayt", "video", ["Resolution", "AudioStatus"], paired=False))
 
         # 2. CHARTS
         metrics = [
             ("FPS", "FPS Stream"), ("Video_Jitter(ms)", "Video Jitter (ms)"),
             ("CPU_Usage(%)", "CPU Usage (%)"), ("Throughput(kbps)", "Network Traffic (kbps)"),
-            ("Video_Loss", "Packet Loss"), ("Audio_Jitter(ms)", "Audio Jitter (ms)"),
+            ("Video_Loss", "Video Packet Loss (packets/s)"), ("Audio_Jitter(ms)", "Audio Jitter (ms)"),
             ("Temp(C)", "Temperature (°C)"), ("RTT_ms", "RTT Latency (ms)")
         ]
         
@@ -186,8 +270,11 @@ class ScientificReportGenerator:
                     aligned = np.full((len(iter_data), max_len), np.nan)
                     for k, d in enumerate(iter_data):
                         aligned[k, :len(d)] = d
-                    y_mean = np.nanmean(aligned, axis=0)
-                    y_std = np.nanstd(aligned, axis=0)
+                    import warnings
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", category=RuntimeWarning)
+                        y_mean = np.nanmean(aligned, axis=0)
+                        y_std = np.nanstd(aligned, axis=0)
                     y_upper = y_mean + y_std
                     y_lower = np.maximum(y_mean - y_std, 0)
                     secs = np.arange(max_len)
@@ -254,19 +341,29 @@ class ScientificReportGenerator:
             if df_lat is not None:
                 lat_mode = df_lat[df_lat["Mode"] == mode]
                 if not lat_mode.empty:
-                    for it in sorted(lat_mode["Iteration"].unique()):
-                        vals = lat_mode[lat_mode["Iteration"] == it]["RTT_ms"].values
-                        iter_data.append(vals)
-                        if len(vals) > max_len:
-                            max_len = len(vals)
+                    for it in range(1, 6):
+                        if it in lat_mode["Iteration"].values:
+                            vals = lat_mode[lat_mode["Iteration"] == it]["RTT_ms"].values
+                            iter_data.append(vals)
+                            if len(vals) > max_len:
+                                max_len = len(vals)
+                        else:
+                            iter_data.append(np.full(600, np.nan))
+                            if 600 > max_len:
+                                max_len = 600
         elif m_col in df.columns:
             sub_mode = df[df["Mode"] == mode]
             if not sub_mode.empty:
-                for it in sorted(sub_mode["Iteration"].unique()):
-                    vals = sub_mode[sub_mode["Iteration"] == it][m_col].values
-                    iter_data.append(vals)
-                    if len(vals) > max_len:
-                        max_len = len(vals)
+                for it in range(1, 6):
+                    if it in sub_mode["Iteration"].values:
+                        vals = sub_mode[sub_mode["Iteration"] == it][m_col].values
+                        iter_data.append(vals)
+                        if len(vals) > max_len:
+                            max_len = len(vals)
+                    else:
+                        iter_data.append(np.full(600, np.nan))
+                        if 600 > max_len:
+                            max_len = 600
         
         return iter_data, max_len
 
@@ -407,6 +504,7 @@ class ScientificReportGenerator:
 </html>"""
 
 if __name__ == "__main__":
+    import sys
     view = 10
     if len(sys.argv) > 1:
         try:

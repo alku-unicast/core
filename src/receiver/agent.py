@@ -390,14 +390,39 @@ class UniCastReceiver:
 
         self._cec_power_on()
 
+        # Connect sockets to the authorized sender's IP to filter out other senders at kernel level
+        try:
+            self.video_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.video_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.video_sock.bind(('0.0.0.0', 5000))
+            if self.session_ip:
+                self.video_sock.connect((self.session_ip, 5000))
+            v_fd = self.video_sock.fileno()
+            print(f"[UniCast] Video socket connected to {self.session_ip}:5000 (fd={v_fd})")
+        except Exception as e:
+            print(f"[UniCast] Failed to setup video socket: {e}")
+            v_fd = -1
+
+        try:
+            self.audio_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.audio_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.audio_sock.bind(('0.0.0.0', 5002))
+            if self.session_ip:
+                self.audio_sock.connect((self.session_ip, 5002))
+            a_fd = self.audio_sock.fileno()
+            print(f"[UniCast] Audio socket connected to {self.session_ip}:5002 (fd={a_fd})")
+        except Exception as e:
+            print(f"[UniCast] Failed to setup audio socket: {e}")
+            a_fd = -1
+
         v_pipeline = (
-            'udpsrc port=5000 caps="application/x-rtp, media=video, '
+            f'udpsrc {"sockfd=" + str(v_fd) if v_fd != -1 else "port=5000"} caps="application/x-rtp, media=video, '
             'encoding-name=H264, payload=96" ! '
             'rtpjitterbuffer latency=200 ! rtph264depay ! h264parse ! avdec_h264 ! '
             'videoconvert ! videoscale ! kmssink sync=true'
         )
         a_pipeline = (
-            'udpsrc port=5002 caps="application/x-rtp, media=audio, '
+            f'udpsrc {"sockfd=" + str(a_fd) if a_fd != -1 else "port=5002"} caps="application/x-rtp, media=audio, '
             'clock-rate=48000, encoding-name=OPUS, payload=96" ! '
             'rtpopusdepay ! opusdec ! audioconvert ! '
             'volume name=vol ! alsasink sync=true'
@@ -425,6 +450,23 @@ class UniCastReceiver:
             self.video_pipe.set_state(Gst.State.NULL)
         if self.audio_pipe:
             self.audio_pipe.set_state(Gst.State.NULL)
+
+        # Safely close the connected UDP sockets
+        if hasattr(self, 'video_sock') and self.video_sock:
+            try:
+                self.video_sock.close()
+                print("[UniCast] Closed video socket")
+            except Exception as e:
+                print(f"[UniCast] Error closing video socket: {e}")
+            self.video_sock = None
+
+        if hasattr(self, 'audio_sock') and self.audio_sock:
+            try:
+                self.audio_sock.close()
+                print("[UniCast] Closed audio socket")
+            except Exception as e:
+                print(f"[UniCast] Error closing audio socket: {e}")
+            self.audio_sock = None
 
         if immediate_new_pin:
             self.pin = self._generate_pin()

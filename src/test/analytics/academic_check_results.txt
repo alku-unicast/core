@@ -1,0 +1,57 @@
+=== VERIFICATION OF SAMPLE SIZE AND P-VALUES WITH ITERATION-LEVEL AGGREGATION ===
+
+Subgroup: 1080p slayt (sessiz vs sesli)
+  --- Raw Second-Level T-Test (Pseudoreplication) ---
+    FPS: Mean1=14.902, Mean2=14.847, p=0.016603
+    Video_Jitter(ms): Mean1=0.382, Mean2=0.528, p=0.000000
+    Video_Loss: Mean1=0.876, Mean2=1.580, p=0.000059
+    CPU_Usage(%): Mean1=11.529, Mean2=12.641, p=0.000000
+    Throughput(kbps): Mean1=4943.688, Mean2=4996.676, p=0.002711
+  --- Iteration-Level Aggregated T-Test (n=4) ---
+    FPS: Mean1=14.902±0.048, Mean2=14.847±0.146, p=0.516149
+    Video_Jitter(ms): Mean1=0.382±0.042, Mean2=0.528±0.029, p=0.001871
+    Video_Loss: Mean1=0.876±0.513, Mean2=1.580±0.283, p=0.064862
+    CPU_Usage(%): Mean1=11.529±0.225, Mean2=12.641±0.379, p=0.004237
+    Throughput(kbps): Mean1=4943.688±146.118, Mean2=4996.676±52.482, p=0.534579
+
+Subgroup: 1080p video (sessiz vs sesli)
+  --- Raw Second-Level T-Test (Pseudoreplication) ---
+    FPS: Mean1=29.742, Mean2=29.641, p=0.022966
+    Video_Jitter(ms): Mean1=0.748, Mean2=0.950, p=0.000000
+    Video_Loss: Mean1=1.336, Mean2=1.660, p=0.078693
+    CPU_Usage(%): Mean1=18.737, Mean2=19.347, p=0.000000
+    Throughput(kbps): Mean1=4025.323, Mean2=3946.823, p=0.000000
+  --- Iteration-Level Aggregated T-Test (n=4) ---
+    FPS: Mean1=29.742±0.104, Mean2=29.641±0.220, p=0.449935
+    Video_Jitter(ms): Mean1=0.748±0.025, Mean2=0.950±0.030, p=0.000064
+    Video_Loss: Mean1=1.336±0.552, Mean2=1.660±0.683, p=0.489615
+    CPU_Usage(%): Mean1=18.737±0.176, Mean2=19.347±0.271, p=0.012275
+    Throughput(kbps): Mean1=4025.323±16.224, Mean2=3946.823±121.048, p=0.286032
+
+Subgroup: 720p slayt (sessiz vs sesli)
+  --- Raw Second-Level T-Test (Pseudoreplication) ---
+    FPS: Mean1=14.890, Mean2=14.929, p=0.035652
+    Video_Jitter(ms): Mean1=0.376, Mean2=0.502, p=0.000000
+    Video_Loss: Mean1=0.621, Mean2=1.305, p=0.000008
+    CPU_Usage(%): Mean1=11.408, Mean2=12.187, p=0.000000
+    Throughput(kbps): Mean1=5015.678, Mean2=4898.694, p=0.000000
+  --- Iteration-Level Aggregated T-Test (n=4) ---
+    FPS: Mean1=14.890±0.091, Mean2=14.929±0.011, p=0.456533
+    Video_Jitter(ms): Mean1=0.376±0.032, Mean2=0.502±0.031, p=0.001357
+    Video_Loss: Mean1=0.621±0.141, Mean2=1.305±0.542, p=0.082157
+    CPU_Usage(%): Mean1=11.408±0.200, Mean2=12.187±0.229, p=0.002276
+    Throughput(kbps): Mean1=5015.678±28.925, Mean2=4898.694±241.915, p=0.405954
+
+Subgroup: 720p video (sessiz vs sesli)
+  --- Raw Second-Level T-Test (Pseudoreplication) ---
+    FPS: Mean1=29.797, Mean2=29.730, p=0.076204
+    Video_Jitter(ms): Mean1=0.690, Mean2=0.919, p=0.000000
+    Video_Loss: Mean1=1.312, Mean2=1.539, p=0.260558
+    CPU_Usage(%): Mean1=15.637, Mean2=16.651, p=0.000000
+    Throughput(kbps): Mean1=4018.655, Mean2=4015.446, p=0.749407
+  --- Iteration-Level Aggregated T-Test (n=4) ---
+    FPS: Mean1=29.797±0.065, Mean2=29.730±0.233, p=0.615543
+    Video_Jitter(ms): Mean1=0.690±0.010, Mean2=0.919±0.031, p=0.000251
+    Video_Loss: Mean1=1.312±0.526, Mean2=1.539±0.545, p=0.570581
+    CPU_Usage(%): Mean1=15.637±0.141, Mean2=16.651±0.344, p=0.005598
+    Throughput(kbps): Mean1=4018.655±14.032, Mean2=4015.446±20.774, p=0.807660

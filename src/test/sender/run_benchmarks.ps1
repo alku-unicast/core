@@ -67,11 +67,13 @@ function Connect-ToPi {
                 $reader = New-Object System.IO.StreamReader($stream)
                 Write-Host "  TCP baglanti basarili (deneme $attempt)" -ForegroundColor Green
                 return @{ Tcp = $tcp; Writer = $writer; Reader = $reader; Stream = $stream }
-            } else {
+            }
+            else {
                 Write-Host "  TCP baglanti zaman asimi (deneme $attempt/$MaxRetry)" -ForegroundColor Yellow
                 $tcp.Close()
             }
-        } catch {
+        }
+        catch {
             Write-Host "  TCP baglanti hatasi (deneme $attempt/$MaxRetry): $_" -ForegroundColor Red
             if ($tcp) { $tcp.Close() }
         }
@@ -86,8 +88,9 @@ function Disconnect-FromPi {
         if ($Connection.Writer) { $Connection.Writer.Close() }
         if ($Connection.Reader) { $Connection.Reader.Close() }
         if ($Connection.Stream) { $Connection.Stream.Close() }
-        if ($Connection.Tcp)    { $Connection.Tcp.Close() }
-    } catch {}
+        if ($Connection.Tcp) { $Connection.Tcp.Close() }
+    }
+    catch {}
 }
 
 # --- MAIN ---
@@ -129,7 +132,8 @@ try {
             Write-Host "[$ts] Pi'ye PREPARE komutu gonderiliyor..." -ForegroundColor DarkGray
             try {
                 Send-TcpCommand -Writer $conn.Writer -Command "PREPARE:${scenario}:${iter}"
-            } catch {
+            }
+            catch {
                 Write-Host "[$ts] HATA: PREPARE gonderilemedi, yeniden baglaniliyor..." -ForegroundColor Red
                 Disconnect-FromPi $conn
                 $conn = Connect-ToPi -MaxRetry $MAX_RETRY
@@ -148,19 +152,21 @@ try {
             if ($response -eq "READY") {
                 $ts = Get-Date -Format "HH:mm:ss"
                 Write-Host "[$ts] Pi READY! Yayin baslatiliyor..." -ForegroundColor Green
-            } elseif ($response -and $response.StartsWith("ERROR")) {
+            }
+            elseif ($response -and $response.StartsWith("ERROR")) {
                 $ts = Get-Date -Format "HH:mm:ss"
                 Write-Host "[$ts] Pi HATA: $response - Senaryo atlaniyor" -ForegroundColor Red
                 $skipped++
                 continue
-            } else {
+            }
+            else {
                 $ts = Get-Date -Format "HH:mm:ss"
                 Write-Host "[$ts] READY zaman asimi - Senaryo atlaniyor" -ForegroundColor Red
                 $skipped++
                 continue
             }
 
-            # 3. Pipeline Parametreleri (gerçek uygulama ayarları)
+            # 3. Pipeline Parametreleri
             $res = if ($scenario -like "*1080p*") { @("1920", "1080") } else { @("1280", "720") }
             $is_audio = $scenario -like "*sesli*"
             # Slayt: 15fps, 5000kbps | Video: 30fps, 4000kbps
@@ -225,7 +231,8 @@ try {
             Write-Host "[$ts] STOP komutu gonderiliyor..." -ForegroundColor DarkGray
             try {
                 Send-TcpCommand -Writer $conn.Writer -Command "STOP"
-            } catch {
+            }
+            catch {
                 Write-Host "[$ts] STOP gonderme hatasi, yeniden baglaniliyor..." -ForegroundColor Red
                 Disconnect-FromPi $conn
                 $conn = Connect-ToPi -MaxRetry $MAX_RETRY
@@ -239,7 +246,8 @@ try {
             $ts = Get-Date -Format "HH:mm:ss"
             if ($response -eq "DONE") {
                 Write-Host "[$ts] Pi DONE. Tur basariyla tamamlandi." -ForegroundColor Green
-            } else {
+            }
+            else {
                 Write-Host "[$ts] DONE yaniti alinamadi (yanit: $response)" -ForegroundColor Yellow
             }
 
@@ -255,13 +263,16 @@ try {
         Send-TcpCommand -Writer $conn.Writer -Command "FINISH"
         $response = Receive-TcpResponse -Reader $conn.Reader -TimeoutMs 10000
         Write-Host "Pi yaniti: $response" -ForegroundColor Green
-    } catch {
+    }
+    catch {
         Write-Host "FINISH gonderme hatasi (Pi zaten kapanmis olabilir)" -ForegroundColor Yellow
     }
 
-} catch {
+}
+catch {
     Write-Host "`nBeklenmeyen hata: $_" -ForegroundColor Red
-} finally {
+}
+finally {
     Disconnect-FromPi $conn
 }
 
