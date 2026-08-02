@@ -13,24 +13,49 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import stats
+from statsmodels.stats.multitest import multipletests
 import os
 import sys
 
 class ScientificReportGenerator:
     def __init__(self, benchmark_csv="../receiver/benchmark_log.csv", latency_csv=None):
-        self.benchmark_csv = benchmark_csv
-        # Latency log: automatic location detection
-        if latency_csv:
-            self.latency_csv = latency_csv
-        elif os.path.exists("../sender/latency_log_partly_fixes.csv"):
-            self.latency_csv = "../sender/latency_log_partly_fixes.csv"
-        elif os.path.exists("../latency_log.csv"):
-            self.latency_csv = "../latency_log.csv"
-        elif os.path.exists("../receiver/latency_log.csv"):
-            self.latency_csv = "../receiver/latency_log.csv"
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        if os.path.isabs(benchmark_csv):
+            self.benchmark_csv = benchmark_csv
         else:
-            self.latency_csv = "../sender/latency_log_partly_fixes.csv"  # default
-        self.output_file = "unicast_final_report.html"
+            self.benchmark_csv = os.path.abspath(os.path.join(script_dir, benchmark_csv))
+            
+        if latency_csv:
+            if os.path.isabs(latency_csv):
+                self.latency_csv = latency_csv
+            else:
+                self.latency_csv = os.path.abspath(os.path.join(script_dir, latency_csv))
+        else:
+            p1 = os.path.abspath(os.path.join(script_dir, "../sender/latency_log_partly_fixes.csv"))
+            p2 = os.path.abspath(os.path.join(script_dir, "../latency_log.csv"))
+            p3 = os.path.abspath(os.path.join(script_dir, "../receiver/latency_log.csv"))
+            p4 = os.path.abspath(os.path.join(script_dir, "../sender/latency_log.csv"))
+            if os.path.exists(p1):
+                self.latency_csv = p1
+            elif os.path.exists(p2):
+                self.latency_csv = p2
+            elif os.path.exists(p3):
+                self.latency_csv = p3
+            elif os.path.exists(p4):
+                self.latency_csv = p4
+            else:
+                self.latency_csv = p1
+                
+        self.output_file = os.path.abspath(os.path.join(script_dir, "unicast_final_report.html"))
+        self.regression_checked_count = 0
+        self.regression_errors = []
+        self.assumption_checks = []
+
+    def format_p(self, p):
+        if np.isnan(p): return "N/A"
+        if p < 0.001: return "p < .001"
+        return f"{p:.4f}"
 
     def make_datetime_aware(self, df_col):
         times = pd.to_timedelta(df_col)
@@ -42,9 +67,15 @@ class ScientificReportGenerator:
         return baseline + continuous_time
 
     def load_data(self):
-        df = pd.read_csv(self.benchmark_csv) if os.path.exists(self.benchmark_csv) else None
+        if not os.path.exists(self.benchmark_csv):
+            print(f"Error: Benchmark CSV not found at '{self.benchmark_csv}'.")
+            return None, None
+        df = pd.read_csv(self.benchmark_csv)
+        
         df_lat = None
-        if os.path.exists(self.latency_csv):
+        if not os.path.exists(self.latency_csv):
+            print(f"Warning: Latency CSV not found at '{self.latency_csv}'. Skipping latency stream.")
+        else:
             try:
                 # Raw read: Turkish locale decimal comma (3,96) mixes with CSV comma
                 # So we parse line by line
@@ -115,7 +146,89 @@ class ScientificReportGenerator:
 
         return df, df_lat
 
-    def run_ttest(self, df, group_col, val1, val2, filter_cols, paired=False):
+    def load_previous_results(self):
+        if not os.path.exists(self.output_file):
+            print("Info: No previous report found for regression check.")
+            return None
+        try:
+            import bs4
+            with open(self.output_file, "r", encoding="utf-8") as f:
+                html = f.read()
+            soup = bs4.BeautifulSoup(html, "html.parser")
+            tables = soup.find_all("table", class_="scientific-table")
+            
+            previous = {}
+            for table_idx, table in enumerate(tables):
+                # If it's the appendix table, skip it
+                if "Appendix" in str(table.previous_element) or "appendix" in str(table.get("class", [])):
+                    continue
+                header_row = table.find("tr")
+                if not header_row:
+                    continue
+                rows = table.find_all("tr")[1:]  # skip header
+                current_group = None
+                for row in rows:
+                    tds = [td.text.strip() for td in row.find_all("td")]
+                    if not tds:
+                        continue
+                    # Check if first cell is group header
+                    has_group = row.find("td", class_="group-header") or row.find("td").has_attr("rowspan")
+                    if has_group:
+                        current_group = tds[0]
+                        cells = tds[1:]
+                    else:
+                        cells = tds
+                        
+                    if len(cells) == 9:
+                        # Old format: [metric, m1_s1, m2_s2, n1, n2, t, p, d, sig]
+                        metric = cells[0]
+                        m1_str, s1_str = cells[1].split("±")
+                        m2_str, s2_str = cells[2].split("±")
+                        n1 = int(cells[3])
+                        n2 = int(cells[4])
+                        t = float(cells[5])
+                        p_str = cells[6]
+                        d = float(cells[7])
+                    elif len(cells) == 13:
+                        # New format: [metric, m1_s1, m2_s2, mean_diff, pct_change, ci, n1, n2, t, p_raw, p_adj, d, sig]
+                        metric = cells[0]
+                        m1_str, s1_str = cells[1].split("±")
+                        m2_str, s2_str = cells[2].split("±")
+                        n1 = int(cells[6])
+                        n2 = int(cells[7])
+                        t = float(cells[8])
+                        p_str = cells[9]
+                        d = float(cells[11])
+                    else:
+                        continue
+                        
+                    if "p < .001" in p_str or "<" in p_str:
+                        p = 0.0
+                    else:
+                        try:
+                            p = float(p_str)
+                        except ValueError:
+                            p = 0.0
+                            
+                    key = (table_idx, current_group, metric)
+                    previous[key] = {
+                        "m1": float(m1_str),
+                        "s1": float(s1_str),
+                        "m2": float(m2_str),
+                        "s2": float(s2_str),
+                        "n1": n1,
+                        "n2": n2,
+                        "t": t,
+                        "p": p,
+                        "d": d
+                    }
+            print(f"Regression Test: Loaded {len(previous)} previous metrics for verification.")
+            return previous
+        except Exception as e:
+            print(f"Warning: Failed to load previous results for regression check: {e}")
+            return None
+
+    def run_ttest(self, df, group_col, val1, val2, filter_cols, paired=False, table_idx=0, previous_results=None):
         def translate_group_name(group_name):
             translations = {
                 "1080p slayt": "1080p Slide",
@@ -146,7 +259,7 @@ class ScientificReportGenerator:
                 group_name = translate_group_name(group_name)
                 res_dict = {"group": group_name}
                 for col, unit in metrics:
-                    # Aggregate at the iteration level to avoid pseudoreplication (autocorrelation)
+                    # Aggregate at the iteration level to avoid pseudoreplication
                     g1_agg = g1.groupby("Iteration")[col].mean()
                     g2_agg = g2.groupby("Iteration")[col].mean()
                     
@@ -155,10 +268,12 @@ class ScientificReportGenerator:
                     n1 = len(g1_agg)
                     n2 = len(g2_agg)
                     
+                    m1, m2 = g1_agg.mean() if not g1_agg.empty else 0.0, g2_agg.mean() if not g2_agg.empty else 0.0
+                    s1_std, s2_std = g1_agg.std() if len(g1_agg) > 1 else 0.0, g2_agg.std() if len(g2_agg) > 1 else 0.0
+                    s1, s2 = g1_agg.var(ddof=1) if len(g1_agg) > 1 else 0.0, g2_agg.var(ddof=1) if len(g2_agg) > 1 else 0.0
+                    
                     # Cohen's d (Effect Size) calculation
                     if n1 > 1 and n2 > 1:
-                        m1, m2 = g1_agg.mean(), g2_agg.mean()
-                        s1, s2 = g1_agg.var(ddof=1), g2_agg.var(ddof=1)
                         pooled_sd = np.sqrt(((n1 - 1) * s1 + (n2 - 1) * s2) / (n1 + n2 - 2))
                         d_val = (m1 - m2) / pooled_sd if pooled_sd > 0 else 0.0
                     else:
@@ -175,40 +290,223 @@ class ScientificReportGenerator:
                         else:
                             t, p = np.nan, np.nan
                     
+                    # Mean Difference & Pct Change
+                    mean_diff = m1 - m2
+                    pct_change = (mean_diff / m2 * 100.0) if abs(m2) > 1e-9 else 0.0
+                    
+                    # 95% Confidence Interval
+                    if paired:
+                        n = len(common_idx)
+                        if n > 1:
+                            diffs = g1_agg.loc[common_idx] - g2_agg.loc[common_idx]
+                            se = diffs.std(ddof=1) / np.sqrt(n)
+                            ci_half = stats.t.ppf(0.975, n - 1) * se
+                            ci_low = mean_diff - ci_half
+                            ci_high = mean_diff + ci_half
+                        else:
+                            ci_low, ci_high = np.nan, np.nan
+                    else:
+                        if n1 > 1 and n2 > 1:
+                            se = np.sqrt(s1/n1 + s2/n2)
+                            num_df = (s1/n1 + s2/n2)**2
+                            den_df = (s1/n1)**2 / (n1 - 1) + (s2/n2)**2 / (n2 - 1)
+                            df_welch = num_df / den_df if den_df > 0 else 1.0
+                            ci_half = stats.t.ppf(0.975, df_welch) * se
+                            ci_low = mean_diff - ci_half
+                            ci_high = mean_diff + ci_half
+                        else:
+                            ci_low, ci_high = np.nan, np.nan
+                            
+                    # Assumption checks (Shapiro-Wilk + Levene)
+                    try:
+                        if len(g1_agg) >= 3 and g1_agg.std() > 1e-9:
+                            _, p_shapi1 = stats.shapiro(g1_agg)
+                        else:
+                            p_shapi1 = np.nan
+                    except Exception:
+                        p_shapi1 = np.nan
+                        
+                    try:
+                        if len(g2_agg) >= 3 and g2_agg.std() > 1e-9:
+                            _, p_shapi2 = stats.shapiro(g2_agg)
+                        else:
+                            p_shapi2 = np.nan
+                    except Exception:
+                        p_shapi2 = np.nan
+                        
+                    try:
+                        if len(g1_agg) >= 2 and len(g2_agg) >= 2 and (g1_agg.std() > 1e-9 or g2_agg.std() > 1e-9):
+                            _, p_levene = stats.levene(g1_agg, g2_agg)
+                        else:
+                            p_levene = np.nan
+                    except Exception:
+                        p_levene = np.nan
+                        
+                    self.assumption_checks.append({
+                        "table": table_idx,
+                        "group": group_name,
+                        "metric": col,
+                        "p_shapi1": p_shapi1,
+                        "p_shapi2": p_shapi2,
+                        "p_levene": p_levene
+                    })
+                    
+                    # Sign consistency checks
+                    if not (np.isnan(t) or np.isnan(d_val)):
+                        if abs(mean_diff) > 1e-5 and abs(t) > 1e-5 and abs(d_val) > 1e-5:
+                            signs = [np.sign(mean_diff), np.sign(pct_change), np.sign(t), np.sign(d_val)]
+                            if len(set(signs)) > 1:
+                                raise ValueError(
+                                    f"Sign consistency mismatch for table {table_idx}, group: '{group_name}', metric: '{col}'. "
+                                    f"Values: Mean Diff={mean_diff:.4f}, % Change={pct_change:.2f}%, "
+                                    f"t-value={t:.4f}, Cohen's d={d_val:.4f}."
+                                )
+                                
                     res_dict[col] = {
-                        "m1": round(g1_agg.mean(), 3) if not g1_agg.empty else 0.0,
-                        "s1": round(g1_agg.std(), 3) if len(g1_agg) > 1 else 0.0,
-                        "m2": round(g2_agg.mean(), 3) if not g2_agg.empty else 0.0,
-                        "s2": round(g2_agg.std(), 3) if len(g2_agg) > 1 else 0.0,
+                        "m1": m1,
+                        "s1": s1_std,
+                        "m2": m2,
+                        "s2": s2_std,
                         "n1": n1,
                         "n2": n2,
-                        "t": round(t, 3) if not np.isnan(t) else 0.0,
-                        "p": round(p, 5) if not np.isnan(p) else 1.0,
-                        "d": round(d_val, 3),
-                        "sig": "Yes (p<0.05)" if (not np.isnan(p) and p < 0.05) else "No"
+                        "t": t,
+                        "p": p,
+                        "d": d_val,
+                        "mean_diff": mean_diff,
+                        "pct_change": pct_change,
+                        "ci_low": ci_low,
+                        "ci_high": ci_high
                     }
+                    
+                    # Regression check
+                    if previous_results:
+                        key = (table_idx, group_name, col)
+                        if key in previous_results:
+                            old = previous_results[key]
+                            def check_val(name, val_new, val_old):
+                                self.regression_checked_count += 1
+                                if np.isnan(val_new) and np.isnan(val_old):
+                                    return
+                                if name in ("n1", "n2"):
+                                    if int(val_new) != int(val_old):
+                                        msg = f"Table {table_idx}, Group '{group_name}', Metric '{col}', Field '{name}': New={val_new}, Old={val_old}"
+                                        self.regression_errors.append(msg)
+                                elif name == "p":
+                                    if self.format_p(val_new) != self.format_p(val_old):
+                                        if not (val_new < 0.001 and val_old < 0.001):
+                                            if abs(val_new - val_old) > 1.5e-3:
+                                                msg = f"Table {table_idx}, Group '{group_name}', Metric '{col}', Field '{name}': New={val_new:.5f}, Old={val_old:.5f}"
+                                                self.regression_errors.append(msg)
+                                else:
+                                    if abs(val_new - val_old) > 1.5e-3:
+                                        msg = f"Table {table_idx}, Group '{group_name}', Metric '{col}', Field '{name}': New={val_new:.5f}, Old={val_old:.5f}"
+                                        self.regression_errors.append(msg)
+                                    
+                            check_val("m1", res_dict[col]["m1"], old["m1"])
+                            check_val("s1", res_dict[col]["s1"], old["s1"])
+                            check_val("m2", res_dict[col]["m2"], old["m2"])
+                            check_val("s2", res_dict[col]["s2"], old["s2"])
+                            check_val("n1", res_dict[col]["n1"], old["n1"])
+                            check_val("n2", res_dict[col]["n2"], old["n2"])
+                            check_val("t", res_dict[col]["t"] if not np.isnan(res_dict[col]["t"]) else 0.0, old["t"])
+                            check_val("p", res_dict[col]["p"] if not np.isnan(res_dict[col]["p"]) else 1.0, old["p"])
+                            check_val("d", res_dict[col]["d"], old["d"])
+                            
                 results.append(res_dict)
+                
+        # Holm-Bonferroni correction per table (Dynamic family size)
+        pvals = []
+        for res in results:
+            for col, _ in metrics:
+                p = res[col]["p"]
+                pvals.append(p if not np.isnan(p) else 1.0)
+                
+        if pvals:
+            _, p_adj, _, _ = multipletests(pvals, method='holm')
+            idx = 0
+            for res in results:
+                for col, _ in metrics:
+                    adj_p = p_adj[idx]
+                    res[col]["p_adj"] = adj_p
+                    res[col]["sig"] = "Yes (p_adj<0.05)" if adj_p < 0.05 else "No"
+                    idx += 1
+                    
         return results
 
-    def _build_stats_table(self, title, label1, label2, results):
+    def _build_stats_table(self, title, label1, label2, results, table_idx=0):
         if not results: return ""
+        
+        pct_header = f"% Change (vs. {label2.capitalize()})"
         html = f"<h3>{title} ({label1.capitalize()} vs {label2.capitalize()})</h3>"
-        html += """<table class='scientific-table'><thead><tr>
-            <th>Sub Scenario</th><th>Metric</th><th>{l1} (Mean±SD)</th><th>{l2} (Mean±SD)</th><th>n1</th><th>n2</th><th>t</th><th>p</th><th>Cohen's d</th><th>Diff?</th>
-        </tr></thead><tbody>""".format(l1=label1, l2=label2)
+        html += f"""<table class='scientific-table'><thead><tr>
+            <th>Sub Scenario</th>
+            <th>Metric</th>
+            <th>{label1} (Mean±SD)</th>
+            <th>{label2} (Mean±SD)</th>
+            <th>Mean Diff</th>
+            <th>{pct_header}</th>
+            <th>95% CI (of Diff)</th>
+            <th>n1</th>
+            <th>n2</th>
+            <th>t</th>
+            <th>Raw p</th>
+            <th>Adj p (Holm)</th>
+            <th>Cohen's d</th>
+            <th>Sig?</th>
+        </tr></thead><tbody>"""
         
         metrics = [("FPS", "FPS"), ("Video_Jitter(ms)", "ms"), ("Video_Loss", "packets/s"), ("CPU_Usage(%)", "%"), ("Throughput(kbps)", "kbps")]
+        
         for res in results:
             first = True
             for col, unit in metrics:
                 r = res[col]
                 sig_style = "color:green;font-weight:bold" if "Yes" in r['sig'] else "color:#e74c3c"
+                
+                mean_diff_str = f"{r['mean_diff']:.3f}"
+                prefix = "+" if r['pct_change'] > 0 else ""
+                pct_str = f"{prefix}{r['pct_change']:.2f}%" if not np.isnan(r['pct_change']) else "N/A"
+                
+                if np.isnan(r['ci_low']) or np.isnan(r['ci_high']):
+                    ci_str = "N/A"
+                else:
+                    ci_str = f"[{r['ci_low']:.3f}, {r['ci_high']:.3f}]"
+                    
+                t_str = f"{r['t']:.3f}" if not np.isnan(r['t']) else "N/A"
+                raw_p_str = self.format_p(r['p'])
+                adj_p_str = self.format_p(r['p_adj'])
+                d_str = f"{r['d']:.3f}"
+                
                 html += "<tr>"
                 if first:
                     html += f"<td rowspan='5' class='group-header'>{res['group']}</td>"
                     first = False
-                html += f"<td>{col}</td><td>{r['m1']}±{r['s1']}</td><td>{r['m2']}±{r['s2']}</td><td>{r['n1']}</td><td>{r['n2']}</td><td>{r['t']}</td><td>{r['p']}</td><td>{r['d']}</td><td style='{sig_style}'>{r['sig']}</td></tr>"
-        html += "</tbody></table>"
+                html += f"""<td>{col}</td>
+                    <td>{r['m1']:.3f}±{r['s1']:.3f}</td>
+                    <td>{r['m2']:.3f}±{r['s2']:.3f}</td>
+                    <td>{mean_diff_str}</td>
+                    <td>{pct_str}</td>
+                    <td>{ci_str}</td>
+                    <td>{r['n1']}</td>
+                    <td>{r['n2']}</td>
+                    <td>{t_str}</td>
+                    <td>{raw_p_str}</td>
+                    <td>{adj_p_str}</td>
+                    <td>{d_str}</td>
+                    <td style='{sig_style}'>{r['sig']}</td>
+                </tr>"""
+                
+        valid_p_count = len(results) * len(metrics)
+        caption_text = (
+            f"<div class='table-caption' style='font-size:12px;color:#7f8c8d;margin-top:-30px;margin-bottom:35px;line-height:1.4;'>"
+            f"<strong>Note:</strong> Multi-comparison correction was applied using the Holm-Bonferroni method "
+            f"per table as a separate family of comparisons (dynamic family-wise N = {valid_p_count} tests). "
+            f"Percentage change is calculated relative to the baseline ({label2.capitalize()}), i.e., "
+            f"({label1.capitalize()} - {label2.capitalize()}) / {label2.capitalize()} * 100."
+            f"</div>"
+        )
+        
+        html += "</tbody></table>" + caption_text
         return html
 
     # ═════════════════════════════════════════════════════════════════════
@@ -216,13 +514,32 @@ class ScientificReportGenerator:
     # ═════════════════════════════════════════════════════════════════════
 
     def generate_report(self, view_mode=10):
+        # Initialize trackers
+        self.regression_checked_count = 0
+        self.regression_errors = []
+        self.assumption_checks = []
+
         df, df_lat = self.load_data()
         if df is None: return
 
+        # Load previous results for regression checking
+        previous_results = self.load_previous_results()
+
+        # Dynamically set output filename based on view_mode
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        if view_mode == 50:
+            self.output_file = os.path.abspath(os.path.join(script_dir, "unicast_timeline_report.html"))
+        else:
+            self.output_file = os.path.abspath(os.path.join(script_dir, "unicast_final_report.html"))
+
         # 1. ANALYSIS TABLES
-        s1 = self._build_stats_table("1. Audio Effect", "Silent", "Audio", self.run_ttest(df, "AudioStatus", "sessiz", "sesli", ["Resolution", "ContentType"], paired=True))
-        s2 = self._build_stats_table("2. Resolution Effect", "1080p", "720p", self.run_ttest(df, "Resolution", "1080p", "720p", ["ContentType", "AudioStatus"], paired=False))
-        s3 = self._build_stats_table("3. Content Effect", "Slide", "Video", self.run_ttest(df, "ContentType", "slayt", "video", ["Resolution", "AudioStatus"], paired=False))
+        s1 = self._build_stats_table("1. Audio Effect", "Silent", "Audio", self.run_ttest(df, "AudioStatus", "sessiz", "sesli", ["Resolution", "ContentType"], paired=True, table_idx=0, previous_results=previous_results), table_idx=0)
+        s2 = self._build_stats_table("2. Resolution Effect", "1080p", "720p", self.run_ttest(df, "Resolution", "1080p", "720p", ["ContentType", "AudioStatus"], paired=False, table_idx=1, previous_results=previous_results), table_idx=1)
+        s3 = self._build_stats_table("3. Content Effect", "Slide", "Video", self.run_ttest(df, "ContentType", "slayt", "video", ["Resolution", "AudioStatus"], paired=False, table_idx=2, previous_results=previous_results), table_idx=2)
+
+        # Append assumptions appendix table
+        appendix_table = self._build_appendix_table()
+        stats_tables = s1 + s2 + s3 + appendix_table
 
         # 2. CHARTS
         metrics = [
@@ -248,11 +565,21 @@ class ScientificReportGenerator:
             mode_label = "50min Raw Stream"
             desc = "5 iterations are shown consecutively."
 
-        final_html = self._wrap_html(s1 + s2 + s3, fig.to_html(full_html=False, include_plotlyjs="cdn"), mode_label, desc)
+        final_html = self._wrap_html(stats_tables, fig.to_html(full_html=False, include_plotlyjs="cdn"), mode_label, desc)
         
         with open(self.output_file, "w", encoding="utf-8") as f:
             f.write(final_html)
         print(f"Report successfully generated: {self.output_file} ({mode_label})")
+
+        # Verify regression results
+        if previous_results:
+            if len(self.regression_errors) > 0:
+                print(f"\n[REGRESSION ERROR] Mismatch found in {len(self.regression_errors)} stats compared to previous report:")
+                for err in self.regression_errors:
+                    print(f"  - {err}")
+                raise ValueError("Regression verification failed! One or more baseline statistics changed.")
+            else:
+                print(f"\n[REGRESSION SUCCESS] Verified {self.regression_checked_count} baseline values. 0 discrepancies found!")
 
     # ─── MODE 10: Mean ± SD ───────────────────────────────────────────
     def _build_mean_sd_charts(self, fig, df, df_lat, metrics, modes, colors):
@@ -399,6 +726,69 @@ class ScientificReportGenerator:
             axis_name = f"xaxis{i}" if i > 1 else "xaxis"
             fig.update_layout(**{axis_name: dict(title="Time (min:sec)")})
 
+    def _build_appendix_table(self):
+        if not self.assumption_checks:
+            return ""
+            
+        table_names = {
+            0: "1. Audio Effect (Silent vs Audio)",
+            1: "2. Resolution Effect (1080p vs 720p)",
+            2: "3. Content Effect (Slide vs Video)"
+        }
+        
+        html = "<h2>Appendix: Statistical Assumptions Checks</h2>"
+        html += "<div class='appendix-note'><strong>Methodological Note on Low Sample Size Limitation:</strong> Given the small run-level sample sizes (n=4–5 per condition), formal normality tests (Shapiro–Wilk) and homogeneity of variance tests (Levene) have limited statistical power and were used only as a supplementary check rather than a definitive decision criterion. Welch's t-test was preferred throughout for independent tests as it does not assume equal variances and is highly robust to minor departures from normality.</div>"
+        
+        html += """<table class='scientific-table appendix-table'>
+        <thead>
+            <tr>
+                <th>Factor Table</th>
+                <th>Sub Scenario</th>
+                <th>Metric</th>
+                <th>Shapiro-Wilk G1 (p)</th>
+                <th>Normality G1?</th>
+                <th>Shapiro-Wilk G2 (p)</th>
+                <th>Normality G2?</th>
+                <th>Levene Test (p)</th>
+                <th>Equal Variances?</th>
+            </tr>
+        </thead>
+        <tbody>"""
+        
+        for check in self.assumption_checks:
+            t_name = table_names.get(check["table"], f"Table {check['table']}")
+            
+            p1 = check["p_shapi1"]
+            p2 = check["p_shapi2"]
+            pl = check["p_levene"]
+            
+            p1_str = f"{p1:.4f}" if not np.isnan(p1) else "N/A"
+            p2_str = f"{p2:.4f}" if not np.isnan(p2) else "N/A"
+            pl_str = f"{pl:.4f}" if not np.isnan(pl) else "N/A"
+            
+            norm1 = "Passed" if (not np.isnan(p1) and p1 > 0.05) else ("Failed" if not np.isnan(p1) else "N/A")
+            norm2 = "Passed" if (not np.isnan(p2) and p2 > 0.05) else ("Failed" if not np.isnan(p2) else "N/A")
+            equal_var = "Passed" if (not np.isnan(pl) and pl > 0.05) else ("Failed" if not np.isnan(pl) else "N/A")
+            
+            style_norm1 = "color:green;font-weight:bold" if norm1 == "Passed" else ("color:#e74c3c" if norm1 == "Failed" else "color:gray")
+            style_norm2 = "color:green;font-weight:bold" if norm2 == "Passed" else ("color:#e74c3c" if norm2 == "Failed" else "color:gray")
+            style_equal = "color:green;font-weight:bold" if equal_var == "Passed" else ("color:#e74c3c" if equal_var == "Failed" else "color:gray")
+            
+            html += f"""<tr>
+                <td class='group-header'>{t_name}</td>
+                <td>{check['group']}</td>
+                <td>{check['metric']}</td>
+                <td>{p1_str}</td>
+                <td style='{style_norm1}'>{norm1}</td>
+                <td>{p2_str}</td>
+                <td style='{style_norm2}'>{norm2}</td>
+                <td>{pl_str}</td>
+                <td style='{style_equal}'>{equal_var}</td>
+            </tr>"""
+            
+        html += "</tbody></table>"
+        return html
+
     def _wrap_html(self, stats_tables, chart_html, mode_label="", desc=""):
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -428,6 +818,8 @@ class ScientificReportGenerator:
     .sys-card td {{ padding: 5px 8px; border-bottom: 1px solid #eee; }}
     .sys-card td:first-child {{ color: #7f8c8d; width: 40%; font-weight: 500; }}
     .sys-card td:last-child {{ font-family: 'Consolas', monospace; color: #2c3e50; }}
+    .appendix-note {{ background: #fdf2e2; border-left: 6px solid #f39c12; padding: 15px; margin-bottom: 20px; font-size: 13.5px; border-radius: 4px; color: #7f8c8d; }}
+    .appendix-table th {{ background: #d35400; border: 1px solid #a04000; }}
   </style>
 </head>
 <body>
@@ -505,6 +897,23 @@ class ScientificReportGenerator:
 
 if __name__ == "__main__":
     import sys
+    import json
+    if len(sys.argv) > 1 and sys.argv[1] == "backup":
+        gen = ScientificReportGenerator()
+        df, df_lat = gen.load_data()
+        s1 = gen.run_ttest(df, "AudioStatus", "sessiz", "sesli", ["Resolution", "ContentType"], paired=True)
+        s2 = gen.run_ttest(df, "Resolution", "1080p", "720p", ["ContentType", "AudioStatus"], paired=False)
+        s3 = gen.run_ttest(df, "ContentType", "slayt", "video", ["Resolution", "AudioStatus"], paired=False)
+        backup_data = {
+            "Audio": s1,
+            "Resolution": s2,
+            "Content": s3
+        }
+        with open("stats_backup.json", "w", encoding="utf-8") as f:
+            json.dump(backup_data, f, indent=4)
+        print("Stats backup successfully saved to stats_backup.json")
+        sys.exit(0)
+
     view = 10
     if len(sys.argv) > 1:
         try:
@@ -512,9 +921,7 @@ if __name__ == "__main__":
         except ValueError:
             pass
     if view not in (10, 50):
-        print("Usage: python report_generator.py [10|50]")
-        print("  10 = Mean +/- SD (scientific, default)")
-        print("  50 = Raw stream (5 consecutive iterations)")
+        print("Usage: python report_generator.py [10|50|backup]")
         sys.exit(1)
     gen = ScientificReportGenerator()
     gen.generate_report(view_mode=view)
