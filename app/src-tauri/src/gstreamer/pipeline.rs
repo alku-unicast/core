@@ -21,14 +21,9 @@ pub fn build_pipeline(app: &AppHandle, config: &StreamConfig) -> String {
     let (width, height) = parse_resolution(&config.resolution);
     let ip = &config.target_ip;
     
-    // Adaptive quality settings based on Mode
-    // Video: High FPS (30/60), High Bitrate (6Mbps), low latency
-    // Presentation: Low FPS (15), Medium Bitrate (3Mbps), high clarity
-    let (fps, bitrate) = match config.quality_mode.as_str() {
-        "video" => (u32::max(config.fps, 30), u32::max(config.bitrate, 5000)),
-        "presentation" => (15, 3000),
-        _ => (config.fps, config.bitrate),
-    };
+    // Use configured FPS and bitrate directly to respect UI settings and thesis specs
+    let fps = config.fps;
+    let bitrate = config.bitrate;
 
     let encoder = if config.encoder_name.is_empty() {
         "x264enc"
