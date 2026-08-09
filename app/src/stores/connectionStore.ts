@@ -163,7 +163,6 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
           }
         }
 
-        // ── ISSUE-06: Mute local speakers if setting is enabled ──────────
         const { audio } = useSettingsStore.getState();
         if (audio.muteLocal) {
           invoke("mute_system_audio", { mute: true }).catch(console.warn);
@@ -193,7 +192,6 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
     // Clear any existing timeout
     if (restartTimeout) clearTimeout(restartTimeout);
 
-    // Safety checks
     if (!lastStreamConfig) return;
     
     // Only auto-restart on Linux window mode (this is where the BadMatch occurs)
