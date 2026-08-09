@@ -40,8 +40,6 @@ function parseRoom(id: string, raw: RawRoom): Room {
   const now = Date.now();
   const OFFLINE_THRESHOLD = 2 * 60 * 1000; // 2 min: Pi heartbeats every 30s, 4 missed = offline
 
-  // ISSUE-03 Fix: Use regex to validate actual IPv4 address
-  // This catches "No network", "N/A", or any other invalid placeholder from the Pi
   const IP_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
   if (!raw.pi_ip || !IP_PATTERN.test(raw.pi_ip.trim())) {
     status = "unconfigured";
