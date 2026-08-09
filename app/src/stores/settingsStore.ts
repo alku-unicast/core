@@ -14,7 +14,6 @@ interface SettingsStore extends Settings {
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   ...DEFAULT_SETTINGS,
-  // macOS: mini ada default kapalı (pencere modu/ses desteği henüz yok)
   streamingBar: { enabled: !isMacOS() },
 
   setHideLinuxWindowWarning: (value) => {
@@ -45,7 +44,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const data = await invoke<Settings>("read_settings");
-      // Migration: if the data is old (v1), we force defaults for profiles
       if (data.version < 2) {
         set({ ...DEFAULT_SETTINGS });
         await get().saveToDisk();
@@ -61,7 +59,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const state = get();
-      // Extract only Settings fields (not store actions)
       const payload: Settings = {
         version: state.version,
         language: state.language,
