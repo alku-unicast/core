@@ -51,20 +51,20 @@ export function StreamingBarApp() {
   useEffect(() => {
     const fns: Array<() => void> = [];
 
-    // Network quality from RTT monitor (Rust emits every 2s to all windows)
+    // Network quality from RTT monitor
     listen<{ rttMs: number; quality: string }>("stream-health", (ev) => {
       setNetworkQuality(ev.payload.quality as NetworkQuality);
       setLastRTT(ev.payload.rttMs);
     }).then((fn) => fns.push(fn));
 
-    // Listen to live settings changes (like theme)
+    // Listen to live settings changes
     listen("settings-updated", () => {
       loadFromDisk();
     }).then((fn) => fns.push(fn));
 
     // Stream mode info sent from main window when stream starts
     listen<{ mode: string; targetIp?: string; audioEnabled?: boolean; volume?: number; isMuted?: boolean }>("stream-mode-info", (ev) => {
-      setElapsed(0); // reset timer when stream is newly started
+      setElapsed(0);
       setStopping(false);
       if (ev.payload.mode === "fullscreen" || ev.payload.mode === "window") {
         setStreamMode(ev.payload.mode as "fullscreen" | "window");
@@ -83,7 +83,7 @@ export function StreamingBarApp() {
       }
     }).then((fn) => fns.push(fn));
 
-    // Auto-close bar when stream stops — but NOT on error reason (auto-restart keeps bar visible)
+    // Auto-close bar when stream stops
     listen<{ reason: string }>("stream-stopped", (ev) => {
       if (ev.payload.reason !== "error") {
         import("@tauri-apps/api/webviewWindow").then(({ getCurrentWebviewWindow }) => {
@@ -114,7 +114,7 @@ export function StreamingBarApp() {
     try {
       await invoke("set_stream_volume", { volume, mute: next, targetIp });
     } catch {
-      setIsMuted(!next); // revert on error
+      setIsMuted(!next);
     }
   }, [isMuted, volume, targetIp]);
 
@@ -133,10 +133,7 @@ export function StreamingBarApp() {
   );
 
   const handleModeToggle = useCallback(async () => {
-    // Disabled in Mini Bar: Window selection is complex, just used as indicator now.
   }, []);
-
-  /* ── Volume icon helper ───────────────────────────────────────────────── */
 
   /* ── Volume icon helper ───────────────────────────────────────────────── */
   const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume > 0.5 ? Volume2 : Volume1;
@@ -151,7 +148,6 @@ export function StreamingBarApp() {
           background:           "var(--bar-bg)",
           color:                "var(--bar-text)",
           border:               "1.5px solid var(--bar-border)",
-          // CSS Shadows often cause black artifacts in screen capture; removed.
         }}
         data-bar-theme={appearance.barTheme}
         data-tauri-drag-region
