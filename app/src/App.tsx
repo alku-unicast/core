@@ -6,7 +6,6 @@ import "./i18n"; // Initialize i18n
 import i18n from "i18next";
 import { useTranslation } from "react-i18next";
 
-// Lazy-load heavy screens
 import { lazy, Suspense } from "react";
 const ConnectionSetup = lazy(() =>
   import("./screens/ConnectionSetup").then((m) => ({ default: m.ConnectionSetup }))
@@ -15,7 +14,6 @@ const StreamingBarApp = lazy(() =>
   import("./screens/StreamingBarApp").then((m) => ({ default: m.StreamingBarApp }))
 );
 
-// U2 — detect system theme on first load, and react to OS-level changes
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { appearance, language, updateSettings } = useSettingsStore();
   const initialised = useRef(false);
@@ -49,19 +47,16 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Whenever appearance.mainTheme changes (user or OS), apply it
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", appearance.mainTheme);
   }, [appearance.mainTheme]);
 
-  // U1 — Keep i18n language in sync with settingsStore
   useEffect(() => {
     if (i18n.language !== language) {
       i18n.changeLanguage(language);
     }
   }, [language]);
 
-  // P10 — Disable right-click globally for production-ready feel
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       // e.preventDefault(); // Temporarily disabled for debugging purposes
